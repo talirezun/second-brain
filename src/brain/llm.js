@@ -42,9 +42,10 @@ export function getProviderInfo() {
  * @param {string} systemPrompt
  * @param {string} userPrompt
  * @param {number} maxTokens
+ * @param {'text'|'json'} responseFormat - 'json' enables native JSON mode (Gemini only; Claude ignores it)
  * @returns {Promise<string>}
  */
-export async function generateText(systemPrompt, userPrompt, maxTokens = 8192) {
+export async function generateText(systemPrompt, userPrompt, maxTokens = 8192, responseFormat = 'text') {
   const { provider, model } = getProviderInfo();
 
   // ── Google Gemini ────────────────────────────────────────────────────────
@@ -54,9 +55,15 @@ export async function generateText(systemPrompt, userPrompt, maxTokens = 8192) {
       model,
       systemInstruction: systemPrompt,
     });
+    const generationConfig = { maxOutputTokens: maxTokens };
+    if (responseFormat === 'json') {
+      // Forces Gemini to output structurally valid JSON, preventing
+      // unescaped markdown characters (backticks, quotes) from breaking parsing.
+      generationConfig.responseMimeType = 'application/json';
+    }
     const result = await geminiModel.generateContent({
       contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-      generationConfig: { maxOutputTokens: maxTokens },
+      generationConfig,
     });
     return result.response.text();
   }

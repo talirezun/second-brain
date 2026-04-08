@@ -52,6 +52,8 @@ Your task:
 4. Add cross-references between related pages using [[page-name]] syntax.
 5. Produce an updated index.md that includes all existing pages plus any new ones.
 
+IMPORTANT: Keep each page's content concise — 3 to 8 bullet points or sentences max. Do not write long prose. Fewer words per page means more pages fit in the response.
+
 Return ONLY valid JSON in this exact shape (no markdown fences, no commentary):
 {
   "title": "human-readable title of this source",
@@ -63,7 +65,9 @@ Return ONLY valid JSON in this exact shape (no markdown fences, no commentary):
   "index": "full content of the updated index.md"
 }`;
 
-  const raw = (await generateText(schema, userPrompt, 8192)).trim();
+  // 32 768 tokens — well within gemini-2.5-flash-lite's 64k output limit,
+  // and large enough to fit even dense multi-section documents.
+  const raw = (await generateText(schema, userPrompt, 32768, 'json')).trim();
 
   let result;
   try {
