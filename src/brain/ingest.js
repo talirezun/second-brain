@@ -47,6 +47,88 @@ function parseJSON(raw) {
   );
 }
 
+// ── Phase 1: outline ──────────────────────────────────────────────────────────
+
+function buildOutlinePrompt(today, index, originalName, text, isOverwrite) {
+  const overwriteNote = isOverwrite
+    ? 'NOTE: This document has been ingested before. Update existing pages rather than duplicating content.'
+    : '';
+
+  return `Today's date: ${today}
+${overwriteNote ? '\n' + overwriteNote : ''}
+Current wiki index:
+${index || '(empty — this is the first ingest)'}
+
+--- SOURCE DOCUMENT: ${originalName} ---
+${text}
+--- END SOURCE DOCUMENT ---
+
+Your task: Plan which wiki pages to create or update for this source.
+Produce ONLY a JSON outline — do NOT write any page content yet.
+
+Return ONLY valid JSON in this exact shape (no markdown fences, no commentary):
+{
+  "title": "human-readable title of this source",
+  "pages": [
+    { "path": "summaries/example-source.md", "summary": "one-line description" },
+    { "path": "concepts/some-concept.md",    "summary": "one-line description" },
+    { "path": "entities/some-entity.md",     "summary": "one-line description" }
+  ]
+}`;
+}
+
+// ── Phase 2: page content (batched) ──────────────────────────────────────────
+
+function buildBatchPrompt(today, originalName, text, pageBatch) {
+  const pageList = pageBatch
+    .map(p => `  { "path": "${p.path}", "summary": "${p.summary}" }`)
+    .join(',\n');
+
+  return `Today's date: ${today}
+
+--- SOURCE DOCUMENT: ${originalName} ---
+${text}
+--- END SOURCE DOCUMENT ---
+
+Write the full markdown content for EXACTLY these wiki pages (no others):
+[
+${pageList}
+]
+
+Guidelines:
+- Each page: 3–8 concise bullet points or sentences. No long prose.
+- Use [[page-name]] syntax for cross-references to other wiki pages.
+- Single-word tags only.
+
+Return ONLY valid JSON in this exact shape (no markdown fences, no commentary):
+{
+  "pages": [
+    { "path": "summaries/example-source.md", "content": "..." },
+    { "path": "concepts/some-concept.md",    "content": "..." }
+  ]
+}`;
+}
+
+// ── Phase 3: index update ─────────────────────────────────────────────────────
+
+function buildIndexPrompt(existingIndex, newPages) {
+  const pageList = newPages
+    .map(p => `  ${p.path}: ${p.summary || p.path}`)
+    .join('\n');
+
+  return `Current index.md:
+${existingIndex || '(empty)'}
+
+New or updated pages to incorporate:
+${pageList}
+
+Write a complete, updated index.md that lists ALL pages (existing + new).
+Each entry: one line with path and a short description.
+Return ONLY the raw markdown text for index.md (no JSON, no fences).`;
+}
+
+// ── Single-pass prompt (small documents) ─────────────────────────────────────
+
 function buildPrompt(today, index, originalName, text, strict, isOverwrite = false) {
   const conciseness = strict
     ? 'CRITICAL: Maximum 3 bullet points per page. No prose. Single-word tags only. The shorter the better.'
@@ -86,6 +168,66 @@ Return ONLY valid JSON in this exact shape (no markdown fences, no commentary):
 }`;
 }
 
+// ── Multi-phase ingest (large documents) ─────────────────────────────────────
+
+const BATCH_SIZE = 10;
+
+async function ingestMultiPhase(schema, today, index, originalName, text, isOverwrite) {
+  // Phase 1: outline
+  console.log('[ingest] Large document — using two-phase ingest. Phase 1: outline...');
+  const outlineRaw = (await generateText(
+    schema,
+    buildOutlinePrompt(today, index, originalName, text, isOverwrite),
+    4096,
+    'json'
+  )).trim();
+
+  const outline = parseJSON(outlineRaw);
+  const allPages = outline.pages; // [{path, summary}]
+  console.log(`[ingest] Phase 1 complete — ${allPages.length} pages planned.`);
+
+  // Phase 2: batched content
+  const writtenPages = []; // [{path, content}]
+
+  for (let i = 0; i < allPages.length; i += BATCH_SIZE) {
+    const batch = allPages.slice(i, i + BATCH_SIZE);
+    const batchNum = Math.floor(i / BATCH_SIZE) + 1;
+    const totalBatches = Math.ceil(allPages.length / BATCH_SIZE);
+    console.log(`[ingest] Phase 2 — batch ${batchNum}/${totalBatches} (${batch.length} pages)...`);
+
+    const batchRaw = (await generateText(
+      schema,
+      buildBatchPrompt(today, originalName, text, batch),
+      16384,
+      'json'
+    )).trim();
+
+    const batchResult = parseJSON(batchRaw);
+    writtenPages.push(...batchResult.pages);
+  }
+
+  // Phase 3: index
+  console.log('[ingest] Phase 3: updating index...');
+  const newIndex = (await generateText(
+    schema,
+    buildIndexPrompt(index, allPages),
+    4096,
+    'text'
+  )).trim();
+
+  return {
+    title: outline.title,
+    pages: writtenPages,
+    index: newIndex,
+  };
+}
+
+// ── Entry point ───────────────────────────────────────────────────────────────
+
+// If the single-pass response is longer than this, assume multi-phase is needed.
+// 200 000 chars ≈ 50k tokens — safely below the 65 536 ceiling.
+const SINGLE_PASS_CHAR_LIMIT = 200_000;
+
 export async function ingestFile(domain, filePath, originalName, isOverwrite = false) {
   // Save to raw/
   const rawDir = rawPath(domain);
@@ -103,31 +245,62 @@ export async function ingestFile(domain, filePath, originalName, isOverwrite = f
   const index = await readIndex(domain);
   const today = new Date().toISOString().slice(0, 10);
 
-  // ── Attempt 1: standard prompt, full 65 536 token ceiling ─────────────────
-  // 65 536 is gemini-2.5-flash-lite's actual output token maximum.
-  // Previous limit was 32 768 which caused truncation on documents > ~130k chars.
-  let raw;
   let result;
 
-  raw = (await generateText(schema, buildPrompt(today, index, originalName, text, false, isOverwrite), 65536, 'json')).trim();
+  // ── Single-pass attempt (works for most documents) ─────────────────────────
+  let usedMultiPhase = false;
+  let singlePassFailed = false;
 
   try {
-    result = parseJSON(raw);
-  } catch (firstErr) {
-    // ── Attempt 2: stricter brevity prompt ───────────────────────────────────
-    console.warn(`[ingest] First parse failed (${firstErr.message.slice(0, 120)}). Retrying with strict brevity...`);
+    const raw = (await generateText(
+      schema,
+      buildPrompt(today, index, originalName, text, false, isOverwrite),
+      65536,
+      'json'
+    )).trim();
 
-    raw = (await generateText(schema, buildPrompt(today, index, originalName, text, true, isOverwrite), 65536, 'json')).trim();
-
-    try {
-      result = parseJSON(raw);
-    } catch (secondErr) {
-      throw new Error(
-        `Failed to parse LLM response after two attempts.\n` +
-        `Attempt 1: ${firstErr.message}\n` +
-        `Attempt 2: ${secondErr.message}`
+    if (raw.length > SINGLE_PASS_CHAR_LIMIT) {
+      console.warn(
+        `[ingest] Single-pass response too large (${raw.length} chars). ` +
+        `Switching to multi-phase ingest...`
       );
+      singlePassFailed = true;
+    } else {
+      try {
+        result = parseJSON(raw);
+      } catch (firstErr) {
+        // Retry with stricter brevity
+        console.warn(`[ingest] First parse failed (${firstErr.message.slice(0, 120)}). Retrying with strict brevity...`);
+
+        const raw2 = (await generateText(
+          schema,
+          buildPrompt(today, index, originalName, text, true, isOverwrite),
+          65536,
+          'json'
+        )).trim();
+
+        if (raw2.length > SINGLE_PASS_CHAR_LIMIT) {
+          console.warn(`[ingest] Strict retry also too large (${raw2.length} chars). Switching to multi-phase...`);
+          singlePassFailed = true;
+        } else {
+          try {
+            result = parseJSON(raw2);
+          } catch (secondErr) {
+            console.warn(`[ingest] Both single-pass attempts failed. Switching to multi-phase...`);
+            singlePassFailed = true;
+          }
+        }
+      }
     }
+  } catch (err) {
+    // Re-throw non-parse errors (rate limits, network, etc.)
+    throw err;
+  }
+
+  // ── Multi-phase fallback ───────────────────────────────────────────────────
+  if (singlePassFailed) {
+    usedMultiPhase = true;
+    result = await ingestMultiPhase(schema, today, index, originalName, text, isOverwrite);
   }
 
   // Write all wiki pages
