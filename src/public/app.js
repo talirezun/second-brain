@@ -71,7 +71,7 @@ ingestBtn.addEventListener('click', async () => {
 
   const domain = document.getElementById('ingest-domain').value;
   ingestBtn.disabled = true;
-  showStatus(ingestStatus, 'loading', 'Ingesting — Claude is reading your source and updating the wiki...');
+  showStatus(ingestStatus, 'loading', 'Ingesting — Second Brain is reading your source and updating the wiki...');
   hideEl(ingestResult);
 
   const formData = new FormData();
@@ -124,7 +124,7 @@ queryBtn.addEventListener('click', async () => {
   if (!question) return;
 
   queryBtn.disabled = true;
-  showStatus(queryStatus, 'loading', 'Querying — Claude is reading the wiki and synthesizing an answer...');
+  showStatus(queryStatus, 'loading', 'Querying — Second Brain is reading the wiki and synthesizing an answer...');
   hideEl(queryResult);
 
   try {
