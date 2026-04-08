@@ -19,30 +19,46 @@ async function extractText(filePath) {
   return readFile(filePath, 'utf8');
 }
 
-export async function ingestFile(domain, filePath, originalName) {
-  // Save to raw/
-  const rawDir = rawPath(domain);
-  await mkdir(rawDir, { recursive: true });
-  const destPath = path.join(rawDir, originalName);
-  const buffer = await readFile(filePath);
-  await writeFile(destPath, buffer);
+/**
+ * Attempt to parse JSON from the LLM response.
+ * Handles two failure modes:
+ *   1. Model wrapped JSON in markdown fences  → strip and retry
+ *   2. Truncated / malformed JSON             → throw with context
+ */
+function parseJSON(raw) {
+  // Fast path
+  try { return JSON.parse(raw); } catch { /* fall through */ }
 
-  // Extract text
-  const text = await extractText(destPath);
+  // Strip markdown fences (```json ... ```)
+  const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fenceMatch) {
+    try { return JSON.parse(fenceMatch[1].trim()); } catch { /* fall through */ }
+  }
 
-  // Load schema and current index
-  const schema = await readSchema(domain);
-  const index = await readIndex(domain);
+  // Find the outermost { ... } block
+  const braceMatch = raw.match(/\{[\s\S]*\}/);
+  if (braceMatch) {
+    try { return JSON.parse(braceMatch[0]); } catch { /* fall through */ }
+  }
 
-  const today = new Date().toISOString().slice(0, 10);
+  throw new Error(
+    `Could not parse JSON response. Response length: ${raw.length} chars. ` +
+    `Last 200 chars: ${raw.slice(-200)}`
+  );
+}
 
-  const userPrompt = `Today's date: ${today}
+function buildPrompt(today, index, originalName, text, strict) {
+  const conciseness = strict
+    ? 'CRITICAL: Maximum 3 bullet points per page. No prose. Single-word tags only. The shorter the better.'
+    : 'Keep each page concise — 3 to 8 bullet points or sentences max. No long prose.';
+
+  return `Today's date: ${today}
 
 Current wiki index:
 ${index || '(empty — this is the first ingest)'}
 
 --- SOURCE DOCUMENT: ${originalName} ---
-${text.slice(0, 80000)}
+${text}
 --- END SOURCE DOCUMENT ---
 
 Your task:
@@ -52,7 +68,7 @@ Your task:
 4. Add cross-references between related pages using [[page-name]] syntax.
 5. Produce an updated index.md that includes all existing pages plus any new ones.
 
-IMPORTANT: Keep each page's content concise — 3 to 8 bullet points or sentences max. Do not write long prose. Fewer words per page means more pages fit in the response.
+${conciseness}
 
 Return ONLY valid JSON in this exact shape (no markdown fences, no commentary):
 {
@@ -64,19 +80,52 @@ Return ONLY valid JSON in this exact shape (no markdown fences, no commentary):
   ],
   "index": "full content of the updated index.md"
 }`;
+}
 
-  // 32 768 tokens — well within gemini-2.5-flash-lite's 64k output limit,
-  // and large enough to fit even dense multi-section documents.
-  const raw = (await generateText(schema, userPrompt, 32768, 'json')).trim();
+export async function ingestFile(domain, filePath, originalName) {
+  // Save to raw/
+  const rawDir = rawPath(domain);
+  await mkdir(rawDir, { recursive: true });
+  const destPath = path.join(rawDir, originalName);
+  const buffer = await readFile(filePath);
+  await writeFile(destPath, buffer);
 
+  // Extract text — cap at 80 000 chars to stay within input limits
+  const fullText = await extractText(destPath);
+  const text = fullText.slice(0, 80000);
+
+  // Load schema and current index
+  const schema = await readSchema(domain);
+  const index = await readIndex(domain);
+  const today = new Date().toISOString().slice(0, 10);
+
+  // ── Attempt 1: standard prompt, full 65 536 token ceiling ─────────────────
+  // 65 536 is gemini-2.5-flash-lite's actual output token maximum.
+  // Previous limit was 32 768 which caused truncation on documents > ~130k chars.
+  let raw;
   let result;
+
+  raw = (await generateText(schema, buildPrompt(today, index, originalName, text, false), 65536, 'json')).trim();
+
   try {
-    result = JSON.parse(raw);
-  } catch {
-    // Strip markdown fences if the model wrapped the JSON
-    const match = raw.match(/\{[\s\S]*\}/);
-    if (!match) throw new Error('LLM did not return valid JSON');
-    result = JSON.parse(match[0]);
+    result = parseJSON(raw);
+  } catch (firstErr) {
+    // ── Attempt 2: stricter brevity prompt ───────────────────────────────────
+    // Triggered when the model produced malformed JSON (e.g. unescaped chars
+    // in content, or still-truncated output on a very dense document).
+    console.warn(`[ingest] First parse failed (${firstErr.message.slice(0, 120)}). Retrying with strict brevity...`);
+
+    raw = (await generateText(schema, buildPrompt(today, index, originalName, text, true), 65536, 'json')).trim();
+
+    try {
+      result = parseJSON(raw);
+    } catch (secondErr) {
+      throw new Error(
+        `Failed to parse LLM response after two attempts.\n` +
+        `Attempt 1: ${firstErr.message}\n` +
+        `Attempt 2: ${secondErr.message}`
+      );
+    }
   }
 
   // Write all wiki pages
