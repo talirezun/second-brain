@@ -3,3 +3,12 @@ node_modules/
 domains/*/raw/
 .DS_Store
 .claude/
+
+# Obsidian config (local to each machine)
+.obsidian/
+**/.obsidian/
+
+# Wiki content is personal — students generate their own
+domains/*/wiki/concepts/
+domains/*/wiki/entities/
+domains/*/wiki/summaries/

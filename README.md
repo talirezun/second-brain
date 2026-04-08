@@ -1,74 +1,74 @@
 # Second Brain
 
-A local, AI-powered knowledge system built on the [Karpathy llm-wiki](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) concept. Instead of one general-purpose second brain, you maintain **dedicated wikis per domain** — each one stays focused, compounds knowledge from every source you add, and can be queried like a domain specialist.
+A local, AI-powered knowledge system. Feed it documents — articles, PDFs, notes — and it automatically builds an interlinked wiki of key people, tools, and ideas. Ask it questions. Explore everything as a visual knowledge graph in Obsidian.
+
+Built on the [Karpathy llm-wiki](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) concept: instead of one general-purpose second brain that tries to cover everything, you maintain **dedicated wikis per domain** (e.g. AI/Tech, Business, Personal Growth). Each one gets smarter with every source you add.
 
 ## How it works
 
-1. **Ingest** — drop a `.txt`, `.md`, or `.pdf` file into a domain. The AI reads it and automatically writes summary, entity, and concept pages to a local markdown wiki.
-2. **Query** — ask a natural-language question. The AI reads your entire wiki and returns a synthesised answer with citations back to specific pages.
-3. **Browse** — read the wiki in the app, or open the `domains/` folder in [Obsidian](https://obsidian.md) for a graph view.
+```
+1. Upload a PDF, article, or note
+         ↓
+2. AI reads it and writes 5–15 interlinked wiki pages
+   (summary + entity pages + concept pages)
+         ↓
+3. Ask questions → get cited answers from your own wiki
+         ↓
+4. Open Obsidian → explore the visual knowledge graph
+```
 
-All knowledge is stored as plain markdown files on disk. No vector database, no external sync, no accounts.
+Everything is stored as plain markdown files on your computer. No cloud sync, no database, no accounts.
 
 ## Features
 
-- Domain-specific wikis (AI/Tech, Business/Finance, Personal Growth — or any domain you define)
-- Automatic entity extraction (people, tools, companies, frameworks)
-- Automatic concept extraction with cross-references
-- Chronological ingest log + master index per domain
-- Vanilla JS web UI — no build step, no framework
-- PDF, Markdown, and plain text support
-- Supports **Google Gemini** and **Anthropic Claude** — switch by changing one env var
-
-## Prerequisites
-
-- Node.js 18+
-- A **Google Gemini API key** (free at [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey)) — or an Anthropic API key
+- Drop in a `.pdf`, `.txt`, or `.md` file — the AI does the rest
+- Automatic extraction of people, tools, companies, frameworks, and concepts
+- Every page cross-references related pages with `[[wiki-links]]`
+- Ask natural-language questions, get cited answers from your own knowledge
+- Visual knowledge graph via [Obsidian](https://obsidian.md) (free app, no setup needed)
+- Supports **Google Gemini** (recommended, very cheap) and **Anthropic Claude**
+- Three built-in domains: AI/Tech · Business/Finance · Personal Growth
+- Add unlimited custom domains — no code changes required
 
 ## Quick start
 
-### 1. Clone and install
+### Prerequisites
+- [Node.js 18+](https://nodejs.org) (free)
+- A [Google Gemini API key](https://aistudio.google.com/app/apikey) (free)
+- [Obsidian](https://obsidian.md) for the knowledge graph (free, optional)
+
+### Setup
 
 ```bash
+# 1. Download the project
 git clone https://github.com/talirezun/second-brain.git
 cd second-brain
+
+# 2. Install dependencies
 npm install
-```
 
-### 2. Configure your API key
-
-```bash
+# 3. Create your config file
 cp .env.example .env
 ```
 
-Open `.env` and paste your key:
-
+Open `.env` in any text editor and add your API key:
 ```
-# Google Gemini (recommended — very low cost)
-GEMINI_API_KEY=AIza...
-
-# OR Anthropic Claude
-# ANTHROPIC_API_KEY=sk-ant-...
+GEMINI_API_KEY=AIza...your key here...
 ```
 
-### 3. Start the server
+### Run
 
 ```bash
 node src/server.js
 ```
 
-You should see:
+Then open **http://localhost:3333** in your browser.
 
-```
-Second Brain running at http://localhost:3333
-LLM provider: 🟦 Gemini  |  model: gemini-2.5-flash-lite
-```
+> First time? Read the full **[User Guide](docs/user-guide.md)** — it covers every step in plain language, including how to get your API key and how to set up Obsidian.
 
-### 4. Open the app
+## Using Obsidian for the knowledge graph
 
-Go to **http://localhost:3333** in your browser.
-
----
+After ingesting your first document, open Obsidian → **Open folder as vault** → select the `second-brain/domains` folder. Click the graph icon in the sidebar to see all your knowledge as an interactive, zoomable network. No configuration needed — it reads the same files the app writes.
 
 ## Project structure
 
@@ -82,39 +82,32 @@ second-brain/
 │   │   ├── ingest.js      Ingest pipeline
 │   │   ├── query.js       Query pipeline
 │   │   └── files.js       Filesystem helpers
-│   └── public/            Web UI (vanilla JS)
+│   └── public/            Web UI (vanilla JS, no build step)
 ├── domains/
 │   └── <domain>/
-│       ├── CLAUDE.md      Domain schema (system prompt for the AI)
+│       ├── CLAUDE.md      Domain schema (instructions for the AI)
 │       ├── raw/           Your original uploaded files
-│       └── wiki/
-│           ├── index.md   Content catalog
-│           ├── log.md     Ingest history
-│           ├── entities/  People, tools, companies
-│           ├── concepts/  Ideas, techniques, frameworks
-│           └── summaries/ One page per source
+│       └── wiki/          Auto-generated knowledge pages
 └── docs/                  Full documentation
 ```
 
 ## Documentation
 
-| Doc | Description |
-|-----|-------------|
-| [Architecture](docs/architecture.md) | Data flow, module reference, design decisions |
-| [User Guide](docs/user-guide.md) | How to ingest, query, browse, and troubleshoot |
-| [Domain Schemas](docs/domain-schemas.md) | How to customise `CLAUDE.md` for any domain |
-| [Adding Domains](docs/adding-domains.md) | Step-by-step guide |
-| [API Reference](docs/api-reference.md) | REST API docs |
+| | |
+|-|-|
+| [User Guide](docs/user-guide.md) | Full setup + usage guide for all levels |
+| [Adding Domains](docs/adding-domains.md) | Create custom domain wikis |
+| [Domain Schemas](docs/domain-schemas.md) | Customise how the AI structures knowledge |
+| [API Reference](docs/api-reference.md) | REST API documentation |
+| [Architecture](docs/architecture.md) | System design for developers |
 
-## Adding a new domain
+## Security
 
-Create the directory structure, write a `CLAUDE.md` schema, and the app picks it up automatically — no code changes needed. See [docs/adding-domains.md](docs/adding-domains.md) for a full guide and checklist.
+- Your API key lives in `.env` — this file is in `.gitignore` and is **never committed to GitHub**
+- The app runs entirely on your local machine — no data leaves your computer except the API call to Gemini/Claude
+- Do not expose the server on a public network (it has no authentication)
 
-## Security note
-
-This app runs locally and has no authentication. Do not expose it on a public network. Your API key lives in `.env` which is gitignored and never committed.
-
-> **Axios note:** This project does not use Axios. If you extend it to fetch URLs, avoid the known-compromised versions `axios@1.14.1` and `axios@0.30.4`.
+> **Axios note:** This project does not use Axios. If you extend it to fetch URLs, avoid compromised versions `axios@1.14.1` and `axios@0.30.4`.
 
 ## License
 
