@@ -51,6 +51,24 @@ header h1 {
 nav {
   display: flex;
   gap: 4px;
+  flex: 1;
+}
+
+/* STOP BUTTON */
+.btn.stop {
+  background: none;
+  border: 1px solid #3f2020;
+  color: #f87171;
+  font-size: 13px;
+  padding: 6px 14px;
+  white-space: nowrap;
+  margin-left: auto;
+}
+
+.btn.stop:hover {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: var(--error);
+  color: #fca5a5;
 }
 
 .tab-btn {

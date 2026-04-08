@@ -21,6 +21,12 @@ app.use('/api/ingest', ingestRouter);
 app.use('/api/query', queryRouter);
 app.use('/api/wiki', wikiRouter);
 
+// Shutdown endpoint — kills the server process cleanly
+app.post('/api/shutdown', (req, res) => {
+  res.json({ message: 'Server shutting down...' });
+  setTimeout(() => process.exit(0), 300);
+});
+
 // Catch-all: serve index.html for SPA
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));

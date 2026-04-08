@@ -12,3 +12,6 @@ domains/*/raw/
 domains/*/wiki/concepts/
 domains/*/wiki/entities/
 domains/*/wiki/summaries/
+
+# Mac launcher app (local only)
+"Second Brain.app"
