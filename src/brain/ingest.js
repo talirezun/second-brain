@@ -1,6 +1,6 @@
 import { readFile, writeFile, mkdir } from 'fs/promises';
 import path from 'path';
-import Anthropic from '@anthropic-ai/sdk';
+import { generateText } from './llm.js';
 import {
   readSchema,
   readIndex,
@@ -9,11 +9,8 @@ import {
   appendLog,
 } from './files.js';
 
-const client = new Anthropic();
-
-async function extractText(filePath, mimeType) {
-  if (mimeType === 'application/pdf' || filePath.endsWith('.pdf')) {
-    // Dynamic import to avoid issues if pdf-parse has side effects
+async function extractText(filePath) {
+  if (filePath.endsWith('.pdf')) {
     const pdfParse = (await import('pdf-parse/lib/pdf-parse.js')).default;
     const buffer = await readFile(filePath);
     const data = await pdfParse(buffer);
@@ -31,7 +28,7 @@ export async function ingestFile(domain, filePath, originalName) {
   await writeFile(destPath, buffer);
 
   // Extract text
-  const text = await extractText(destPath, '');
+  const text = await extractText(destPath);
 
   // Load schema and current index
   const schema = await readSchema(domain);
@@ -66,22 +63,15 @@ Return ONLY valid JSON in this exact shape (no markdown fences, no commentary):
   "index": "full content of the updated index.md"
 }`;
 
-  const message = await client.messages.create({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 8192,
-    system: schema,
-    messages: [{ role: 'user', content: userPrompt }],
-  });
-
-  const raw = message.content[0].text.trim();
+  const raw = (await generateText(schema, userPrompt, 8192)).trim();
 
   let result;
   try {
     result = JSON.parse(raw);
   } catch {
-    // Try to extract JSON if Claude wrapped it in fences
+    // Strip markdown fences if the model wrapped the JSON
     const match = raw.match(/\{[\s\S]*\}/);
-    if (!match) throw new Error('Claude did not return valid JSON');
+    if (!match) throw new Error('LLM did not return valid JSON');
     result = JSON.parse(match[0]);
   }
 

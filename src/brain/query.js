@@ -1,7 +1,5 @@
-import Anthropic from '@anthropic-ai/sdk';
+import { generateText } from './llm.js';
 import { readSchema, readWikiPages } from './files.js';
-
-const client = new Anthropic();
 
 export async function queryDomain(domain, question) {
   const schema = await readSchema(domain);
@@ -33,14 +31,7 @@ Instructions:
 - Synthesize across pages rather than quoting large blocks.
 - End your response with a "## Sources" section listing every page you cited.`;
 
-  const message = await client.messages.create({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 4096,
-    system: schema,
-    messages: [{ role: 'user', content: userPrompt }],
-  });
-
-  const answer = message.content[0].text;
+  const answer = await generateText(schema, userPrompt, 4096);
 
   // Extract cited pages from [source: path] patterns
   const citations = [...answer.matchAll(/\[source:\s*([^\]]+)\]/g)].map(

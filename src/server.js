@@ -6,6 +6,7 @@ import domainsRouter from './routes/domains.js';
 import ingestRouter from './routes/ingest.js';
 import queryRouter from './routes/query.js';
 import wikiRouter from './routes/wiki.js';
+import { getProviderInfo } from './brain/llm.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -26,5 +27,13 @@ app.get('*', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Second Brain running at http://localhost:${PORT}`);
+  try {
+    const { provider, model } = getProviderInfo();
+    const providerLabel = provider === 'gemini' ? '🟦 Gemini' : '🟣 Anthropic';
+    console.log(`Second Brain running at http://localhost:${PORT}`);
+    console.log(`LLM provider: ${providerLabel}  |  model: ${model}`);
+  } catch (err) {
+    console.log(`Second Brain running at http://localhost:${PORT}`);
+    console.warn(`⚠️  ${err.message}`);
+  }
 });
