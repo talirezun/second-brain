@@ -2,26 +2,13 @@
 
 A local, AI-powered knowledge system built on the [Karpathy llm-wiki](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) concept. Instead of one general-purpose second brain, you maintain **dedicated wikis per domain** — each one stays focused, compounds knowledge from every source you add, and can be queried like a domain specialist.
 
-![Second Brain UI](docs/assets/preview.png)
-
 ## How it works
 
-1. **Ingest** — drop a `.txt`, `.md`, or `.pdf` file into a domain. Claude reads it and automatically writes summary, entity, and concept pages to a local markdown wiki.
-2. **Query** — ask a natural-language question. Claude reads your entire wiki and returns a synthesised answer with citations back to specific pages.
+1. **Ingest** — drop a `.txt`, `.md`, or `.pdf` file into a domain. The AI reads it and automatically writes summary, entity, and concept pages to a local markdown wiki.
+2. **Query** — ask a natural-language question. The AI reads your entire wiki and returns a synthesised answer with citations back to specific pages.
 3. **Browse** — read the wiki in the app, or open the `domains/` folder in [Obsidian](https://obsidian.md) for a graph view.
 
 All knowledge is stored as plain markdown files on disk. No vector database, no external sync, no accounts.
-
-## Demo
-
-```
-$ node src/server.js
-Second Brain running at http://localhost:3333
-```
-
-**Ingest** a PDF paper → Claude creates 8 interlinked wiki pages in ~20 seconds.
-
-**Query** "What is the difference between RAG and fine-tuning?" → Claude synthesises an answer from your wiki with `[source: concepts/rag.md]` citations.
 
 ## Features
 
@@ -31,32 +18,57 @@ Second Brain running at http://localhost:3333
 - Chronological ingest log + master index per domain
 - Vanilla JS web UI — no build step, no framework
 - PDF, Markdown, and plain text support
-- Powered by `claude-sonnet-4-6`
+- Supports **Google Gemini** and **Anthropic Claude** — switch by changing one env var
 
 ## Prerequisites
 
 - Node.js 18+
-- An [Anthropic API key](https://console.anthropic.com)
+- A **Google Gemini API key** (free at [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey)) — or an Anthropic API key
 
-## Setup
+## Quick start
+
+### 1. Clone and install
 
 ```bash
-# Clone
 git clone https://github.com/talirezun/second-brain.git
 cd second-brain
-
-# Install dependencies
 npm install
-
-# Configure
-cp .env.example .env
-# Edit .env and set ANTHROPIC_API_KEY=sk-ant-...
-
-# Start
-npm start
 ```
 
-Open `http://localhost:3333`.
+### 2. Configure your API key
+
+```bash
+cp .env.example .env
+```
+
+Open `.env` and paste your key:
+
+```
+# Google Gemini (recommended — very low cost)
+GEMINI_API_KEY=AIza...
+
+# OR Anthropic Claude
+# ANTHROPIC_API_KEY=sk-ant-...
+```
+
+### 3. Start the server
+
+```bash
+node src/server.js
+```
+
+You should see:
+
+```
+Second Brain running at http://localhost:3333
+LLM provider: 🟦 Gemini  |  model: gemini-2.5-flash-lite
+```
+
+### 4. Open the app
+
+Go to **http://localhost:3333** in your browser.
+
+---
 
 ## Project structure
 
@@ -66,13 +78,14 @@ second-brain/
 │   ├── server.js          Express server (port 3333)
 │   ├── routes/            API route handlers
 │   ├── brain/
-│   │   ├── ingest.js      Ingest pipeline (Claude API + file writes)
-│   │   ├── query.js       Query pipeline (Claude API)
+│   │   ├── llm.js         LLM abstraction (Gemini + Claude)
+│   │   ├── ingest.js      Ingest pipeline
+│   │   ├── query.js       Query pipeline
 │   │   └── files.js       Filesystem helpers
 │   └── public/            Web UI (vanilla JS)
 ├── domains/
 │   └── <domain>/
-│       ├── CLAUDE.md      Domain schema (system prompt for Claude)
+│       ├── CLAUDE.md      Domain schema (system prompt for the AI)
 │       ├── raw/           Your original uploaded files
 │       └── wiki/
 │           ├── index.md   Content catalog
@@ -99,7 +112,7 @@ Create the directory structure, write a `CLAUDE.md` schema, and the app picks it
 
 ## Security note
 
-This app runs locally and has no authentication. Do not expose it on a public network. Your `ANTHROPIC_API_KEY` lives in `.env` which is gitignored and never committed.
+This app runs locally and has no authentication. Do not expose it on a public network. Your API key lives in `.env` which is gitignored and never committed.
 
 > **Axios note:** This project does not use Axios. If you extend it to fetch URLs, avoid the known-compromised versions `axios@1.14.1` and `axios@0.30.4`.
 
