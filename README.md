@@ -34,9 +34,10 @@ Everything is stored as plain markdown files on your computer. No subscriptions,
 - **Multi-turn AI chat** with persistent conversation history — ask follow-ups, connect the dots across sources, pick up where you left off
 - Visual knowledge graph via [Obsidian](https://obsidian.md) (free app, reads the same files)
 - **GitHub sync** — one-time 3-minute setup, then Sync Up / Sync Down across any number of computers. Uses a free private repository you own
+- **Domain management** — create, rename, and delete domains from the UI; four AI-tuned templates (Tech/AI, Business/Finance, Personal Growth, Generic) auto-generate the right CLAUDE.md schema
 - Supports **Google Gemini** (recommended, very cheap) and **Anthropic Claude**
 - Three built-in domains: AI/Tech · Business/Finance · Personal Growth
-- Add unlimited custom domains — no code changes required
+- Add unlimited custom domains — no terminal or file editing required
 - Mac Dock app — double-click to launch, no terminal needed
 
 ## Two ways to explore your knowledge
@@ -98,6 +99,25 @@ AI:   As I mentioned, the key advantage is… [source: summaries/rag-paper.md]
 
 Create multiple conversations per domain. Delete old ones. Pick up any thread later.
 
+## Manage your domains
+
+The **Domains tab** is a full GUI for creating, renaming, and deleting domains — no Finder or terminal needed.
+
+**Create a domain** — type a display name, pick a template, and click Create. The folder and CLAUDE.md schema are generated automatically:
+
+| Template | Best for |
+|----------|----------|
+| ⚙️ Tech / AI | Software, AI research, developer tools |
+| 📈 Business / Finance | Startups, investing, strategy |
+| 🌱 Personal Growth | Books, habits, mental models |
+| 📁 Generic | Any other topic |
+
+**Rename** — click the pencil icon on any domain card. The folder is renamed on disk; all wiki pages, conversations, and Obsidian links update instantly.
+
+**Delete** — click the trash icon. The confirmation panel shows exact wiki page and conversation counts before you commit. Changes are reflected in Obsidian immediately.
+
+> If GitHub sync is configured, a rename or delete shows a reminder to Sync Up so all your computers stay consistent.
+
 ## Sync across computers
 
 The **Sync tab** connects your Second Brain to a private GitHub repository so your wiki and chat history are available on every machine you work on.
@@ -127,6 +147,7 @@ second-brain/
 ├── src/
 │   ├── server.js           Express server (port 3333)
 │   ├── routes/             API route handlers
+│   │   ├── domains.js          # GET/POST/PUT/DELETE /api/domains
 │   ├── brain/
 │   │   ├── llm.js          LLM abstraction (Gemini + Claude)
 │   │   ├── ingest.js       Ingest pipeline (single-pass + multi-phase for large docs)
@@ -151,7 +172,7 @@ second-brain/
 | [User Guide](docs/user-guide.md) | Full setup + usage guide for all levels |
 | [Sync Guide](docs/sync.md) | GitHub sync — setup, daily workflow, troubleshooting |
 | [Mac App Setup](docs/mac-app.md) | Double-click Dock launcher for Mac |
-| [Adding Domains](docs/adding-domains.md) | Create custom domain wikis |
+| [Adding Domains](docs/adding-domains.md) | Create domains via UI or manually; template reference |
 | [Domain Schemas](docs/domain-schemas.md) | Customise how the AI structures knowledge |
 | [API Reference](docs/api-reference.md) | REST API documentation |
 | [Architecture](docs/architecture.md) | System design for developers |

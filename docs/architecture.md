@@ -17,6 +17,7 @@ Browser (http://localhost:3333)
 │                                     │
 │  /api/domains  /api/ingest          │
 │  /api/chat     /api/wiki/:domain    │
+│  /api/sync                          │
 └───────────────┬─────────────────────┘
                 │
         ┌───────┴──────────┐
@@ -70,7 +71,7 @@ second-brain/
 ├── src/
 │   ├── server.js               Express entry point (port 3333)
 │   ├── routes/
-│   │   ├── domains.js          GET  /api/domains
+│   │   ├── domains.js          GET/POST/PUT/DELETE /api/domains[/:domain]
 │   │   ├── ingest.js           POST /api/ingest
 │   │   ├── chat.js             GET/POST/DELETE /api/chat/:domain[/:id]
 │   │   └── wiki.js             GET  /api/wiki/:domain
@@ -202,6 +203,42 @@ Conversations are gitignored — they are personal to each user's machine.
 
 ---
 
+## Data flow: Domain management
+
+```
+User clicks Create / Rename / Delete in Domains tab
+      │
+      ▼
+POST/PUT/DELETE /api/domains[/:slug]
+      │
+      ▼
+src/routes/domains.js  —  validates slug, calls files.js helpers
+      │
+      ├─ createDomain()
+      │    ├─ mkdir raw/, wiki/{entities,concepts,summaries}/, conversations/
+      │    ├─ Write wiki/index.md and wiki/log.md (empty scaffold)
+      │    └─ Write CLAUDE.md via generateClaudemd() — selects template
+      │         (tech / business / personal / generic)
+      │
+      ├─ renameDomain()
+      │    ├─ fs.rename() — atomic on same filesystem
+      │    ├─ Patch # Domain: header in CLAUDE.md
+      │    ├─ Patch # Wiki Index — header in wiki/index.md
+      │    ├─ Patch # Ingest Log — header in wiki/log.md
+      │    └─ Update conv.domain field in every conversations/*.json
+      │
+      └─ deleteDomain()
+           └─ rm -rf domain directory
+
+HTTP response → { slug, displayName } or { deleted, syncWarning }
+
+Obsidian sees all changes instantly — it watches the same domains/ folder.
+If sync is configured, syncWarning: true is returned so the UI can
+prompt the user to Sync Up.
+```
+
+---
+
 ## Module reference
 
 ### `src/brain/llm.js`
@@ -217,12 +254,16 @@ Pure filesystem helpers. No LLM calls.
 
 | Export | Description |
 |--------|-------------|
-| `listDomains()` | Names of all subdirectories under `domains/` |
+| `listDomains()` | Names of all non-hidden subdirectories under `domains/` |
 | `readSchema(domain)` | Contents of `domains/<domain>/CLAUDE.md` |
 | `readWikiPages(domain)` | All `.md` files under `wiki/`, returned as `{path, content}[]` |
 | `writePage(domain, relativePath, content)` | Write a wiki page, creating parent directories as needed |
 | `appendLog(domain, entry)` | Append a string to `log.md` |
 | `readIndex(domain)` | Contents of `index.md` |
+| `createDomain(slug, displayName, description, template)` | Scaffold full domain directory + auto-generate CLAUDE.md from template |
+| `deleteDomain(slug)` | Recursively delete a domain directory |
+| `renameDomain(oldSlug, newSlug, newDisplayName)` | Atomically rename domain folder, patch display name in CLAUDE.md / index.md / log.md, update conversation JSON files |
+| `getDomainStats(slug)` | Return `{ slug, displayName, pageCount, conversationCount, lastIngestDate }` |
 
 ### `src/brain/files.js` — conversation helpers
 
@@ -296,3 +337,6 @@ Conversations are personal knowledge — specific to each user's ingested docume
 
 **Why use git with `--git-dir` / `--work-tree` for sync instead of a library or dedicated sync service?**
 Git is already a prerequisite for installing the app (`git clone`), so no new dependency is introduced. Using a bare repository at `.knowledge-git/` with `domains/` as the work-tree keeps the knowledge repository completely separate from the app's own git history — users can sync their notes without touching the app's commit log, and developers can work on the app without polluting the knowledge repo. For authentication, a Personal Access Token embedded in the remote URL is the simplest possible mechanism for non-developers: paste once, forget about it. Alternatives considered were rsync (no conflict resolution, no history), a dedicated sync library (new runtime dependency, no offline support), and Dropbox/iCloud folder syncing (platform-specific, unreliable with git-tracked folders, requires a separate account). Plain git gives version history, conflict detection, and works the same way on every platform.
+
+**Why manage domains in the UI instead of only in the filesystem?**
+Creating a domain manually requires writing a correctly formatted CLAUDE.md schema, initialising two markdown files, and creating five directories — a process documented step-by-step but easy to get wrong. The Domains tab automates all of this with four validated templates (Tech/AI, Business/Finance, Personal Growth, Generic). Each template generates a CLAUDE.md tuned for that domain's entity types and concept structure, eliminating a common source of poor ingest results. Rename and delete operations are also safer through the UI: the rename patches all affected files atomically and warns when sync is configured; the delete shows exact counts before confirming.

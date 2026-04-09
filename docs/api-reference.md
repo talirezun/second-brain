@@ -18,6 +18,158 @@ List all available domains.
 
 ---
 
+## GET /api/domains/:domain/stats
+
+Return statistics for a single domain.
+
+**Path parameter**
+
+| Parameter | Description |
+|-----------|-------------|
+| `domain` | Domain slug (e.g. `ai-tech`) |
+
+**Example (curl)**
+
+```bash
+curl http://localhost:3333/api/domains/ai-tech/stats
+```
+
+**Success response** `200 OK`
+
+```json
+{
+  "slug": "ai-tech",
+  "displayName": "AI / Tech",
+  "pageCount": 317,
+  "conversationCount": 3,
+  "lastIngestDate": "2026-04-08"
+}
+```
+
+`lastIngestDate` is `null` if no sources have been ingested yet.
+
+**Error responses**
+
+| Status | Condition |
+|--------|-----------|
+| `404` | Unknown domain |
+| `500` | Filesystem read error |
+
+---
+
+## POST /api/domains
+
+Create a new domain with a complete directory scaffold and an auto-generated CLAUDE.md schema.
+
+**Request body** `Content-Type: application/json`
+
+```json
+{
+  "displayName": "Health & Fitness",
+  "description": "Nutrition, exercise, recovery, and wellness.",
+  "template": "generic"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `displayName` | string | Yes | Human-readable name (e.g. `Health & Fitness`) |
+| `description` | string | No | 1–2 sentence scope description written into CLAUDE.md |
+| `template` | string | No | `tech`, `business`, `personal`, or `generic` (default: `generic`) |
+
+The folder slug is derived automatically from `displayName` (lowercased, special chars replaced, max 32 chars). If a slug collision exists, a suffix (`-2` … `-9`) is appended.
+
+**Success response** `201 Created`
+
+```json
+{
+  "slug": "health-and-fitness",
+  "displayName": "Health & Fitness"
+}
+```
+
+**Error responses**
+
+| Status | Condition |
+|--------|-----------|
+| `400` | Missing `displayName`; invalid template; domain already exists |
+| `500` | Filesystem write error |
+
+---
+
+## PUT /api/domains/:domain
+
+Rename a domain — changes the folder name and updates all internal references.
+
+**Request body** `Content-Type: application/json`
+
+```json
+{
+  "displayName": "Health & Wellness"
+}
+```
+
+**What changes:**
+- Folder is renamed on disk (`fs.rename` — atomic on the same filesystem)
+- `# Domain:` header in `CLAUDE.md` is updated
+- `# Wiki Index —` header in `wiki/index.md` is updated
+- `# Ingest Log —` header in `wiki/log.md` is updated
+- `domain` field in every `conversations/*.json` is updated
+
+**Success response** `200 OK`
+
+```json
+{
+  "oldSlug": "health-and-fitness",
+  "newSlug": "health-and-wellness",
+  "displayName": "Health & Wellness",
+  "syncWarning": true
+}
+```
+
+`syncWarning` is `true` when GitHub sync is configured — the rename appears as a delete + add on GitHub, so the user should Sync Up promptly.
+
+**Error responses**
+
+| Status | Condition |
+|--------|-----------|
+| `400` | Missing `displayName`; new slug identical to old slug |
+| `404` | Domain not found |
+| `500` | Filesystem error |
+
+---
+
+## DELETE /api/domains/:domain
+
+Permanently delete a domain and all its contents (wiki pages, conversations, source files).
+
+**Example (curl)**
+
+```bash
+curl -X DELETE http://localhost:3333/api/domains/health-and-wellness
+```
+
+**Success response** `200 OK`
+
+```json
+{
+  "deleted": true,
+  "syncWarning": true
+}
+```
+
+`syncWarning` is `true` when sync is configured — the deletion will propagate to GitHub on the next Sync Up.
+
+**Error responses**
+
+| Status | Condition |
+|--------|-----------|
+| `400` | Invalid slug (path traversal attempt) |
+| `404` | Domain not found |
+| `500` | Filesystem error |
+
+---
+
 ## POST /api/ingest
 
 Ingest a file into a domain. Sends a `multipart/form-data` request.

@@ -1,10 +1,50 @@
 # Adding Domains
 
-A domain is a directory under `domains/` with a specific structure. You can add as many as you like, and the app will discover them automatically — no code changes required.
+A domain is a focused wiki for one topic area. The easiest way to create, rename, or delete domains is from within the app — no Finder or terminal required.
 
 ---
 
-## Step 1: Create the directory structure
+## Using the Domains tab (recommended)
+
+Open the app at `http://localhost:3333` and click the **Domains** tab.
+
+### Create a domain
+
+1. Click **New Domain**
+2. Enter a display name (e.g. `Health & Fitness`) — the folder name is generated automatically and shown as a live preview
+3. Optionally describe the scope in 1–2 sentences
+4. Choose a template that matches your topic:
+
+   | Template | Best for |
+   |----------|----------|
+   | ⚙️ Tech / AI | Software, AI, research papers, developer tools |
+   | 📈 Business / Finance | Startups, investing, markets, strategy |
+   | 🌱 Personal Growth | Books, habits, mental models, productivity |
+   | 📁 Generic | Any other topic |
+
+5. Click **Create Domain**
+
+The domain appears immediately in all dropdowns and in Obsidian.
+
+### Rename a domain
+
+Click the **pencil icon** on a domain card, enter the new name, and click **Rename**. All wiki pages and conversations are preserved. Obsidian reflects the change instantly.
+
+> If sync is configured, click **Sync Up** after renaming — the rename appears as a delete + add on GitHub.
+
+### Delete a domain
+
+Click the **trash icon** on a domain card, review the confirmation (it shows exact page and conversation counts), then click **Yes, delete permanently**.
+
+> ⚠️ Deletion is permanent. There is no undo.
+
+---
+
+## Manual setup (advanced)
+
+If you prefer to create a domain by hand — for example to customise the CLAUDE.md schema beyond what the templates offer — follow these steps.
+
+### Step 1: Create the directory structure
 
 Replace `my-domain` with a lowercase, hyphenated slug (e.g. `history`, `health-fitness`, `legal`):
 
@@ -13,30 +53,29 @@ mkdir -p domains/my-domain/raw
 mkdir -p domains/my-domain/wiki/entities
 mkdir -p domains/my-domain/wiki/concepts
 mkdir -p domains/my-domain/wiki/summaries
+mkdir -p domains/my-domain/conversations
 ```
 
-## Step 2: Create the wiki index and log
+### Step 2: Create the wiki index and log
 
 ```bash
-# index.md
 cat > domains/my-domain/wiki/index.md << 'EOF'
 # Wiki Index — My Domain
-Last updated: 2026-04-07
+Last updated: 2026-04-09
 
 | Page | Type | Summary |
 |------|------|---------|
 EOF
 
-# log.md
 cat > domains/my-domain/wiki/log.md << 'EOF'
 # Ingest Log — My Domain
 
 EOF
 ```
 
-## Step 3: Write the CLAUDE.md schema
+### Step 3: Write the CLAUDE.md schema
 
-This is the most important step. Create `domains/my-domain/CLAUDE.md` and fill in each section. Use the template below as a starting point:
+This is the most important file — it tells the AI how to structure knowledge for this domain. Create `domains/my-domain/CLAUDE.md`:
 
 ```markdown
 # Domain: My Domain
@@ -44,8 +83,7 @@ This is the most important step. Create `domains/my-domain/CLAUDE.md` and fill i
 This is a dedicated second brain for [describe the topic].
 
 ## Scope
-[What topics belong here. Include an "Out of scope" line if adjacent
-domains exist that could overlap.]
+[What topics belong here.]
 
 ## Wiki Conventions
 
@@ -143,43 +181,29 @@ When answering a query:
 - Synthesise across multiple pages rather than quoting verbatim.
 ```
 
-## Step 4: Verify
+### Step 4: Verify
 
-Restart the server (or it picks up the new domain on the next API call — `listDomains` reads the filesystem each time):
-
-```bash
-node src/server.js
-```
-
-Open the app and check that your new domain appears in the dropdowns. Ingest a source to confirm the schema works as expected.
+The app discovers domains on every request — no restart needed. Open the app and check that your new domain appears in all dropdowns. Ingest a source to confirm the schema works.
 
 ---
 
-## Removing a domain
+## Removing and renaming manually
 
-Delete its directory:
-
+**Remove a domain:**
 ```bash
 rm -rf domains/my-domain
 ```
 
-The app will stop listing it on the next request. There is no database entry to clean up.
-
----
-
-## Renaming a domain
-
-Domains are identified only by their directory name. To rename:
-
+**Rename a domain:**
 ```bash
 mv domains/old-name domains/new-name
 ```
 
-Any existing wiki pages, index, and log are preserved. The slug changes immediately.
+All wiki pages and the domain structure are preserved. Update the `# Domain:` header in `CLAUDE.md` and the `# Wiki Index —` header in `wiki/index.md` to reflect the new name.
 
 ---
 
-## Checklist
+## Checklist (manual setup only)
 
 - [ ] `domains/<slug>/CLAUDE.md` — schema written with all sections
 - [ ] `domains/<slug>/raw/` — directory exists (can be empty)
@@ -188,3 +212,4 @@ Any existing wiki pages, index, and log are preserved. The slug changes immediat
 - [ ] `domains/<slug>/wiki/entities/` — directory exists
 - [ ] `domains/<slug>/wiki/concepts/` — directory exists
 - [ ] `domains/<slug>/wiki/summaries/` — directory exists
+- [ ] `domains/<slug>/conversations/` — directory exists

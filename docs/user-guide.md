@@ -15,12 +15,13 @@ This guide covers everything from first-time setup to daily use. No technical ba
 7. [Open the app in your browser](#7-open-the-app-in-your-browser)
 8. [Ingest a source](#8-ingest-a-source)
 9. [Chat with your brain](#9-chat-with-your-brain)
-10. [Browse the wiki tab](#10-browse-the-wiki-tab)
-11. [See your knowledge graph in Obsidian](#11-see-your-knowledge-graph-in-obsidian)
-12. [Two ways to explore your knowledge](#12-two-ways-to-explore-your-knowledge)
-13. [Daily workflow](#13-daily-workflow)
-14. [Sync across computers](#14-sync-across-computers)
-15. [Troubleshooting](#15-troubleshooting)
+10. [Manage your domains](#10-manage-your-domains)
+11. [Browse the wiki tab](#11-browse-the-wiki-tab)
+12. [See your knowledge graph in Obsidian](#12-see-your-knowledge-graph-in-obsidian)
+13. [Two ways to explore your knowledge](#13-two-ways-to-explore-your-knowledge)
+14. [Daily workflow](#14-daily-workflow)
+15. [Sync across computers](#15-sync-across-computers)
+16. [Troubleshooting](#16-troubleshooting)
 
 ---
 
@@ -175,7 +176,7 @@ With the server running, open your web browser (Chrome, Safari, Firefox — any 
 http://localhost:3333
 ```
 
-You'll see the Second Brain interface with three tabs at the top: **Ingest**, **Chat**, and **Wiki**.
+You'll see the Second Brain interface with five tabs at the top: **Ingest**, **Chat**, **Wiki**, **Sync**, and **Domains**.
 
 > `localhost:3333` means "a web page running on your own computer, on port 3333". It only works when your server is running and is not accessible to anyone else on the internet.
 
@@ -295,7 +296,69 @@ Conversations are saved automatically and persist across server restarts. You ca
 
 ---
 
-## 10. Browse the wiki tab
+## 10. Manage your domains
+
+The **Domains** tab is your control panel for organising your Second Brain. Instead of manually creating folders in Finder, you can create, rename, and delete domains entirely from within the app.
+
+### What is a domain?
+
+A domain is a focused knowledge silo — a dedicated wiki for one topic area. Each domain gets its own AI schema, wiki pages, chat conversations, and Obsidian graph cluster. The three built-in domains are **AI / Tech**, **Business / Finance**, and **Personal Growth**, but you can create as many as you like.
+
+### Viewing your domains
+
+Click the **Domains** tab to see all your domains as cards. Each card shows:
+
+- The domain name and its folder path (`domains/ai-tech/`)
+- How many wiki pages it contains
+- How many chat conversations it has
+- When the last source was ingested
+
+### Creating a new domain
+
+1. Click **New Domain**
+2. Type a display name — for example, `Health & Fitness`
+   - The folder name is generated automatically (e.g. `domains/health-and-fitness/`) and shown as a live preview below the input
+3. Optionally add a scope description — 1–2 sentences about what belongs in this domain
+4. Choose a **template** — this determines how the AI structures your wiki:
+
+| Template | Best for | Entity types | Concept style |
+|----------|----------|-------------|---------------|
+| ⚙️ Tech / AI | Software, research, tools | person, tool, company, dataset | How It Works / Applications |
+| 📈 Business / Finance | Startups, investing, strategy | person, company, fund, institution | Why It Matters / Examples |
+| 🌱 Personal Growth | Books, habits, mental models | person, book, framework | Why It Matters / How to Apply It |
+| 📁 Generic | Any other topic | person, item, organization | Overview / Examples |
+
+5. Click **Create Domain**
+
+The domain appears immediately in all dropdowns (Ingest, Chat, Wiki) and in Obsidian's file explorer — no restart required.
+
+### Renaming a domain
+
+1. Click the **pencil icon** on any domain card
+2. Type the new display name — the new folder path updates in the live preview
+3. Click **Rename**
+
+The folder is renamed on disk. All wiki pages, conversations, and chat history are preserved. Obsidian reflects the change immediately.
+
+> **If sync is configured:** renaming a domain appears to GitHub as a delete + add. Click **Sync Up** soon after renaming so your other computers stay consistent.
+
+### Deleting a domain
+
+1. Click the **trash icon** on any domain card
+2. Read the confirmation panel — it shows exactly how many wiki pages and conversations will be deleted
+3. Click **Yes, delete permanently** to confirm
+
+The folder is removed from disk and disappears from all dropdowns. Obsidian reflects the change immediately.
+
+> ⚠️ **Deletion is permanent.** There is no undo. If you use sync, the domain will also be removed from GitHub on the next Sync Up.
+
+### Obsidian and domain management
+
+Because Second Brain writes directly to the `domains/` folder that Obsidian watches, all domain changes are reflected in Obsidian instantly — no refresh or export needed. A new domain becomes a new folder in Obsidian's file explorer. A renamed or deleted domain updates the graph accordingly.
+
+---
+
+## 11. Browse the wiki tab
 
 The **Wiki** tab is a simple built-in reader for your wiki pages.
 
@@ -309,7 +372,7 @@ This is useful for a quick check. For a much richer experience — including the
 
 ---
 
-## 11. See your knowledge graph in Obsidian
+## 12. See your knowledge graph in Obsidian
 
 Obsidian is a free note-taking app that reads the exact same markdown files that Second Brain writes. It gives you an interactive, visual knowledge graph — like the one shown in the concept video.
 
@@ -367,7 +430,7 @@ You can have both open at the same time. When you ingest something in the app, s
 
 ---
 
-## 12. Two ways to explore your knowledge
+## 13. Two ways to explore your knowledge
 
 Once you have ingested several documents, you have two complementary tools for making sense of what you know.
 
@@ -418,7 +481,7 @@ Both tools read the same `domains/` folder. There is nothing to sync. Ingest in 
 
 ---
 
-## 13. Daily workflow
+## 14. Daily workflow
 
 Here is the recommended way to use Second Brain day-to-day:
 
@@ -445,7 +508,7 @@ Here is the recommended way to use Second Brain day-to-day:
 
 ---
 
-## 14. Sync across computers
+## 15. Sync across computers
 
 The **Sync** tab keeps your wiki and chat history in sync across all your computers using a free, private GitHub repository — no subscription, no third-party service. Your notes never touch any server you don't control.
 
@@ -544,7 +607,7 @@ Your GitHub repository is not changed. You can reconnect at any time using the w
 
 ---
 
-## 15. Troubleshooting
+## 16. Troubleshooting
 
 **"command not found: node" when I type `node src/server.js`**
 
