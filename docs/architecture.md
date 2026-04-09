@@ -16,45 +16,46 @@ Browser (http://localhost:3333)
 │           src/server.js             │
 │                                     │
 │  /api/domains  /api/ingest          │
-│  /api/query    /api/wiki/:domain    │
+│  /api/chat     /api/wiki/:domain    │
 └───────────────┬─────────────────────┘
                 │
-        ┌───────┴────────┐
-        │                │
-        ▼                ▼
-┌──────────────┐  ┌──────────────┐
-│  brain/      │  │  brain/      │
-│  ingest.js   │  │  query.js    │
-└──────┬───────┘  └──────┬───────┘
-       │                 │
-       └────────┬─────────┘
-                │
-                ▼
+        ┌───────┴──────────┐
+        │                  │
+        ▼                  ▼
+┌──────────────┐   ┌──────────────┐
+│  brain/      │   │  brain/      │
+│  ingest.js   │   │  chat.js     │
+└──────┬───────┘   └──────┬───────┘
+       │                  │
+       └─────────┬─────────┘
+                 │
+                 ▼
 ┌─────────────────────────────────────┐
 │           brain/llm.js              │
 │  Provider abstraction layer         │
 │  (Gemini or Claude, auto-detected)  │
 └─────────────────────────────────────┘
-                │
-                │  API call
-                ▼
+                 │
+                 │  API call
+                 ▼
 ┌─────────────────────────────────────┐
 │  Google Gemini  OR  Anthropic Claude│
 │  (whichever key is set in .env)     │
 └─────────────────────────────────────┘
-                │
-                ▼
+                 │
+                 ▼
 ┌─────────────────────────────────────┐
 │           brain/files.js            │
 │  read / write markdown on disk      │
 └─────────────────────────────────────┘
-                │
-                ▼
+                 │
+                 ▼
 ┌─────────────────────────────────────┐
 │  domains/<domain>/                  │
-│  ├── CLAUDE.md  (schema)            │
-│  ├── raw/       (source files)      │
-│  └── wiki/      (knowledge pages)  │
+│  ├── CLAUDE.md       (schema)       │
+│  ├── raw/            (source files) │
+│  ├── wiki/           (knowledge)    │
+│  └── conversations/  (chat history) │
 └─────────────────────────────────────┘
 ```
 
@@ -71,13 +72,13 @@ second-brain/
 │   ├── routes/
 │   │   ├── domains.js          GET  /api/domains
 │   │   ├── ingest.js           POST /api/ingest
-│   │   ├── query.js            POST /api/query
+│   │   ├── chat.js             GET/POST/DELETE /api/chat/:domain[/:id]
 │   │   └── wiki.js             GET  /api/wiki/:domain
 │   ├── brain/
 │   │   ├── llm.js              LLM abstraction (Gemini + Claude)
-│   │   ├── files.js            Filesystem helpers
-│   │   ├── ingest.js           Ingest pipeline (LLM call + file writes)
-│   │   └── query.js            Query pipeline (LLM call)
+│   │   ├── files.js            Filesystem helpers (wiki + conversations)
+│   │   ├── ingest.js           Ingest pipeline (single-pass + multi-phase)
+│   │   └── chat.js             Chat pipeline (multi-turn, persistent)
 │   └── public/
 │       ├── index.html          Single-page UI shell
 │       ├── app.js              Vanilla JS frontend
@@ -86,12 +87,13 @@ second-brain/
 │   └── <domain>/
 │       ├── CLAUDE.md           Domain schema (system prompt for the LLM)
 │       ├── raw/                Immutable uploaded source files
-│       └── wiki/
-│           ├── index.md        Content catalog
-│           ├── log.md          Chronological ingest log
-│           ├── entities/       People, tools, companies, datasets
-│           ├── concepts/       Ideas, techniques, frameworks
-│           └── summaries/      One page per ingested source
+│       ├── wiki/
+│       │   ├── index.md        Content catalog
+│       │   ├── log.md          Chronological ingest log
+│       │   ├── entities/       People, tools, companies, datasets
+│       │   ├── concepts/       Ideas, techniques, frameworks
+│       │   └── summaries/      One page per ingested source
+│       └── conversations/      Saved chat threads (JSON, gitignored)
 ├── docs/                       This documentation
 ├── package.json
 ├── .env                        API key (never committed)
@@ -146,26 +148,54 @@ src/brain/ingest.js
 HTTP response → { success: true, title, pagesWritten: [...] }
 ```
 
-## Data flow: Query
+## Data flow: Chat
 
 ```
-User submits question
+User sends message
       │
       ▼
-POST /api/query  { domain, question }
+POST /api/chat/:domain  { message, conversationId? }
       │
       ▼
-src/brain/query.js
-      ├─ 1. Load domains/<domain>/CLAUDE.md  (system prompt)
-      ├─ 2. Read all .md files under domains/<domain>/wiki/
-      ├─ 3. Call LLM via llm.js  (text mode, 4 096 max output tokens)
+src/brain/chat.js
+      ├─ 1. Load or create conversation from domains/<domain>/conversations/
+      ├─ 2. Load domains/<domain>/CLAUDE.md  (system prompt)
+      ├─ 3. Read all .md files under domains/<domain>/wiki/
+      ├─ 4. Build prompt with last 20 messages as conversation history
+      ├─ 5. Call LLM via llm.js  (text mode, 4 096 max output tokens)
       │     System:  domain schema
-      │     User:    all wiki pages (≤90 000 chars) + question
+      │     User:    all wiki pages (≤90 000 chars) + history + message
       │     Returns: markdown answer with [source: path] citation tags
-      └─ 4. Parse [source: ...] tags → deduplicated citation list
+      ├─ 6. Parse [source: ...] tags → deduplicated citation list
+      ├─ 7. Append user + assistant messages to conversation
+      └─ 8. Save conversation JSON to domains/<domain>/conversations/<id>.json
 
-HTTP response → { answer, citations: [...] }
+HTTP response → { conversationId, isNew, title, answer, citations: [...] }
+
+Other chat endpoints:
+  GET    /api/chat/:domain        → list conversations (id, title, messageCount)
+  GET    /api/chat/:domain/:id    → full conversation (all messages)
+  DELETE /api/chat/:domain/:id    → delete conversation
 ```
+
+### Conversation persistence
+
+Each conversation is a JSON file:
+
+```json
+{
+  "id": "uuid",
+  "title": "First message truncated to 60 chars…",
+  "createdAt": "2026-04-09T10:00:00.000Z",
+  "domain": "ai-tech",
+  "messages": [
+    { "role": "user",      "content": "What is RAG?" },
+    { "role": "assistant", "content": "RAG stands for…", "citations": ["concepts/rag.md"] }
+  ]
+}
+```
+
+Conversations are gitignored — they are personal to each user's machine.
 
 ---
 
@@ -191,18 +221,33 @@ Pure filesystem helpers. No LLM calls.
 | `appendLog(domain, entry)` | Append a string to `log.md` |
 | `readIndex(domain)` | Contents of `index.md` |
 
+### `src/brain/files.js` — conversation helpers
+
+| Export | Description |
+|--------|-------------|
+| `listConversations(domain)` | All conversations for a domain, sorted by date (newest first) |
+| `readConversation(domain, id)` | Full conversation object, or `null` if not found |
+| `writeConversation(domain, conversation)` | Persist conversation JSON to disk |
+| `deleteConversation(domain, id)` | Delete a conversation file |
+
 ### `src/brain/ingest.js`
 
 ```js
-ingestFile(domain, filePath, originalName)
+ingestFile(domain, filePath, originalName, isOverwrite?)
   → Promise<{ title: string, pagesWritten: string[] }>
 ```
 
-### `src/brain/query.js`
+Single-pass for small/medium documents; automatically falls back to a three-phase pipeline (outline → batched content → index) for large documents that would exceed the model's output token ceiling.
+
+### `src/brain/chat.js`
 
 ```js
-queryDomain(domain, question)
-  → Promise<{ answer: string, citations: string[] }>
+sendMessage(domain, conversationId, userMessage)
+  → Promise<{ conversationId, isNew, title, answer, citations[] }>
+
+listConversations(domain)   → Promise<ConversationMeta[]>
+readConversation(domain, id) → Promise<Conversation | null>
+deleteConversation(domain, id) → Promise<void>
 ```
 
 ---
@@ -237,5 +282,11 @@ Domain context shapes how the LLM categorises knowledge. An AI/Tech wiki uses di
 **Why vanilla JS instead of React/Vue?**
 The UI has three tabs and a handful of fetch calls. A framework adds build complexity and bundle size with no meaningful benefit for a local personal tool.
 
-**Why JSON mode for ingest but not query?**
-Ingest requires structured output (pages + index as a JSON object) that must be machine-parsed. Query returns free-form markdown prose; JSON mode would constrain the writing style unnecessarily.
+**Why JSON mode for ingest but not chat?**
+Ingest requires structured output (pages + index as a JSON object) that must be machine-parsed. Chat returns free-form markdown prose; JSON mode would constrain the writing style unnecessarily.
+
+**Why save conversations as JSON files instead of a database?**
+Consistent with the project's "no external database" principle. JSON files are human-readable, portable, and trivially backed up or shared. SQLite would add a dependency and binary file for a feature that doesn't need relational queries. Each conversation is a self-contained document.
+
+**Why are conversations gitignored?**
+Conversations are personal knowledge — specific to each user's ingested documents and questions. Including them in the repo would either expose private data or create constant noise in the git history. Each student or user maintains their own local conversation history.

@@ -14,11 +14,12 @@ This guide covers everything from first-time setup to daily use. No technical ba
 6. [Start the server](#6-start-the-server)
 7. [Open the app in your browser](#7-open-the-app-in-your-browser)
 8. [Ingest a source](#8-ingest-a-source)
-9. [Query your brain](#9-query-your-brain)
+9. [Chat with your brain](#9-chat-with-your-brain)
 10. [Browse the wiki tab](#10-browse-the-wiki-tab)
 11. [See your knowledge graph in Obsidian](#11-see-your-knowledge-graph-in-obsidian)
-12. [Daily workflow](#12-daily-workflow)
-13. [Troubleshooting](#13-troubleshooting)
+12. [Two ways to explore your knowledge](#12-two-ways-to-explore-your-knowledge)
+13. [Daily workflow](#13-daily-workflow)
+14. [Troubleshooting](#14-troubleshooting)
 
 ---
 
@@ -28,10 +29,17 @@ Second Brain is a personal knowledge system. You feed it documents — articles,
 
 - Automatically extracts the key people, tools, ideas, and concepts
 - Builds a wiki of interlinked pages (like Wikipedia, but just for you)
-- Lets you ask questions and get cited answers from your own knowledge base
+- Lets you have a **multi-turn AI conversation** with your knowledge base, with full memory of past conversations
 - Produces a visual knowledge graph you can explore in Obsidian
 
 The big idea: instead of one giant notebook where everything gets lost, you have **separate, focused wikis per topic** (e.g. AI/Tech, Business, Personal Growth). Each one gets smarter every time you add a new source.
+
+You have two powerful ways to explore what you know:
+
+| Mode | Tool | Best for |
+|------|------|----------|
+| **Visual** | Obsidian graph | Spotting clusters and unexpected connections at a glance |
+| **Conversational** | AI chat (built-in) | Asking "how does X relate to Y?", synthesising across topics, connecting the dots with AI help |
 
 ---
 
@@ -166,7 +174,7 @@ With the server running, open your web browser (Chrome, Safari, Firefox — any 
 http://localhost:3333
 ```
 
-You'll see the Second Brain interface with three tabs at the top: **Ingest**, **Query**, and **Wiki**.
+You'll see the Second Brain interface with three tabs at the top: **Ingest**, **Chat**, and **Wiki**.
 
 > `localhost:3333` means "a web page running on your own computer, on port 3333". It only works when your server is running and is not accessible to anyone else on the internet.
 
@@ -216,19 +224,27 @@ On the second, third, and subsequent ingests, the AI reads what's already in the
 
 ---
 
-## 9. Query your brain
+## 9. Chat with your brain
 
-After ingesting a few sources, you can ask questions and get AI-synthesised answers with citations.
+After ingesting a few sources, you can have a full multi-turn conversation with your knowledge base. The AI answers from your wiki pages only, cites its sources, and remembers the entire thread — even after you restart the server.
 
-### How to query
+### The chat interface
 
-1. Click the **Query** tab
-2. Select a **domain** from the dropdown
-3. Type your question in the text box
-4. Click **Ask** (or press `Cmd + Enter` on Mac / `Ctrl + Enter` on Windows)
-5. Wait for the answer — usually 10–30 seconds
+The Chat tab has two parts:
 
-### What a good answer looks like
+- **Left sidebar** — your conversation history. Each domain's conversations are listed separately. Click any conversation to reopen it.
+- **Right panel** — the message thread. Your messages appear on the right (blue), the AI's replies on the left.
+
+### Starting a conversation
+
+1. Click the **Chat** tab
+2. Select a **domain** from the dropdown at the top of the sidebar
+3. Click **+ New Chat** (or just start typing — a new conversation is created automatically)
+4. Type your question in the input box at the bottom
+5. Press **Send** or use `Cmd + Enter` (Mac) / `Ctrl + Enter` (Windows)
+6. Wait for the reply — usually 10–30 seconds
+
+### What a good reply looks like
 
 ```
 Retrieval-Augmented Generation (RAG) combines a retrieval step with
@@ -237,23 +253,44 @@ than relying on memory alone [source: concepts/rag.md].
 
 The key advantage over fine-tuning is that you can update the knowledge
 base without retraining the model [source: summaries/rag-paper.md].
-
-## Sources
-- concepts/rag.md
-- summaries/rag-paper.md
 ```
 
-The `[source: ...]` links tell you exactly which wiki page the answer came from. You can open that page in the Wiki tab or in Obsidian to read the full page.
+The `[source: ...]` tags tell you exactly which wiki page each claim came from. You can open that page in the Wiki tab or in Obsidian to read the full source.
+
+### Multi-turn memory
+
+You can keep asking follow-up questions and the AI remembers the entire conversation:
+
+```
+You:  What is RAG?
+AI:   RAG stands for… [source: concepts/rag.md]
+
+You:  How does it compare to fine-tuning?
+AI:   As I mentioned, RAG updates knowledge without retraining…
+      [source: summaries/rag-paper.md]
+
+You:  Who are the key researchers in this area?
+AI:   Based on your notes, the main contributors are…
+```
+
+Conversations are saved automatically and persist across server restarts. You can have as many conversations per domain as you like.
+
+### Managing conversations
+
+- **Rename / revisit** — click any conversation in the sidebar to reopen it in full
+- **Delete** — hover over a conversation in the sidebar and click the **✕** button that appears
 
 ### Good questions to ask
 
 - "What is [concept] and why does it matter?"
 - "What are the key differences between [X] and [Y]?"
+- "How does [idea from one source] connect to [idea from another source]?"
 - "Who are the main people mentioned in my notes on [topic]?"
 - "What tools are recommended for [task]?"
 - "Summarise everything I know about [topic]"
+- "What have I learned about this topic over time?"
 
-> The AI only answers from your wiki. If you haven't ingested any sources about a topic, it will tell you honestly rather than making things up.
+> The AI only answers from your wiki. If you haven't ingested any sources about a topic, it will say so honestly rather than making things up.
 
 ---
 
@@ -329,7 +366,58 @@ You can have both open at the same time. When you ingest something in the app, s
 
 ---
 
-## 12. Daily workflow
+## 12. Two ways to explore your knowledge
+
+Once you have ingested several documents, you have two complementary tools for making sense of what you know.
+
+### Option A — AI chat (built-in)
+
+Use the **Chat** tab when you want to:
+
+- Ask a specific question and get a synthesised, cited answer
+- Have a back-and-forth conversation to dig into a topic
+- Connect dots across multiple sources ("how does X relate to Y?")
+- Pick up a thread you started in a previous session
+
+The AI reads your entire wiki on every message and reasons across all of it. Past conversations are saved, so you can return to a thread days later and continue where you left off.
+
+### Option B — Obsidian graph
+
+Use **Obsidian** when you want to:
+
+- See the big picture — all your knowledge on a visual map
+- Spot unexpected clusters and connections spatially
+- Browse and edit individual wiki pages by hand
+- Explore "what is connected to this page?" using the local graph
+
+### They are complementary, not competing
+
+```
+                 Second Brain app
+                 (Chat tab)
+                       │
+          Multi-turn AI reasoning
+          across all wiki pages
+                       │
+              domains/ folder  ◄───────┐
+                       │               │
+          Markdown files on disk       │
+                                       │
+                 Obsidian              │
+              (desktop app)   ─────────┘
+              Visual graph,
+              manual editing
+```
+
+Both tools read the same `domains/` folder. There is nothing to sync. Ingest in the app, explore in both. The intended daily flow is:
+
+1. Feed the app new documents (**Ingest** tab)
+2. Chat with the AI to pull out insights (**Chat** tab)
+3. Open Obsidian to see how the new pages fit into the graph visually
+
+---
+
+## 13. Daily workflow
 
 Here is the recommended way to use Second Brain day-to-day:
 
@@ -343,7 +431,7 @@ Here is the recommended way to use Second Brain day-to-day:
 ### When you want to recall something
 
 1. Open `http://localhost:3333`
-2. Go to the **Query** tab, pick a domain, ask your question
+2. Go to the **Chat** tab, pick a domain, and ask your question (or continue an old conversation)
 3. Get a cited answer pointing to specific wiki pages
 4. Click through to Obsidian to read the source page in full
 
@@ -356,7 +444,7 @@ Here is the recommended way to use Second Brain day-to-day:
 
 ---
 
-## 13. Troubleshooting
+## 14. Troubleshooting
 
 **"command not found: node" when I type `node src/server.js`**
 
