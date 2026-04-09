@@ -6,6 +6,7 @@ import domainsRouter from './routes/domains.js';
 import ingestRouter from './routes/ingest.js';
 import queryRouter from './routes/query.js';
 import wikiRouter from './routes/wiki.js';
+import chatRouter from './routes/chat.js';
 import { getProviderInfo } from './brain/llm.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -20,6 +21,7 @@ app.use('/api/domains', domainsRouter);
 app.use('/api/ingest', ingestRouter);
 app.use('/api/query', queryRouter);
 app.use('/api/wiki', wikiRouter);
+app.use('/api/chat', chatRouter);
 
 // Shutdown endpoint — kills the server process cleanly
 app.post('/api/shutdown', (req, res) => {

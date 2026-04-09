@@ -34,7 +34,7 @@ tabBtns.forEach(btn => {
 });
 
 // ── Domain loading ─────────────────────────────────────────────────────────────
-const domainSelects = ['ingest-domain', 'query-domain', 'wiki-domain'];
+const domainSelects = ['ingest-domain', 'wiki-domain'];
 
 async function loadDomains() {
   const res = await fetch('/api/domains');
@@ -175,59 +175,205 @@ function showIngestResult(data) {
   showEl(ingestResult);
 }
 
-// ── QUERY TAB ─────────────────────────────────────────────────────────────────
-const queryBtn = document.getElementById('query-btn');
-const queryText = document.getElementById('query-text');
-const queryStatus = document.getElementById('query-status');
-const queryResult = document.getElementById('query-result');
+// ── CHAT TAB ──────────────────────────────────────────────────────────────────
+const chatDomainEl   = document.getElementById('chat-domain');
+const newChatBtn     = document.getElementById('new-chat-btn');
+const convListEl     = document.getElementById('conversation-list');
+const chatEmptyEl    = document.getElementById('chat-empty');
+const chatThreadEl   = document.getElementById('chat-thread');
+const chatInputEl    = document.getElementById('chat-input');
+const chatSendBtn    = document.getElementById('chat-send-btn');
 
-queryText.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) queryBtn.click();
-});
+let activeConvId   = null;   // currently open conversation ID
+let chatDomain     = null;   // currently selected domain
+let chatBusy       = false;  // prevents double-sends
 
-queryBtn.addEventListener('click', async () => {
-  const domain = document.getElementById('query-domain').value;
-  const question = queryText.value.trim();
-  if (!question) return;
-
-  queryBtn.disabled = true;
-  showStatus(queryStatus, 'loading', 'Querying — Second Brain is reading the wiki and synthesizing an answer...');
-  hideEl(queryResult);
-
-  try {
-    const res = await fetch('/api/query', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ domain, question }),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Query failed');
-
-    hideEl(queryStatus);
-    showQueryResult(data);
-  } catch (err) {
-    showStatus(queryStatus, 'error', err.message);
-  } finally {
-    queryBtn.disabled = false;
+// ── Domain selector ───────────────────────────────────────────────────────────
+async function loadChatDomains() {
+  const res = await fetch('/api/domains');
+  const { domains } = await res.json();
+  chatDomainEl.innerHTML = domains
+    .map(d => `<option value="${d}">${formatDomain(d)}</option>`)
+    .join('');
+  if (domains.length) {
+    chatDomain = domains[0];
+    await refreshConversationList();
   }
+}
+
+chatDomainEl.addEventListener('change', async () => {
+  chatDomain = chatDomainEl.value;
+  activeConvId = null;
+  showChatEmpty();
+  await refreshConversationList();
 });
 
-function showQueryResult({ answer, citations }) {
-  const formattedAnswer = escHtml(answer).replace(
+// ── Conversation list ─────────────────────────────────────────────────────────
+async function refreshConversationList() {
+  if (!chatDomain) return;
+  const res = await fetch(`/api/chat/${chatDomain}`);
+  const { conversations } = await res.json();
+
+  if (conversations.length === 0) {
+    convListEl.innerHTML = `<div class="conv-empty">No conversations yet.<br>Start a new chat above.</div>`;
+    return;
+  }
+
+  convListEl.innerHTML = conversations.map(c => `
+    <div class="conv-item${c.id === activeConvId ? ' active' : ''}" data-id="${escHtml(c.id)}">
+      <span class="conv-title">${escHtml(c.title)}</span>
+      <span class="conv-count">${Math.floor(c.messageCount / 2)} msg${Math.floor(c.messageCount / 2) !== 1 ? 's' : ''}</span>
+      <button class="conv-delete" data-id="${escHtml(c.id)}" title="Delete">✕</button>
+    </div>
+  `).join('');
+
+  convListEl.querySelectorAll('.conv-item').forEach(el => {
+    el.addEventListener('click', () => openConversation(el.dataset.id));
+  });
+
+  convListEl.querySelectorAll('.conv-delete').forEach(btn => {
+    btn.addEventListener('click', async e => {
+      e.stopPropagation();
+      await deleteConversation(btn.dataset.id);
+    });
+  });
+}
+
+async function openConversation(id) {
+  if (id === activeConvId) return;
+  activeConvId = id;
+
+  const res = await fetch(`/api/chat/${chatDomain}/${id}`);
+  if (!res.ok) return;
+  const conv = await res.json();
+
+  renderThread(conv.messages);
+  highlightActiveConv(id);
+}
+
+function highlightActiveConv(id) {
+  convListEl.querySelectorAll('.conv-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.id === id);
+  });
+}
+
+async function deleteConversation(id) {
+  await fetch(`/api/chat/${chatDomain}/${id}`, { method: 'DELETE' });
+  if (id === activeConvId) {
+    activeConvId = null;
+    showChatEmpty();
+  }
+  await refreshConversationList();
+}
+
+// ── Thread rendering ──────────────────────────────────────────────────────────
+function showChatEmpty() {
+  showEl(chatEmptyEl);
+  hideEl(chatThreadEl);
+  chatThreadEl.innerHTML = '';
+}
+
+function renderThread(messages) {
+  hideEl(chatEmptyEl);
+  showEl(chatThreadEl);
+  chatThreadEl.innerHTML = '';
+  for (const msg of messages) appendMessage(msg.role, msg.content, msg.citations || []);
+  chatThreadEl.scrollTop = chatThreadEl.scrollHeight;
+}
+
+function appendMessage(role, content, citations = []) {
+  hideEl(chatEmptyEl);
+  showEl(chatThreadEl);
+
+  const formatted = escHtml(content).replace(
     /\[source:\s*([^\]]+)\]/g,
     (_, p) => `<span class="citation-tag">[source: ${escHtml(p)}]</span>`
   );
 
-  queryResult.innerHTML = `
-    <div class="answer-text">${formattedAnswer}</div>
-    ${citations.length ? `
-      <hr style="margin: 16px 0; border-color: var(--border);" />
-      <h3>Sources</h3>
-      <ul>${citations.map(c => `<li><span>${escHtml(c)}</span></li>`).join('')}</ul>
-    ` : ''}
+  const citHtml = citations.length
+    ? `<div class="chat-citations">${citations.map(c =>
+        `<span class="citation-tag">${escHtml(c)}</span>`).join('')}</div>`
+    : '';
+
+  const div = document.createElement('div');
+  div.className = `chat-msg ${role}`;
+  div.innerHTML = `
+    <div class="chat-bubble">${formatted}</div>
+    ${citHtml}
   `;
-  showEl(queryResult);
+  chatThreadEl.appendChild(div);
+  chatThreadEl.scrollTop = chatThreadEl.scrollHeight;
 }
+
+function appendSpinner() {
+  const div = document.createElement('div');
+  div.id = 'chat-thinking';
+  div.className = 'chat-msg assistant';
+  div.innerHTML = `<div class="chat-spinner"><span class="spinner"></span><span>Thinking…</span></div>`;
+  chatThreadEl.appendChild(div);
+  chatThreadEl.scrollTop = chatThreadEl.scrollHeight;
+  return div;
+}
+
+// ── Send message ──────────────────────────────────────────────────────────────
+newChatBtn.addEventListener('click', () => {
+  activeConvId = null;
+  showChatEmpty();
+  highlightActiveConv(null);
+  chatInputEl.focus();
+});
+
+chatInputEl.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+    e.preventDefault();
+    chatSendBtn.click();
+  }
+});
+
+// Auto-grow textarea
+chatInputEl.addEventListener('input', () => {
+  chatInputEl.style.height = 'auto';
+  chatInputEl.style.height = Math.min(chatInputEl.scrollHeight, 160) + 'px';
+});
+
+chatSendBtn.addEventListener('click', async () => {
+  if (chatBusy) return;
+  const message = chatInputEl.value.trim();
+  if (!message || !chatDomain) return;
+
+  chatBusy = true;
+  chatSendBtn.disabled = true;
+  chatInputEl.value = '';
+  chatInputEl.style.height = 'auto';
+
+  appendMessage('user', message);
+  const spinner = appendSpinner();
+
+  try {
+    const res = await fetch(`/api/chat/${chatDomain}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, conversationId: activeConvId }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Chat failed');
+
+    spinner.remove();
+    appendMessage('assistant', data.answer, data.citations);
+
+    if (data.conversationId && data.conversationId !== activeConvId) {
+      activeConvId = data.conversationId;
+      await refreshConversationList();
+    }
+  } catch (err) {
+    spinner.remove();
+    appendMessage('assistant', `Error: ${err.message}`);
+  } finally {
+    chatBusy = false;
+    chatSendBtn.disabled = false;
+    chatInputEl.focus();
+  }
+});
 
 // ── WIKI TAB ──────────────────────────────────────────────────────────────────
 const wikiLoadBtn = document.getElementById('wiki-load-btn');
@@ -349,3 +495,4 @@ function escHtml(str) {
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 loadDomains();
+loadChatDomains();

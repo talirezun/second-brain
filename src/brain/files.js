@@ -1,4 +1,4 @@
-import { readdir, readFile, writeFile, mkdir } from 'fs/promises';
+import { readdir, readFile, writeFile, mkdir, unlink } from 'fs/promises';
 import { existsSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -73,4 +73,51 @@ export async function readIndex(domain) {
 export async function writeIndex(domain, content) {
   const indexFile = path.join(wikiPath(domain), 'index.md');
   await writeFile(indexFile, content, 'utf8');
+}
+
+// ── Conversations ─────────────────────────────────────────────────────────────
+
+export function conversationsPath(domain) {
+  return path.join(DOMAINS_DIR, domain, 'conversations');
+}
+
+export async function listConversations(domain) {
+  const dir = conversationsPath(domain);
+  await mkdir(dir, { recursive: true });
+  const entries = await readdir(dir);
+  const convs = [];
+  for (const f of entries.filter(f => f.endsWith('.json'))) {
+    try {
+      const raw = await readFile(path.join(dir, f), 'utf8');
+      const conv = JSON.parse(raw);
+      convs.push({
+        id: conv.id,
+        title: conv.title,
+        createdAt: conv.createdAt,
+        messageCount: conv.messages.length,
+      });
+    } catch { /* skip malformed files */ }
+  }
+  return convs.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+}
+
+export async function readConversation(domain, id) {
+  const file = path.join(conversationsPath(domain), `${id}.json`);
+  if (!existsSync(file)) return null;
+  return JSON.parse(await readFile(file, 'utf8'));
+}
+
+export async function writeConversation(domain, conversation) {
+  const dir = conversationsPath(domain);
+  await mkdir(dir, { recursive: true });
+  await writeFile(
+    path.join(dir, `${conversation.id}.json`),
+    JSON.stringify(conversation, null, 2),
+    'utf8'
+  );
+}
+
+export async function deleteConversation(domain, id) {
+  const file = path.join(conversationsPath(domain), `${id}.json`);
+  if (existsSync(file)) await unlink(file);
 }

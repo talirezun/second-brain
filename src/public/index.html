@@ -14,7 +14,7 @@
       <h1>Second Brain</h1>
       <nav>
         <button class="tab-btn active" data-tab="ingest">Ingest</button>
-        <button class="tab-btn" data-tab="query">Query</button>
+        <button class="tab-btn" data-tab="chat">Chat</button>
         <button class="tab-btn" data-tab="wiki">Wiki</button>
       </nav>
       <button id="stop-btn" class="btn stop" title="Stop the server">&#9632; Stop</button>
@@ -41,20 +41,39 @@
       <div id="ingest-result" class="result hidden"></div>
     </section>
 
-    <!-- QUERY TAB -->
-    <section id="tab-query" class="tab hidden">
-      <h2>Ask Your Brain</h2>
-      <div class="form-group">
-        <label for="query-domain">Domain</label>
-        <select id="query-domain"></select>
+    <!-- CHAT TAB -->
+    <section id="tab-chat" class="tab hidden">
+      <div class="chat-layout">
+        <!-- Sidebar -->
+        <aside class="chat-sidebar">
+          <div class="chat-sidebar-top">
+            <select id="chat-domain" class="chat-domain-select"></select>
+            <button id="new-chat-btn" class="btn primary new-chat-btn">+ New Chat</button>
+          </div>
+          <div id="conversation-list" class="conversation-list"></div>
+        </aside>
+
+        <!-- Main chat area -->
+        <div class="chat-main">
+          <div id="chat-empty" class="chat-empty">
+            <div class="chat-empty-icon">🧠</div>
+            <div class="chat-empty-title">Ask your Second Brain</div>
+            <div class="chat-empty-sub">Select a domain, start a new chat, or pick a conversation.</div>
+          </div>
+
+          <div id="chat-thread" class="chat-thread hidden"></div>
+
+          <div class="chat-input-bar">
+            <textarea
+              id="chat-input"
+              class="chat-input"
+              rows="1"
+              placeholder="Ask anything… (⌘↵ to send)"
+            ></textarea>
+            <button id="chat-send-btn" class="btn primary chat-send-btn">Send</button>
+          </div>
+        </div>
       </div>
-      <div class="form-group">
-        <label for="query-text">Question</label>
-        <textarea id="query-text" rows="4" placeholder="What do you want to know?"></textarea>
-      </div>
-      <button id="query-btn" class="btn primary">Ask</button>
-      <div id="query-status" class="status hidden"></div>
-      <div id="query-result" class="result hidden"></div>
     </section>
 
     <!-- WIKI TAB -->

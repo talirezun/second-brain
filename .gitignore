@@ -13,5 +13,8 @@ domains/*/wiki/concepts/
 domains/*/wiki/entities/
 domains/*/wiki/summaries/
 
+# Conversations are personal — not tracked in git
+domains/*/conversations/
+
 # Mac launcher app (local only)
 "Second Brain.app"
