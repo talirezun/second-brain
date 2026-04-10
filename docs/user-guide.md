@@ -399,6 +399,44 @@ In Obsidian's left sidebar, click the **graph icon** (it looks like a network of
 
 The more documents you ingest, the richer the graph becomes.
 
+### Activate graph colors (one-time setup)
+
+Every wiki page now contains a **type tag** in its metadata (`type/entity`, `type/concept`, `type/summary`). You can tell Obsidian to use these tags to automatically color-code every node in the graph.
+
+**You only need to do this once.** After that, every future ingest automatically colors new nodes — no manual work.
+
+1. Open Obsidian and go to the Graph View (graph icon in the left sidebar)
+2. Click the **gear icon** (⚙) at the top-right of the Graph View panel
+3. Find the **Groups** section and click **New Group** three times
+
+Set up each group exactly like this:
+
+| Group | Query | Suggested color |
+|-------|-------|----------------|
+| Entities | `tag:#type/entity` | Blue |
+| Concepts | `tag:#type/concept` | Green |
+| Summaries | `tag:#type/summary` | Purple or Red |
+
+4. Click the color circle next to each group and choose your color
+
+**Result:** Entities (people, tools, companies) appear blue; concepts (ideas, techniques) appear green; summaries (source documents) appear purple/red. Your neural network is now visually segmented — you can instantly see at a glance whether a cluster contains mostly ideas or mostly sources.
+
+**Pro tip — node size:** In the same Graph View gear panel, find **Node size** → set it to **Linked mentions**. Pages with more connections grow larger, making your most-connected concepts and entities visually prominent.
+
+### Using the Properties panel
+
+Each wiki page now has structured metadata (called "Properties") at the top — you can see it in Obsidian's right panel when a page is open. It shows the page type, all tags, and the date it was created. You can filter and query this data using the free **Dataview** plugin:
+
+1. In Obsidian, open **Settings → Community plugins → Browse**
+2. Search for **Dataview** and install it
+3. Create a new note and paste this to see all entities in your AI/Tech domain:
+
+```dataview
+TABLE tags, created FROM "ai-tech/wiki/entities"
+WHERE type = "entity"
+SORT created DESC
+```
+
 ### How Obsidian and the app work together
 
 They share the same files — there is nothing to sync or export.
@@ -418,6 +456,20 @@ Second Brain app          Obsidian
 
 You can have both open at the same time. When you ingest something in the app, switch to Obsidian and press `Ctrl/Cmd + R` to refresh — the new pages appear instantly.
 
+### What about my existing wiki files?
+
+If you already had wiki pages before this update, those older files do not yet have the structured metadata (YAML frontmatter) needed for graph coloring and Dataview queries. They will appear as uncolored nodes in the graph.
+
+**To update existing pages, simply re-ingest the same source file:**
+
+1. Go to the **Ingest** tab
+2. Upload the same original document again (PDF, txt, etc.)
+3. The app detects it has been ingested before and *updates* the existing wiki pages rather than duplicating them
+
+Re-ingesting is safe — it merges new information with what already exists. Pages that get updated will gain the YAML metadata and immediately appear colored in Obsidian.
+
+> **Tip:** If you have many existing files and don't want to re-ingest them manually, you can skip this step. The old pages still appear in the graph as uncolored nodes, and all new ingests going forward will be colored automatically.
+
 ### Useful Obsidian features
 
 | Feature | How to access | What it does |
@@ -427,6 +479,13 @@ You can have both open at the same time. When you ingest something in the app, s
 | Search | `Cmd/Ctrl + Shift + F` | Search across all pages |
 | Backlinks | Right panel when a page is open | See which pages link to the current page |
 | Local graph | Three-dot menu on any open page | Graph of just that page's connections |
+| Properties | Right panel → Properties | Structured metadata for the current page |
+
+### The Local Graph test
+
+A healthy knowledge network passes this test: open any **concept** page, set the local graph depth to 2. You should see the concept connected to multiple summaries *and* multiple entities. If a concept connects to only one or two things, you need to ingest more sources that reference it.
+
+**The Orphan check:** In Obsidian's Graph View, zoom out and look for dots floating alone with no connections. Every page should have at least one `[[link]]`. Your goal is zero orphans — Second Brain actively cross-references all pages during ingest.
 
 ---
 

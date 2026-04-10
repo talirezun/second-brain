@@ -51,11 +51,48 @@ async function collectMarkdown(baseDir, dir, pages) {
   }
 }
 
+/**
+ * Ensure every wiki page in entities/, concepts/, summaries/ has YAML frontmatter.
+ * Called as a post-processing step in writePage() — if the LLM already included
+ * frontmatter this is a no-op; if it forgot, we inject it from the path + inline tags.
+ */
+function injectFrontmatter(content, relativePath, today) {
+  const type = relativePath.startsWith('summaries/') ? 'summary'
+             : relativePath.startsWith('concepts/')  ? 'concept'
+             : relativePath.startsWith('entities/')  ? 'entity'
+             : null;
+
+  if (!type) return content;                                   // index.md, log.md — skip
+  if (content.trimStart().startsWith('---')) return content;  // YAML already present — skip
+
+  // Pull existing inline Tags: field and convert to an array
+  const tagsMatch = content.match(/^Tags:\s*(.+)$/m);
+  const existing = tagsMatch
+    ? tagsMatch[1].split(',').map(t => t.trim().toLowerCase()).filter(Boolean)
+    : [];
+
+  // Pull source/date for summary pages
+  const sourceMatch = content.match(/^Source:\s*(.+)$/m);
+  const dateMatch   = content.match(/^Date Ingested:\s*(.+)$/m);
+
+  // Merge existing tags with type tag, deduplicate
+  const tags = [...new Set([...existing, `type/${type}`])];
+
+  const yamlLines = ['---', `type: ${type}`];
+  if (type === 'summary' && sourceMatch) yamlLines.push(`source: "${sourceMatch[1].trim()}"`);
+  if (type === 'summary' && dateMatch)   yamlLines.push(`date: ${dateMatch[1].trim()}`);
+  yamlLines.push(`tags: [${tags.join(', ')}]`, `created: ${today}`, '---', '');
+
+  return yamlLines.join('\n') + content;
+}
+
 export async function writePage(domain, relativePath, content) {
+  const today = new Date().toISOString().slice(0, 10);
+  const processed = injectFrontmatter(content, relativePath, today);
   const fullPath = path.join(wikiPath(domain), relativePath);
   const dir = path.dirname(fullPath);
   await mkdir(dir, { recursive: true });
-  await writeFile(fullPath, content, 'utf8');
+  await writeFile(fullPath, processed, 'utf8');
 }
 
 export async function appendLog(domain, entry) {
@@ -203,11 +240,17 @@ ${cfg.scope}
 
 ### Page Format
 
+Every wiki page (entity, concept, summary) MUST begin with a YAML frontmatter block.
+The \`tags\` array MUST include the type tag (\`type/entity\`, \`type/concept\`, or \`type/summary\`).
+
 **Entity page:**
 \`\`\`
+---
+type: entity
+tags: [tag1, tag2, type/entity]
+created: YYYY-MM-DD
+---
 # [Entity Name]
-Type: ${cfg.entityTypes}
-Tags: [comma-separated]
 
 ## Summary
 One-paragraph description.
@@ -222,8 +265,12 @@ One-paragraph description.
 
 **Concept page:**
 \`\`\`
+---
+type: concept
+tags: [tag1, tag2, type/concept]
+created: YYYY-MM-DD
+---
 # [Concept Name]
-Tags: [comma-separated]
 
 ## Definition
 Clear, concise definition.
@@ -236,10 +283,14 @@ ${cfg.conceptMiddle}
 
 **Summary page:**
 \`\`\`
+---
+type: summary
+source: [filename or description]
+date: YYYY-MM-DD
+tags: [tag1, tag2, type/summary]
+created: YYYY-MM-DD
+---
 # [Source Title]
-Source: [filename or description]
-Date Ingested: [YYYY-MM-DD]
-Tags: [comma-separated]
 
 ## Key Takeaways
 - Bullet list of main points
@@ -255,7 +306,7 @@ Any additional commentary.
 \`\`\`
 
 ## Cross-Referencing Rules
-- Always use \`[[page-name]]\` syntax for internal links (without the folder prefix).
+- Always use \`[[page-name]]\` syntax for internal links — NEVER include folder prefixes (e.g., write \`[[rag]]\` not \`[[concepts/rag]]\`).
 - When you create or update a summary, update the corresponding entity and concept pages to reference it.
 - Every entity or concept mentioned in a source gets either a new page or an update to an existing page.
 

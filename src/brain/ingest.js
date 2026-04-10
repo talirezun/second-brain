@@ -97,8 +97,12 @@ ${pageList}
 
 Guidelines:
 - Each page: 3–8 concise bullet points or sentences. No long prose.
-- Use [[page-name]] syntax for cross-references to other wiki pages.
-- Single-word tags only.
+- YAML frontmatter: start every page with a --- block containing type, tags (array), and created (today's date).
+  - entities/ pages:  type: entity,  tags must include type/entity
+  - concepts/ pages:  type: concept, tags must include type/concept
+  - summaries/ pages: type: summary, tags must include type/summary, also add source and date fields
+- Do NOT use inline "Type:" or "Tags:" fields in the body — put them in the YAML only.
+- Links: always use [[page-name]] — NEVER include folder prefix (write [[rag]] not [[concepts/rag]]).
 
 Return ONLY valid JSON in this exact shape (no markdown fences, no commentary):
 {
@@ -123,7 +127,10 @@ New or updated pages to incorporate:
 ${pageList}
 
 Write a complete, updated index.md that lists ALL pages (existing + new).
-Each entry: one line with path and a short description.
+Rules:
+- Use [[page-name]] format for all links — NEVER include folder prefix (write [[rag]] not [[concepts/rag]]).
+- No duplicate rows — if a page already appears in the current index, update it rather than adding a second entry.
+- index.md has NO YAML frontmatter.
 Return ONLY the raw markdown text for index.md (no JSON, no fences).`;
 }
 
@@ -131,7 +138,7 @@ Return ONLY the raw markdown text for index.md (no JSON, no fences).`;
 
 function buildPrompt(today, index, originalName, text, strict, isOverwrite = false) {
   const conciseness = strict
-    ? 'CRITICAL: Maximum 3 bullet points per page. No prose. Single-word tags only. The shorter the better.'
+    ? 'CRITICAL: Maximum 3 bullet points per page. No prose. The shorter the better.'
     : 'Keep each page concise — 3 to 8 bullet points or sentences max. No long prose.';
 
   const overwriteNote = isOverwrite
@@ -155,6 +162,23 @@ Your task:
 5. Produce an updated index.md that includes all existing pages plus any new ones.
 
 ${conciseness}
+
+YAML frontmatter rules (apply to every entity, concept, and summary page):
+- Start every page with a --- block. Example for a concept:
+  ---
+  type: concept
+  tags: [machine-learning, nlp, type/concept]
+  created: ${today}
+  ---
+- entities/ → type: entity,  tags include type/entity
+- concepts/ → type: concept, tags include type/concept
+- summaries/ → type: summary, tags include type/summary; also add source and date fields
+- Do NOT use inline "Type:" or "Tags:" lines in the body — YAML only.
+- index.md has NO frontmatter.
+
+Link rules:
+- Always write [[page-name]] — NEVER use folder prefix (write [[rag]] not [[concepts/rag]]).
+- In index.md table, use [[page-name]] (no folder prefix, no duplicates).
 
 Return ONLY valid JSON in this exact shape (no markdown fences, no commentary):
 {

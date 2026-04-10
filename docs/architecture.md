@@ -257,7 +257,7 @@ Pure filesystem helpers. No LLM calls.
 | `listDomains()` | Names of all non-hidden subdirectories under `domains/` |
 | `readSchema(domain)` | Contents of `domains/<domain>/CLAUDE.md` |
 | `readWikiPages(domain)` | All `.md` files under `wiki/`, returned as `{path, content}[]` |
-| `writePage(domain, relativePath, content)` | Write a wiki page, creating parent directories as needed |
+| `writePage(domain, relativePath, content)` | Write a wiki page; runs `injectFrontmatter()` post-processor first to ensure YAML metadata is present |
 | `appendLog(domain, entry)` | Append a string to `log.md` |
 | `readIndex(domain)` | Contents of `index.md` |
 | `createDomain(slug, displayName, description, template)` | Scaffold full domain directory + auto-generate CLAUDE.md from template |
@@ -340,3 +340,9 @@ Git is already a prerequisite for installing the app (`git clone`), so no new de
 
 **Why manage domains in the UI instead of only in the filesystem?**
 Creating a domain manually requires writing a correctly formatted CLAUDE.md schema, initialising two markdown files, and creating five directories — a process documented step-by-step but easy to get wrong. The Domains tab automates all of this with four validated templates (Tech/AI, Business/Finance, Personal Growth, Generic). Each template generates a CLAUDE.md tuned for that domain's entity types and concept structure, eliminating a common source of poor ingest results. Rename and delete operations are also safer through the UI: the rename patches all affected files atomically and warns when sync is configured; the delete shows exact counts before confirming.
+
+**Why YAML frontmatter instead of inline `Type:` / `Tags:` fields?**
+Obsidian's Properties system (introduced 2023) and the Dataview plugin both consume YAML frontmatter natively — they do not parse inline body fields. By moving `type` and `tags` into a `---` block at the top of every entity, concept, and summary page, three things become possible without any plugin configuration: (1) the Obsidian Graph View can color-code nodes by tag (`tag:#type/entity`), (2) Dataview can query and table all pages by type, and (3) external AI agents reading the files get structured metadata without parsing prose. The `injectFrontmatter()` post-processor in `writePage()` acts as a safety net — if the LLM skips the instruction, the correct YAML is injected from the file path before the file is written. This means YAML is always present regardless of LLM compliance.
+
+**Why include `type/entity`, `type/concept`, `type/summary` as tag values rather than a separate field?**
+Obsidian's Graph View Groups filter operates on tags, not on arbitrary frontmatter fields. Using `tags: [..., type/entity]` means one setting in the graph panel (`tag:#type/entity → Blue`) colors all current and future entity nodes with no further configuration. A separate `nodeColor: blue` field would have no effect on the graph — Obsidian doesn't read custom fields for visual styling. The tag approach is the only mechanism that hooks into Obsidian's native graph coloring.

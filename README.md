@@ -31,6 +31,8 @@ Everything is stored as plain markdown files on your computer. No subscriptions,
 - Drop in a `.pdf`, `.txt`, or `.md` file — the AI does the rest
 - Automatic extraction of people, tools, companies, frameworks, and concepts
 - Every page cross-references related pages with `[[wiki-links]]`
+- **YAML frontmatter on every page** — structured metadata (`type`, `tags`, `created`) that powers Obsidian's Properties panel, Dataview plugin queries, and automatic graph coloring
+- **Auto-colored knowledge graph** — type tags (`type/entity`, `type/concept`, `type/summary`) let Obsidian color-code every node automatically; set it up once, every future ingest colors itself
 - **Multi-turn AI chat** with persistent conversation history — ask follow-ups, connect the dots across sources, pick up where you left off
 - Visual knowledge graph via [Obsidian](https://obsidian.md) (free app, reads the same files)
 - **GitHub sync** — one-time 3-minute setup, then Sync Up / Sync Down across any number of computers. Uses a free private repository you own
@@ -138,7 +140,17 @@ See [docs/sync.md](docs/sync.md) for the full guide.
 
 ## Using Obsidian for the knowledge graph
 
-After ingesting your first document, open Obsidian → **Open folder as vault** → select the `second-brain/domains` folder. Click the graph icon in the sidebar to see all your knowledge as an interactive, zoomable network. No configuration needed — it reads the same files the app writes.
+After ingesting your first document, open Obsidian → **Open folder as vault** → select the `second-brain/domains` folder. Click the graph icon in the sidebar to see all your knowledge as an interactive, zoomable network.
+
+**Activate graph colors (one-time setup):** In Graph View → ⚙ → Groups, create three groups:
+
+| Group | Query | Color |
+|-------|-------|-------|
+| Entities | `tag:#type/entity` | Blue |
+| Concepts | `tag:#type/concept` | Green |
+| Summaries | `tag:#type/summary` | Purple |
+
+Every future ingest auto-colors new nodes — no manual work needed. See the [User Guide](docs/user-guide.md#12-see-your-knowledge-graph-in-obsidian) for full instructions including Dataview queries and the local graph test.
 
 ## Project structure
 
