@@ -1,3 +1,12 @@
+// ── Version badge ─────────────────────────────────────────────────────────────
+fetch('/api/version')
+  .then(r => r.json())
+  .then(({ version }) => {
+    const el = document.getElementById('app-version');
+    if (el) el.textContent = `v${version}`;
+  })
+  .catch(() => {}); // non-critical — silently skip if unavailable
+
 // ── Stop server ───────────────────────────────────────────────────────────────
 document.getElementById('stop-btn').addEventListener('click', async () => {
   const btn = document.getElementById('stop-btn');
@@ -83,7 +92,14 @@ dropZone.addEventListener('drop', e => {
   dropZone.classList.remove('dragover');
   setFile(e.dataTransfer.files[0]);
 });
-dropZone.addEventListener('click', () => fileInput.click());
+// Open file picker when clicking anywhere on the drop zone,
+// but skip if the click came from the <label> inside — that
+// already triggers the input natively via its `for` attribute,
+// so calling fileInput.click() again would open the picker twice.
+dropZone.addEventListener('click', (e) => {
+  if (e.target.closest('label')) return;
+  fileInput.click();
+});
 fileInput.addEventListener('change', () => setFile(fileInput.files[0]));
 
 ingestBtn.addEventListener('click', () => submitIngest(false));

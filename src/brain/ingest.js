@@ -1,5 +1,6 @@
 import { readFile, writeFile, mkdir } from 'fs/promises';
 import path from 'path';
+import { jsonrepair } from 'jsonrepair';
 import { generateText } from './llm.js';
 import {
   readSchema,
@@ -21,30 +22,39 @@ async function extractText(filePath) {
 
 /**
  * Attempt to parse JSON from the LLM response.
- * Handles two failure modes:
- *   1. Model wrapped JSON in markdown fences  → strip and retry
- *   2. Truncated / malformed JSON             → throw with context
+ * Handles multiple failure modes in order:
+ *   1. Valid JSON as-is                       → fast path
+ *   2. Markdown-fenced JSON (```json … ```)   → strip fences and retry
+ *   3. Bare { … } block somewhere in output  → extract and retry
+ *   4. Malformed JSON (unescaped quotes etc.) → jsonrepair and retry
  */
 function parseJSON(raw) {
-  // Fast path
+  // 1. Fast path — valid as-is
   try { return JSON.parse(raw); } catch { /* fall through */ }
 
-  // Strip markdown fences (```json ... ```)
+  // 2. Strip markdown fences (```json ... ```)
   const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (fenceMatch) {
     try { return JSON.parse(fenceMatch[1].trim()); } catch { /* fall through */ }
   }
 
-  // Find the outermost { ... } block
+  // 3. Find the outermost { ... } block
   const braceMatch = raw.match(/\{[\s\S]*\}/);
+  const candidate = braceMatch ? braceMatch[0] : raw;
   if (braceMatch) {
-    try { return JSON.parse(braceMatch[0]); } catch { /* fall through */ }
+    try { return JSON.parse(candidate); } catch { /* fall through */ }
   }
 
-  throw new Error(
-    `Could not parse JSON response. Response length: ${raw.length} chars. ` +
-    `Last 200 chars: ${raw.slice(-200)}`
-  );
+  // 4. jsonrepair — handles unescaped quotes, trailing commas, and other
+  //    common LLM JSON mistakes (e.g. they "read" the entire source)
+  try {
+    return JSON.parse(jsonrepair(candidate));
+  } catch (repairErr) {
+    throw new Error(
+      `Could not parse JSON response. Response length: ${raw.length} chars. ` +
+      `Last 200 chars: ${raw.slice(-200)}`
+    );
+  }
 }
 
 // ── Phase 1: outline ──────────────────────────────────────────────────────────

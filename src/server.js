@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import path from 'path';
+import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import domainsRouter from './routes/domains.js';
 import ingestRouter from './routes/ingest.js';
@@ -11,6 +12,11 @@ import syncRouter from './routes/sync.js';
 import { getProviderInfo } from './brain/llm.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Read version once at startup
+const { version } = JSON.parse(
+  readFileSync(new URL('../package.json', import.meta.url))
+);
 
 const app = express();
 const PORT = process.env.PORT || 3333;
@@ -24,6 +30,9 @@ app.use('/api/query', queryRouter);
 app.use('/api/wiki', wikiRouter);
 app.use('/api/chat', chatRouter);
 app.use('/api/sync', syncRouter);
+
+// Version endpoint — used by the UI to display the current app version
+app.get('/api/version', (req, res) => res.json({ version }));
 
 // Shutdown endpoint — kills the server process cleanly
 app.post('/api/shutdown', (req, res) => {
@@ -40,7 +49,7 @@ app.listen(PORT, () => {
   try {
     const { provider, model } = getProviderInfo();
     const providerLabel = provider === 'gemini' ? '🟦 Gemini' : '🟣 Anthropic';
-    console.log(`Second Brain running at http://localhost:${PORT}`);
+    console.log(`Second Brain v${version} running at http://localhost:${PORT}`);
     console.log(`LLM provider: ${providerLabel}  |  model: ${model}`);
   } catch (err) {
     console.log(`Second Brain running at http://localhost:${PORT}`);

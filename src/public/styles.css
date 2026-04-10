@@ -156,6 +156,20 @@ nav {
   border-color: var(--error);
 }
 
+/* ── Version badge ── */
+.app-version {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  background: var(--bg-alt);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  padding: 2px 7px;
+  letter-spacing: 0.03em;
+  opacity: 0.7;
+  user-select: none;
+}
+
 /* ── Tabs ── */
 .tab { display: none; }
 .tab.active { display: block; }
