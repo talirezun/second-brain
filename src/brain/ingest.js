@@ -51,6 +51,8 @@ function parseJSON(raw) {
     return JSON.parse(jsonrepair(candidate));
   } catch (repairErr) {
     console.error('[ingest] jsonrepair also failed:', repairErr.message.slice(0, 200));
+    console.error('[ingest] Response first 300 chars:', raw.slice(0, 300));
+    console.error('[ingest] Response last  300 chars:', raw.slice(-300));
     throw new Error(
       `Could not parse JSON response. Response length: ${raw.length} chars. ` +
       `Last 200 chars: ${raw.slice(-200)}`
@@ -266,15 +268,18 @@ async function ingestMultiPhase(schema, today, index, originalName, text, isOver
 
 // ── Entry point ───────────────────────────────────────────────────────────────
 
-// If the single-pass response is longer than this, assume multi-phase is needed.
-// 200 000 chars ≈ 50k tokens — safely below the 65 536 ceiling.
-const SINGLE_PASS_CHAR_LIMIT = 200_000;
+// If the single-pass response exceeds this size AND parsing fails, skip the
+// strict-brevity retry (which would produce a similarly long, similarly broken
+// response) and go straight to multi-phase.  Empirically, responses > 8 000
+// chars contain enough quoted terms and special characters that even jsonrepair
+// cannot reliably reconstruct them.
+const SINGLE_PASS_RESPONSE_LIMIT = 8_000;
 
-// Skip single-pass entirely for large input documents.
-// At 40 000+ chars of source text the response routinely approaches the output
-// token ceiling and gets truncated mid-JSON — wasting two API calls before the
-// fallback triggers. Going straight to multi-phase is faster and more reliable.
-const MULTI_PHASE_INPUT_THRESHOLD = 40_000;
+// Skip single-pass entirely for medium-to-large input documents.
+// Single-pass for a 20 k+ char source produces 10 000–20 000 chars of JSON —
+// enough for accumulated unescaped quotes to break parsing. Multi-phase keeps
+// each batch to ~10 pages / ~3 000 chars of JSON, which is far more reliable.
+const MULTI_PHASE_INPUT_THRESHOLD = 15_000;
 
 export async function ingestFile(domain, filePath, originalName, isOverwrite = false, onProgress = null) {
   const progress = makeProgress(onProgress);
@@ -320,18 +325,20 @@ export async function ingestFile(domain, filePath, originalName, isOverwrite = f
       (msg) => progress(15, msg, 'wait')
     )).trim();
 
-    if (raw.length > SINGLE_PASS_CHAR_LIMIT) {
-      console.warn(
-        `[ingest] Single-pass response too large (${raw.length} chars). ` +
-        `Switching to multi-phase ingest...`
-      );
-      singlePassFailed = true;
-    } else {
-      try {
-        result = parseJSON(raw);
-      } catch (firstErr) {
-        // Retry with stricter brevity
-        console.warn(`[ingest] First parse failed (${firstErr.message.slice(0, 120)}). Retrying with strict brevity...`);
+    try {
+      result = parseJSON(raw);
+    } catch (firstErr) {
+      console.warn(`[ingest] First parse failed — response ${raw.length} chars. ${firstErr.message.slice(0, 120)}`);
+
+      // If the response is already large, a strict-brevity retry will produce a
+      // similarly large (and similarly broken) response — skip it and go straight
+      // to multi-phase, which handles content in small, reliable batches.
+      if (raw.length > SINGLE_PASS_RESPONSE_LIMIT) {
+        console.warn(`[ingest] Response ${raw.length} chars > ${SINGLE_PASS_RESPONSE_LIMIT} limit — skipping retry, switching to multi-phase.`);
+        singlePassFailed = true;
+      } else {
+        // Short response that failed to parse — retry with maximum brevity
+        console.warn(`[ingest] Retrying with strict brevity…`);
         progress(15, 'Retrying with brevity constraints…');
 
         const raw2 = (await generateText(
@@ -342,16 +349,11 @@ export async function ingestFile(domain, filePath, originalName, isOverwrite = f
           (msg) => progress(15, msg, 'wait')
         )).trim();
 
-        if (raw2.length > SINGLE_PASS_CHAR_LIMIT) {
-          console.warn(`[ingest] Strict retry also too large (${raw2.length} chars). Switching to multi-phase...`);
+        try {
+          result = parseJSON(raw2);
+        } catch (secondErr) {
+          console.warn(`[ingest] Both single-pass attempts failed. Switching to multi-phase...`);
           singlePassFailed = true;
-        } else {
-          try {
-            result = parseJSON(raw2);
-          } catch (secondErr) {
-            console.warn(`[ingest] Both single-pass attempts failed. Switching to multi-phase...`);
-            singlePassFailed = true;
-          }
         }
       }
     }
