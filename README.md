@@ -140,37 +140,52 @@ with the objectivity of a third party.
 
 ## Quick start
 
-### Prerequisites
+### Option A — One-command installer (Mac, recommended)
+
+Paste this into Terminal and press Enter:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/talirezun/the-curator/main/install.sh | bash
+```
+
+The script checks for Node.js, clones the repo, installs dependencies, asks for your Gemini API key, and builds **The Curator.app** — all in one step. When it finishes, open Finder, go to `~/the-curator`, and drag **The Curator.app** to your Dock.
+
+> **Prerequisite:** [Node.js 18+](https://nodejs.org) must be installed (free, one download).
+
+---
+
+### Option B — Manual setup
+
+**Prerequisites**
 - [Node.js 18+](https://nodejs.org) (free)
 - A [Google Gemini API key](https://aistudio.google.com/app/apikey) (free)
 - [Obsidian](https://obsidian.md) for the knowledge graph (free, optional)
 
-### Setup
-
 ```bash
-# 1. Download the project
+# 1. Clone the project
 git clone https://github.com/talirezun/the-curator.git
 cd the-curator
 
 # 2. Install dependencies
 npm install
 
-# 3. Create your config file
+# 3. Create your config file and add your API key
 cp .env.example .env
 ```
 
-Open `.env` in any text editor and add your API key:
+Open `.env` and set your key:
 ```
 GEMINI_API_KEY=AIza...your key here...
 ```
 
-### Run
-
 ```bash
+# 4. Start the server
 node src/server.js
 ```
 
-Then open **http://localhost:3333** in your browser.
+Open **http://localhost:3333** in your browser.
+
+> For the Mac Dock app (double-click to launch, no Terminal needed), see **[docs/mac-app.md](docs/mac-app.md)**.
 
 > First time? Read the full **[User Guide](docs/user-guide.md)** — it covers every step in plain
 > language, including how to get your API key, how to use the chat, and how to set up Obsidian.
@@ -238,7 +253,9 @@ See [docs/sync.md](docs/sync.md) for the full guide.
 
 ## Using Obsidian for the knowledge graph
 
-After ingesting your first document, open Obsidian → **Open folder as vault** → select the `the-curator/domains` folder. Click the graph icon to see all your knowledge as an interactive, zoomable network.
+After ingesting your first document, open Obsidian → **Open folder as vault** → select your **Knowledge Base folder** (shown in the Domains tab → Knowledge Base Location). Click the graph icon to see all your knowledge as an interactive, zoomable network.
+
+> **Tip:** The Domains tab shows your Knowledge Base Location path and has a **Copy** button — paste it directly into Obsidian's vault picker.
 
 **Activate graph colors (one-time setup):** In Graph View → ⚙ → Groups, create three groups:
 

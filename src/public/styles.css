@@ -1189,3 +1189,110 @@ input::placeholder, textarea::placeholder { color: var(--text-muted); }
 .template-name { font-size: 12px; font-weight: 600; color: var(--text); }
 .template-desc { font-size: 10px; color: var(--text-muted); line-height: 1.4; }
 #wiki-content hr { border: none; border-top: 1px solid var(--border-subtle); margin: 16px 0; }
+
+/* ── Knowledge Base Path Panel ─────────────────────────────────────────────── */
+.kb-path-panel {
+  background: var(--surface-2, #1e2130);
+  border: 1px solid var(--border, #2d3148);
+  border-radius: 10px;
+  padding: 16px 18px;
+  margin-bottom: 20px;
+}
+
+.kb-path-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.kb-path-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary, #e2e8f0);
+  letter-spacing: 0.02em;
+}
+
+.kb-path-icon { font-size: 15px; }
+
+.kb-path-edit-btn {
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 5px;
+  border: 1px solid var(--border, #2d3148);
+  background: transparent;
+  color: var(--text-secondary, #94a3b8);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.kb-path-edit-btn:hover { border-color: #6366f1; color: #a5b4fc; }
+
+.kb-path-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.kb-path-code {
+  flex: 1;
+  font-size: 12px;
+  font-family: 'SF Mono', 'Menlo', monospace;
+  color: #a5b4fc;
+  background: rgba(99, 102, 241, 0.08);
+  border-radius: 5px;
+  padding: 5px 10px;
+  word-break: break-all;
+}
+
+.kb-path-copy-btn {
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 5px;
+  border: 1px solid var(--border, #2d3148);
+  background: transparent;
+  color: var(--text-secondary, #94a3b8);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.kb-path-copy-btn:hover { border-color: #6366f1; color: #a5b4fc; }
+
+.kb-path-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.kb-path-input {
+  flex: 1;
+  font-size: 12px;
+  font-family: 'SF Mono', 'Menlo', monospace;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border, #2d3148);
+  background: var(--surface-1, #0f1117);
+  color: var(--text-primary, #e2e8f0);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.kb-path-input:focus { border-color: #6366f1; }
+
+.kb-path-hint {
+  margin-top: 8px;
+  font-size: 11.5px;
+  color: var(--text-muted, #64748b);
+  line-height: 1.5;
+}
+
+.kb-path-status {
+  margin-top: 8px;
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+.kb-path-status.success { background: rgba(16,185,129,0.1); color: #10b981; }
+.kb-path-status.error   { background: rgba(239,68,68,0.1);  color: #ef4444; }

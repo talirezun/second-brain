@@ -25,6 +25,7 @@ Second Brain.app/
 # ── Sync feature (local only — never commit) ──────────────────────────────────
 .knowledge-git/
 .sync-config.json
+.curator-config.json
 
 # ── Domains folder (personal wiki data — lives outside the app repo) ──────────
 # The wiki is managed separately (via the Sync tab / a private GitHub repo).

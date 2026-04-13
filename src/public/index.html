@@ -396,6 +396,31 @@
 
     <!-- DOMAINS TAB -->
     <section id="tab-domains" class="tab hidden">
+        <!-- ── Knowledge Base Path ────────────────────────────────────────── -->
+        <div class="kb-path-panel" id="kb-path-panel">
+          <div class="kb-path-header">
+            <div class="kb-path-title">
+              <span class="kb-path-icon">📁</span>
+              <span>Knowledge Base Location</span>
+            </div>
+            <button class="kb-path-edit-btn" id="kb-path-edit-btn" title="Change folder">Edit</button>
+          </div>
+          <div class="kb-path-display" id="kb-path-display">
+            <code id="kb-path-value" class="kb-path-code">Loading…</code>
+            <button class="kb-path-copy-btn" id="kb-path-copy-btn" title="Copy path (paste in Obsidian)">Copy</button>
+          </div>
+          <div class="kb-path-edit-row hidden" id="kb-path-edit-row">
+            <input type="text" id="kb-path-input" class="kb-path-input"
+                   placeholder="/Users/yourname/Documents/my-brain" spellcheck="false" />
+            <button class="btn-primary" id="kb-path-save-btn">Apply</button>
+            <button class="btn-ghost" id="kb-path-cancel-btn">Cancel</button>
+          </div>
+          <div class="kb-path-hint">
+            This folder is also your <strong>Obsidian vault</strong> — open it in Obsidian with
+            <em>Open folder as vault</em>. Changes take effect immediately.
+          </div>
+          <div class="kb-path-status hidden" id="kb-path-status"></div>
+        </div>
       <div class="domains-header">
         <h2>Domains</h2>
         <button id="new-domain-btn" class="btn primary pill">

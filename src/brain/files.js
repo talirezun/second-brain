@@ -2,35 +2,31 @@ import { readdir, readFile, writeFile, mkdir, unlink, rm, rename as fsRename } f
 import { existsSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { getDomainsDir } from './config.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-// DOMAINS_PATH env var lets the wiki folder live anywhere on the user's system.
-// Defaults to ./domains inside the app folder if not set.
-const DOMAINS_DIR = process.env.DOMAINS_PATH
-  ? path.resolve(process.env.DOMAINS_PATH)
-  : path.resolve(__dirname, '../../domains');
 
 export function domainPath(domain) {
-  return path.join(DOMAINS_DIR, domain);
+  return path.join(getDomainsDir(), domain);
 }
 
 export function wikiPath(domain) {
-  return path.join(DOMAINS_DIR, domain, 'wiki');
+  return path.join(getDomainsDir(), domain, 'wiki');
 }
 
 export function rawPath(domain) {
-  return path.join(DOMAINS_DIR, domain, 'raw');
+  return path.join(getDomainsDir(), domain, 'raw');
 }
 
 export async function listDomains() {
-  const entries = await readdir(DOMAINS_DIR, { withFileTypes: true });
+  const entries = await readdir(getDomainsDir(), { withFileTypes: true });
   return entries
     .filter(e => e.isDirectory() && !e.name.startsWith('.'))
     .map(e => e.name);
 }
 
 export async function readSchema(domain) {
-  const schemaFile = path.join(DOMAINS_DIR, domain, 'CLAUDE.md');
+  const schemaFile = path.join(getDomainsDir(), domain, 'CLAUDE.md');
   return readFile(schemaFile, 'utf8');
 }
 
@@ -156,7 +152,7 @@ export async function writeIndex(domain, content) {
 // ── Conversations ─────────────────────────────────────────────────────────────
 
 export function conversationsPath(domain) {
-  return path.join(DOMAINS_DIR, domain, 'conversations');
+  return path.join(getDomainsDir(), domain, 'conversations');
 }
 
 export async function listConversations(domain) {

@@ -9,6 +9,7 @@ import queryRouter from './routes/query.js';
 import wikiRouter from './routes/wiki.js';
 import chatRouter from './routes/chat.js';
 import syncRouter from './routes/sync.js';
+import configRouter  from './routes/config.js';
 import { getProviderInfo } from './brain/llm.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -30,6 +31,8 @@ app.use('/api/query', queryRouter);
 app.use('/api/wiki', wikiRouter);
 app.use('/api/chat', chatRouter);
 app.use('/api/sync', syncRouter);
+app.use('/api/config',  configRouter);
+app.get('/api/health',  (_req, res) => res.json({ ok: true, version }));
 
 // Version endpoint — used by the UI to display the current app version
 app.get('/api/version', (req, res) => res.json({ version }));

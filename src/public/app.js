@@ -15,16 +15,47 @@ document.getElementById('stop-btn').addEventListener('click', async () => {
   try {
     await fetch('/api/shutdown', { method: 'POST' });
   } catch {
-    // Expected — the server closes before it can finish the response
+    // Expected — the server closes before responding fully
   }
-  btn.innerHTML = '✓ Stopped';
+
+  // Show "stopped" UI and start polling for restart
   document.body.innerHTML = `
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;
-                height:100vh;gap:16px;font-family:system-ui;color:#e2e8f0;background:#0f1117;">
+    <div id="stopped-screen" style="display:flex;flex-direction:column;align-items:center;
+         justify-content:center;height:100vh;gap:16px;font-family:system-ui;
+         color:#e2e8f0;background:#0f1117;">
       <div style="font-size:48px;">🧠</div>
       <div style="font-size:20px;font-weight:600;">The Curator stopped</div>
-      <div style="font-size:14px;color:#64748b;">Click the app icon to start it again.</div>
-    </div>`;
+      <div id="stopped-sub" style="font-size:14px;color:#64748b;">
+        Double-click the Dock icon to restart.
+      </div>
+      <div id="restart-spinner" style="display:none;margin-top:8px;">
+        <div style="width:20px;height:20px;border:2px solid #334155;border-top-color:#6366f1;
+             border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+      </div>
+    </div>
+    <style>@keyframes spin{to{transform:rotate(360deg)}}</style>`;
+
+  // Poll /api/health every 2 seconds — when the server comes back, reload automatically
+  let polling = false;
+  const poll = setInterval(async () => {
+    if (polling) return;
+    polling = true;
+    try {
+      const r = await fetch('/api/health', { signal: AbortSignal.timeout(1000) });
+      if (r.ok) {
+        clearInterval(poll);
+        const sub = document.getElementById('stopped-sub');
+        const spinner = document.getElementById('restart-spinner');
+        if (sub) sub.textContent = 'Server is back — reloading…';
+        if (spinner) spinner.style.display = 'block';
+        setTimeout(() => location.reload(), 800);
+      }
+    } catch {
+      // Server still down — keep polling
+    } finally {
+      polling = false;
+    }
+  }, 2000);
 });
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
@@ -962,11 +993,105 @@ loadChatDomains();
 
 // ── DOMAINS TAB ───────────────────────────────────────────────────────────────
 
+// ── Knowledge Base Path panel ─────────────────────────────────────────────────
+
+async function initKbPathPanel() {
+  const pathValue   = document.getElementById('kb-path-value');
+  const editBtn     = document.getElementById('kb-path-edit-btn');
+  const editRow     = document.getElementById('kb-path-edit-row');
+  const pathInput   = document.getElementById('kb-path-input');
+  const saveBtn     = document.getElementById('kb-path-save-btn');
+  const cancelBtn   = document.getElementById('kb-path-cancel-btn');
+  const copyBtn     = document.getElementById('kb-path-copy-btn');
+  const statusEl    = document.getElementById('kb-path-status');
+  const displayEl   = document.getElementById('kb-path-display');
+
+  // Load current path from server
+  try {
+    const cfg = await fetch('/api/config').then(r => r.json());
+    pathValue.textContent = cfg.domainsPath;
+    pathInput.value = cfg.domainsPath;
+  } catch {
+    pathValue.textContent = '(could not load)';
+  }
+
+  function showStatus(msg, type) {
+    statusEl.textContent = msg;
+    statusEl.className = 'kb-path-status ' + type;
+    statusEl.classList.remove('hidden');
+    if (type === 'success') setTimeout(() => statusEl.classList.add('hidden'), 4000);
+  }
+
+  editBtn.addEventListener('click', () => {
+    editRow.classList.remove('hidden');
+    displayEl.classList.add('hidden');
+    editBtn.classList.add('hidden');
+    pathInput.focus();
+    pathInput.select();
+  });
+
+  cancelBtn.addEventListener('click', () => {
+    editRow.classList.add('hidden');
+    displayEl.classList.remove('hidden');
+    editBtn.classList.remove('hidden');
+    statusEl.classList.add('hidden');
+    pathInput.value = pathValue.textContent;
+  });
+
+  saveBtn.addEventListener('click', async () => {
+    const newPath = pathInput.value.trim();
+    if (!newPath) return;
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Applying…';
+    try {
+      const res = await fetch('/api/config/domains-path', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: newPath }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to update path');
+      pathValue.textContent = data.domainsPath;
+      pathInput.value = data.domainsPath;
+      editRow.classList.add('hidden');
+      displayEl.classList.remove('hidden');
+      editBtn.classList.remove('hidden');
+      showStatus('✓ Path updated — reloading domain list…', 'success');
+      // Reload domain list to reflect new location
+      domainsTabInitialised = false;
+      loadDomainList();
+    } catch (err) {
+      showStatus('✗ ' + err.message, 'error');
+    } finally {
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Apply';
+    }
+  });
+
+  copyBtn.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(pathValue.textContent);
+      const orig = copyBtn.textContent;
+      copyBtn.textContent = 'Copied!';
+      setTimeout(() => copyBtn.textContent = orig, 1500);
+    } catch {
+      copyBtn.textContent = 'Copy failed';
+    }
+  });
+
+  // Allow Enter key in input
+  pathInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') saveBtn.click();
+    if (e.key === 'Escape') cancelBtn.click();
+  });
+}
+
 let domainsTabInitialised = false;
 
 document.querySelector('[data-tab="domains"]').addEventListener('click', () => {
   if (!domainsTabInitialised) {
     domainsTabInitialised = true;
+    initKbPathPanel();
     loadDomainList();
   }
 });
