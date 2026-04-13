@@ -102,11 +102,23 @@ function extractBulletsFromSection(content, sectionName) {
   let inSection = false;
   const re = new RegExp(`^##\\s+${sectionName}\\s*$`, 'i');
   for (const line of lines) {
-    if (re.test(line))            { inSection = true;  continue; }
+    if (re.test(line))                 { inSection = true;  continue; }
     if (inSection && /^##/.test(line)) { inSection = false; }
     if (inSection && line.startsWith('- ')) bullets.push(line);
   }
   return bullets;
+}
+
+/**
+ * Normalise a bullet line for deduplication.
+ * For Related-style bullets that contain [[link]] targets, compare by link
+ * target only — so "- [[foo]] — description A" and "- [[foo]] — description B"
+ * are treated as duplicates and only one is kept.
+ */
+function dedupKey(line) {
+  const linkMatch = line.match(/\[\[([^\]]+)\]\]/);
+  if (linkMatch) return linkMatch[1].toLowerCase().trim();
+  return line.toLowerCase().trim();
 }
 
 /** Inject extra bullet lines into a named ## section, skipping duplicates. */
@@ -115,32 +127,57 @@ function injectBulletsIntoSection(content, sectionName, extraBullets) {
   const re = new RegExp(`^##\\s+${sectionName}\\s*$`, 'i');
   const lines = content.split('\n');
 
-  // Collect bullets already present so we don't duplicate
+  // Collect dedup keys for bullets already present
   const seen = new Set();
   let inSection = false;
   for (const line of lines) {
     if (re.test(line))                 { inSection = true;  continue; }
     if (inSection && /^##/.test(line)) { inSection = false; }
-    if (inSection && line.startsWith('- ')) seen.add(line.toLowerCase().trim());
+    if (inSection && line.startsWith('- ')) seen.add(dedupKey(line));
   }
-  const newBullets = extraBullets.filter(b => !seen.has(b.toLowerCase().trim()));
+  const newBullets = extraBullets.filter(b => !seen.has(dedupKey(b)));
   if (!newBullets.length) return content;
 
-  // Re-scan and inject at end of section
+  // Re-scan and inject at end of section, before any trailing blank lines
   const result = [];
   inSection = false;
   let injected = false;
+  let pendingBlanks = []; // hold blank lines so bullets land before them
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     if (re.test(line)) { inSection = true; result.push(line); continue; }
-    if (inSection && /^##/.test(line) && !injected) {
-      result.push(...newBullets);
-      injected = true;
-      inSection = false;
+
+    if (inSection) {
+      if (line.trim() === '') {
+        pendingBlanks.push(line); // defer — inject bullets before blank lines
+        continue;
+      }
+      if (/^##/.test(line) && !injected) {
+        // Flush: bullets first, then the deferred blanks, then the new heading
+        result.push(...newBullets);
+        result.push(...pendingBlanks);
+        injected = true;
+        inSection = false;
+        pendingBlanks = [];
+      } else {
+        // Non-blank, non-heading content — flush deferred blanks normally
+        result.push(...pendingBlanks);
+        pendingBlanks = [];
+      }
     }
+
     result.push(line);
   }
-  if (inSection && !injected) result.push(...newBullets); // section was last
+
+  // Section was the last section — flush any deferred blanks then inject
+  if (inSection && !injected) {
+    result.push(...newBullets);
+    result.push(...pendingBlanks);
+  } else if (pendingBlanks.length) {
+    result.push(...pendingBlanks);
+  }
+
   return result.join('\n');
 }
 
