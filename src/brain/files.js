@@ -74,7 +74,7 @@ function injectFrontmatter(content, relativePath, today) {
   // Extract inline Tags: field → YAML tags array
   const tagsMatch = content.match(/^Tags:\s*(.+)$/m);
   const existing = tagsMatch
-    ? tagsMatch[1].split(',').map(t => t.trim().toLowerCase()).filter(Boolean)
+    ? tagsMatch[1].split(',').map(t => t.trim().toLowerCase().replace(/\s+/g, '-')).filter(Boolean)
     : [];
 
   // Extract inline Source: and Date Ingested: for summary pages
