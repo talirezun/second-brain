@@ -1,30 +1,30 @@
-# Domain: Personal Growth
+# Domain: Business
 
-This is a dedicated second brain for personal development, habits, and productivity topics.
+This is a dedicated second brain for business, finance, and investing topics.
 
 ## Scope
-Self-improvement, mental models, habits, learning techniques, decision-making, books, psychology, philosophy, productivity systems, and the thinkers behind them.
+Startups, venture capital, investing, markets, macroeconomics, business strategy, company analysis, financial instruments, and the people and organizations shaping the business world.
 
 ## Wiki Conventions
 
 ### Page Types
-- **entities/** — One page per notable person, book, or framework (e.g., `entities/james-clear.md`, `entities/atomic-habits.md`).
-- **concepts/** — One page per mental model, habit, or principle (e.g., `concepts/habit-loop.md`, `concepts/second-order-thinking.md`).
-- **summaries/** — One page per ingested source (e.g., `summaries/deep-work.md`).
+- **entities/** — One page per notable person, company, fund, or institution (e.g., `entities/sam-altman.md`, `entities/sequoia.md`).
+- **concepts/** — One page per idea, framework, or strategy (e.g., `concepts/unit-economics.md`, `concepts/moat.md`).
+- **summaries/** — One page per ingested source (e.g., `summaries/zero-to-one.md`).
 
 ### Page Format
 
 **Entity page:**
 ```
 # [Entity Name]
-Type: person | book | framework
+Type: person | company | fund | institution
 Tags: [comma-separated]
 
 ## Summary
 One-paragraph description.
 
-## Key Ideas
-- Bullet list of main ideas
+## Key Facts
+- Bullet facts
 
 ## Related
 - [[concept-name]] — why related
@@ -40,10 +40,11 @@ Tags: [comma-separated]
 Clear, concise definition.
 
 ## Why It Matters
-How this applies to personal growth.
+Business significance and applications.
 
-## How to Apply It
-Practical steps or examples.
+## Examples
+- Example 1
+- Example 2
 
 ## Related
 - [[entity-or-concept]] — why related
@@ -66,17 +67,17 @@ Tags: [comma-separated]
 - [[entity-name]]
 
 ## Notes
-Any additional commentary or personal reflections to record.
+Any additional commentary.
 ```
 
 ## Cross-Referencing Rules
 - Always use `[[page-name]]` syntax for internal links (without the folder prefix).
 - When you create or update a summary, update the corresponding entity and concept pages to reference it.
-- Every person, book, or concept mentioned in a source gets either a new page or an update to an existing page.
+- Every entity or concept mentioned in a source gets either a new page or an update to an existing page.
 
 ## index.md Format
 ```
-# Wiki Index — Personal Growth
+# Wiki Index — Business / Finance
 Last updated: [YYYY-MM-DD]
 
 | Page | Type | Summary |
@@ -94,8 +95,8 @@ Pages created or updated: list them
 ## Instructions for the AI
 When ingesting a source:
 1. Write a summary page under `summaries/`.
-2. Create or update entity pages for every person, book, or notable framework mentioned.
-3. Create or update concept pages for every key idea, mental model, or principle.
+2. Create or update entity pages for every person, company, fund, or institution mentioned.
+3. Create or update concept pages for every key business idea or financial concept.
 4. Add cross-references between all related pages.
 5. Return the full list of pages to create/update as JSON.
 

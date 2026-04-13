@@ -1,4 +1,4 @@
-# Wiki Index — Business / Finance
+# Wiki Index — Business
 Last updated: —
 
 | Page | Type | Summary |

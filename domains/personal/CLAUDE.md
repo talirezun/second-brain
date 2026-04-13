@@ -1,29 +1,29 @@
-# Domain: AI / Tech
+# Domain: Personal
 
-This is a dedicated second brain for AI and technology topics.
+This is a dedicated second brain for personal topics.
 
 ## Scope
-Artificial intelligence, machine learning, software engineering, developer tools, programming languages, research papers, open-source projects, and the people and companies behind them.
+So my personal affairs, shopping lists, notes, card registrations, insurances, whatever I need to remember, I can add here.
 
 ## Wiki Conventions
 
 ### Page Types
-- **entities/** — One page per notable person, tool, framework, company, or dataset. Filename: lowercase-hyphenated name (e.g., `entities/andrej-karpathy.md`, `entities/langchain.md`).
-- **concepts/** — One page per idea, technique, or framework concept (e.g., `concepts/rag.md`, `concepts/chain-of-thought.md`).
-- **summaries/** — One page per ingested source (e.g., `summaries/attention-is-all-you-need.md`).
+- **entities/** — One page per notable person, item, tool, or organization related to this domain.
+- **concepts/** — One page per idea, technique, or framework concept.
+- **summaries/** — One page per ingested source (e.g., `summaries/article-title.md`).
 
 ### Page Format
 
 **Entity page:**
 ```
 # [Entity Name]
-Type: person | tool | company | dataset
+Type: person | item | organization
 Tags: [comma-separated]
 
 ## Summary
 One-paragraph description.
 
-## Key Facts
+## Key Points
 - Bullet facts
 
 ## Related
@@ -39,12 +39,12 @@ Tags: [comma-separated]
 ## Definition
 Clear, concise definition.
 
-## How It Works
-Explanation with examples.
+## Overview
+Detailed explanation with context.
 
-## Applications
-- Use case 1
-- Use case 2
+## Examples
+- Example 1
+- Example 2
 
 ## Related
 - [[entity-or-concept]] — why related
@@ -77,7 +77,7 @@ Any additional commentary.
 
 ## index.md Format
 ```
-# Wiki Index — AI / Tech
+# Wiki Index — Personal
 Last updated: [YYYY-MM-DD]
 
 | Page | Type | Summary |
@@ -95,8 +95,8 @@ Pages created or updated: list them
 ## Instructions for the AI
 When ingesting a source:
 1. Write a summary page under `summaries/`.
-2. Create or update entity pages for every person, tool, company, or dataset mentioned.
-3. Create or update concept pages for every key idea or technique.
+2. Create or update entity pages for every person, item, or organization mentioned.
+3. Create or update concept pages for every key idea, framework, or technique.
 4. Add cross-references between all related pages.
 5. Return the full list of pages to create/update as JSON.
 

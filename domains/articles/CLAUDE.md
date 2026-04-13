@@ -1,23 +1,23 @@
-# Domain: Business / Finance
+# Domain: Articles
 
-This is a dedicated second brain for business, finance, and investing topics.
+This is a dedicated second brain for AI and technology topics.
 
 ## Scope
-Startups, venture capital, investing, markets, macroeconomics, business strategy, company analysis, financial instruments, and the people and organizations shaping the business world.
+Artificial intelligence, machine learning, software engineering, developer tools, programming languages, research papers, open-source projects, and the people and companies behind them.
 
 ## Wiki Conventions
 
 ### Page Types
-- **entities/** — One page per notable person, company, fund, or institution (e.g., `entities/sam-altman.md`, `entities/sequoia.md`).
-- **concepts/** — One page per idea, framework, or strategy (e.g., `concepts/unit-economics.md`, `concepts/moat.md`).
-- **summaries/** — One page per ingested source (e.g., `summaries/zero-to-one.md`).
+- **entities/** — One page per notable person, tool, framework, company, or dataset. Filename: lowercase-hyphenated name (e.g., `entities/andrej-karpathy.md`, `entities/langchain.md`).
+- **concepts/** — One page per idea, technique, or framework concept (e.g., `concepts/rag.md`, `concepts/chain-of-thought.md`).
+- **summaries/** — One page per ingested source (e.g., `summaries/attention-is-all-you-need.md`).
 
 ### Page Format
 
 **Entity page:**
 ```
 # [Entity Name]
-Type: person | company | fund | institution
+Type: person | tool | company | dataset
 Tags: [comma-separated]
 
 ## Summary
@@ -39,12 +39,12 @@ Tags: [comma-separated]
 ## Definition
 Clear, concise definition.
 
-## Why It Matters
-Business significance and applications.
+## How It Works
+Explanation with examples.
 
-## Examples
-- Example 1
-- Example 2
+## Applications
+- Use case 1
+- Use case 2
 
 ## Related
 - [[entity-or-concept]] — why related
@@ -77,7 +77,7 @@ Any additional commentary.
 
 ## index.md Format
 ```
-# Wiki Index — Business / Finance
+# Wiki Index — AI / Tech
 Last updated: [YYYY-MM-DD]
 
 | Page | Type | Summary |
@@ -95,8 +95,8 @@ Pages created or updated: list them
 ## Instructions for the AI
 When ingesting a source:
 1. Write a summary page under `summaries/`.
-2. Create or update entity pages for every person, company, fund, or institution mentioned.
-3. Create or update concept pages for every key business idea or financial concept.
+2. Create or update entity pages for every person, tool, company, or dataset mentioned.
+3. Create or update concept pages for every key idea or technique.
 4. Add cross-references between all related pages.
 5. Return the full list of pages to create/update as JSON.
 
