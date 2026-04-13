@@ -528,6 +528,43 @@ export async function writePage(domain, relativePath, content) {
     final = final.replace(/\[\[(entities|concepts)\/([^\]]+)\]\]/g, '[[$2]]');
   }
 
+  // 5c. Normalize [[variant-slug]] links to canonical entity slugs — reuses
+  //     Pass A (title-prefix strip) and Pass B (hyphen-normalised match) but
+  //     applied to every [[wikilink]] in the *content*, not just the filename.
+  //     Catches [[dr-tali-rezun]] → [[tali-rezun]] when the LLM writes that
+  //     variant inside another entity's Related section or a summary's Entities
+  //     Mentioned — the same bug that Pass A/B fix for filenames.
+  if (!skipMerge) {
+    const entitiesDir = path.join(wikiPath(domain), 'entities');
+    let allEntityFiles = [];
+    try { allEntityFiles = await readdir(entitiesDir); } catch { /* first ingest */ }
+    const entitySlugs = new Set(
+      allEntityFiles.filter(f => f.endsWith('.md')).map(f => f.slice(0, -3))
+    );
+
+    final = final.replace(/\[\[([^\]|#\n]+?)(\|[^\]]+)?\]\]/g, (match, slug, alias) => {
+      // Never touch summaries/ prefixed links or any link containing a sub-path
+      if (slug.includes('/')) return match;
+      // Already a known canonical slug — nothing to do
+      if (entitySlugs.has(slug)) return match;
+
+      // Pass A: strip title prefix (dr-, mr-, prof-, etc.)
+      const stripped = slug.replace(TITLE_PREFIX_RE, '');
+      if (stripped !== slug && entitySlugs.has(stripped)) {
+        return `[[${stripped}${alias || ''}]]`;
+      }
+
+      // Pass B: hyphen-normalised match
+      const norm = slug.replace(/-/g, '').toLowerCase();
+      for (const s of entitySlugs) {
+        if (s.replace(/-/g, '').toLowerCase() === norm) {
+          return `[[${s}${alias || ''}]]`;
+        }
+      }
+      return match;
+    });
+  }
+
   await writeFile(fullPath, final, 'utf8');
 
   // 6. For summary pages, inject [[summaries/slug]] backlinks into every
