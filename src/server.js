@@ -49,10 +49,10 @@ app.listen(PORT, () => {
   try {
     const { provider, model } = getProviderInfo();
     const providerLabel = provider === 'gemini' ? '🟦 Gemini' : '🟣 Anthropic';
-    console.log(`Second Brain v${version} running at http://localhost:${PORT}`);
+    console.log(`The Curator v${version} running at http://localhost:${PORT}`);
     console.log(`LLM provider: ${providerLabel}  |  model: ${model}`);
   } catch (err) {
-    console.log(`Second Brain running at http://localhost:${PORT}`);
+    console.log(`The Curator running at http://localhost:${PORT}`);
     console.warn(`⚠️  ${err.message}`);
   }
 });

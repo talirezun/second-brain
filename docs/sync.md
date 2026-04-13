@@ -1,12 +1,12 @@
 # Sync across computers
 
-Keep your Second Brain in sync across multiple computers — for free, with no subscription, using a private GitHub repository that only you can access.
+Keep your The Curator in sync across multiple computers — for free, with no subscription, using a private GitHub repository that only you can access.
 
 ---
 
 ## What sync does and why it's useful
 
-By default, your Second Brain lives only on one computer. If you use a laptop at home and a desktop at university, your knowledge stays stuck on whichever machine you last used it on.
+By default, your knowledge base managed by The Curator lives only on one computer. If you use a laptop at home and a desktop at university, your knowledge stays stuck on whichever machine you last used it on.
 
 The Sync feature solves this. It uses a **free, private GitHub repository** as a middleman: you push your knowledge up to GitHub, then pull it down on your other computer. Your notes never leave GitHub's servers (which only you can access — the repository is private), and you never need to pay for a sync subscription.
 
@@ -37,7 +37,7 @@ Compared to alternatives:
 Before you start, you need:
 
 1. **A free GitHub account** — sign up at [github.com](https://github.com) if you don't have one
-2. **The Second Brain app installed** on at least one computer (see the [User Guide](user-guide.md) for installation steps)
+2. **The The Curator app installed** on at least one computer (see the [User Guide](user-guide.md) for installation steps)
 3. **An internet connection** when you sync (not required for normal use)
 
 That's it. No developer tools, no command line, no extra software.
@@ -57,11 +57,11 @@ Start your server (`node src/server.js`) and open `http://localhost:3333`. Click
 Before the wizard can continue, you need to create a repository on GitHub to store your knowledge. Do this now:
 
 1. Go to [github.com/new](https://github.com/new)
-2. Give it a name — something like `my-second-brain` or `knowledge-base`
+2. Give it a name — something like `my-curator-brain` or `curator-knowledge`
 3. Set visibility to **Private** (this is important — keeps your notes private)
 4. Leave "Initialize this repository" unchecked (the wizard will do this)
 5. Click **Create repository**
-6. Copy the repository URL — it looks like `https://github.com/yourusername/my-second-brain.git`
+6. Copy the repository URL — it looks like `https://github.com/yourusername/my-curator-brain.git`
 
 Now go back to the wizard.
 
@@ -77,7 +77,7 @@ To create one:
 
 1. Go to [github.com/settings/tokens](https://github.com/settings/tokens)
 2. Click **Generate new token** → **Generate new token (classic)**
-3. Give it a name like "Second Brain sync"
+3. Give it a name like "The Curator sync"
 4. Set **Expiration** to **No expiration** (recommended — so you don't have to repeat this every few months)
 5. Under **Select scopes**, tick the **`repo`** checkbox (this gives access to private repositories)
 6. Scroll down and click **Generate token**
@@ -100,7 +100,7 @@ Click **Finish**. The wizard processes the connection, initialises the repositor
 
 Once sync is working on your first computer, adding a second one takes about 2 minutes.
 
-1. Install the Second Brain app on the second computer (follow the [User Guide](user-guide.md) steps 1–6)
+1. Install the The Curator app on the second computer (follow the [User Guide](user-guide.md) steps 1–6)
 2. Open `http://localhost:3333` and go to the **Sync** tab
 3. Run through the wizard — same repo URL, same PAT (or create a new one if you lost the original)
 4. At Step 3, choose **Pull** to download the knowledge from GitHub

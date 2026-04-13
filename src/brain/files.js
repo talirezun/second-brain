@@ -263,7 +263,7 @@ Detailed explanation with context.
 
   return `# Domain: ${displayName}
 
-This is a dedicated second brain for ${displayName.toLowerCase()} topics.
+This is a dedicated knowledge curator for ${displayName.toLowerCase()} topics.
 
 ## Scope
 ${cfg.scope}

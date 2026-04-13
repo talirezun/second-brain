@@ -1,4 +1,4 @@
-# User Guide
+# User Guide — The Curator
 
 This guide covers everything from first-time setup to daily use. No technical background is required.
 
@@ -27,21 +27,43 @@ This guide covers everything from first-time setup to daily use. No technical ba
 
 ## 1. What is this app?
 
-Second Brain is a personal knowledge system. You feed it documents — articles, PDFs, notes — and it:
+The Curator is a local, AI-powered knowledge curation system. You feed it documents — articles, PDFs, notes — and it:
 
-- Automatically extracts the key people, tools, ideas, and concepts
-- Builds a wiki of interlinked pages (like Wikipedia, but just for you)
+- Automatically **atomizes** them into three network components: *Entities* (people, tools, companies), *Concepts* (ideas, techniques, frameworks), and *Summaries* (source narratives that connect them)
+- Builds a **compounding wiki** of interlinked pages — unlike RAG systems that re-derive knowledge on every query, The Curator writes persistent pages that grow richer with every source you add
 - Lets you have a **multi-turn AI conversation** with your knowledge base, with full memory of past conversations
-- Produces a visual knowledge graph you can explore in Obsidian
+- Produces a **visual knowledge graph** you can explore in Obsidian, with auto-colored nodes by type
 
-The big idea: instead of one giant notebook where everything gets lost, you have **separate, focused wikis per topic** (e.g. AI/Tech, Business, Personal Growth). Each one gets smarter every time you add a new source.
+The big idea: instead of one giant notebook where everything gets lost, you have **separate, focused wikis per topic** (e.g. AI/Tech, Business, Personal Growth). Each one compounds with every source you add. You are the curator; the AI is the diligent librarian.
 
-You have two powerful ways to explore what you know:
+---
 
-| Mode | Tool | Best for |
-|------|------|----------|
-| **Visual** | Obsidian graph | Spotting clusters and unexpected connections at a glance |
-| **Conversational** | AI chat (built-in) | Asking "how does X relate to Y?", synthesising across topics, connecting the dots with AI help |
+## 1b. Who this is for
+
+The Curator is domain-agnostic. Here are the main profiles who benefit from it:
+
+**Content Creators (Writers, Podcasters, YouTubers)**
+You consume hundreds of articles, books, and podcasts, but face a blank page when it's time to create. Ingest all your research — the Curator builds a content assembly line. The graph shows which themes you naturally gravitate toward; clicking an entity shows every source you've read about it.
+
+**Researchers & Academics**
+Batch-upload 20+ PDFs on a topic. The Curator extracts all distinct methodologies and authors. Use the graph's visual "Idea Collisions" to identify gaps in the literature — intersections between concepts that no existing paper has yet addressed. The chat synthesises findings across all papers with source citations.
+
+**Executives & Strategists**
+Upload reports, competitor analyses, and meeting transcripts. Build an intelligence layer where the most-referenced nodes grow largest, giving you a visual heat map of your knowledge. Query for synthesised strategic answers that bypass recency bias.
+
+**Software Architects & Development Teams**
+Ingest architecture decision records, API specs, and post-mortems. New team members can ask *"Why did we choose X over Y?"* and get an answer cited directly from a document written years ago. The Curator becomes a conversational Senior Engineer that never leaves.
+
+**Medical & Scientific Researchers**
+Drop in clinical trial PDFs and papers. The graph reveals hidden intersections — a compound used in one domain showing efficacy in another study — by visually bridging entity nodes across your entire literature corpus.
+
+**Entrepreneurs & Startup Founders**
+Feed it customer interview transcripts, investor updates, and market research. Query for synthesised strategic answers grounded entirely in your own collected intelligence, not generic AI output.
+
+**Personal Growth & Self-Analysis**
+Ingest journal entries, book highlights, and podcast notes. Query recurring patterns across months of writing. The Curator provides the objectivity of a third party on your own thinking.
+
+→ See [docs/use-cases.md](use-cases.md) for detailed workflows for each profile.
 
 ---
 
@@ -72,15 +94,15 @@ If you see a number like `v22.0.0`, you're good. If you see an error, download N
 In your terminal, paste this and press Enter:
 
 ```bash
-git clone https://github.com/talirezun/second-brain.git
+git clone https://github.com/talirezun/the-curator.git
 ```
 
-This downloads the project into a folder called `second-brain` in whatever directory you're currently in.
+This downloads the project into a folder called `the-curator` in whatever directory you're currently in.
 
 ### Step 2 — Go into the project folder
 
 ```bash
-cd second-brain
+cd the-curator
 ```
 
 ### Step 3 — Install dependencies
@@ -115,7 +137,7 @@ The app reads its settings from a file called `.env` in the project folder.
 
 ### Step 1 — Create the .env file
 
-In your terminal (make sure you're still in the `second-brain` folder), run:
+In your terminal (make sure you're still in the `the-curator` folder), run:
 
 ```bash
 cp .env.example .env
@@ -147,7 +169,7 @@ Save the file and close it.
 
 ## 6. Start the server
 
-Every time you want to use Second Brain, you need to start the server first.
+Every time you want to use The Curator, you need to start the server first.
 
 Open your terminal, go to the project folder, and run:
 
@@ -158,7 +180,7 @@ node src/server.js
 You should see:
 
 ```
-Second Brain running at http://localhost:3333
+The Curator running at http://localhost:3333
 LLM provider: 🟦 Gemini  |  model: gemini-2.5-flash-lite
 ```
 
@@ -176,7 +198,7 @@ With the server running, open your web browser (Chrome, Safari, Firefox — any 
 http://localhost:3333
 ```
 
-You'll see the Second Brain interface with five tabs at the top: **Ingest**, **Chat**, **Wiki**, **Sync**, and **Domains**.
+You'll see the The Curator interface with five tabs at the top: **Ingest**, **Chat**, **Wiki**, **Sync**, and **Domains**.
 
 > `localhost:3333` means "a web page running on your own computer, on port 3333". It only works when your server is running and is not accessible to anyone else on the internet.
 
@@ -184,7 +206,7 @@ You'll see the Second Brain interface with five tabs at the top: **Ingest**, **C
 
 ## 8. Ingest a source
 
-"Ingesting" means feeding a document to your Second Brain. This is how you build up your knowledge.
+"Ingesting" means feeding a document to your The Curator. This is how you build up your knowledge.
 
 ### Supported file types
 
@@ -202,7 +224,7 @@ You'll see the Second Brain interface with five tabs at the top: **Ingest**, **C
 2. Select a **domain** from the dropdown (e.g. "AI Tech", "Business Finance", or "Personal Growth")
 3. Drag your file onto the drop zone, or click it to browse your files
 4. Click **Ingest**
-5. Wait — you'll see a spinner that says "Second Brain is reading your source and updating the wiki..." This usually takes **15–60 seconds** depending on the document length. Do not close the browser or refresh the page.
+5. Wait — you'll see a spinner that says "The Curator is reading your source and updating the wiki..." This usually takes **15–60 seconds** depending on the document length. Do not close the browser or refresh the page.
 6. When finished, you'll see a list of all the wiki pages that were created or updated
 
 ### What happens automatically
@@ -298,7 +320,7 @@ Conversations are saved automatically and persist across server restarts. You ca
 
 ## 10. Manage your domains
 
-The **Domains** tab is your control panel for organising your Second Brain. Instead of manually creating folders in Finder, you can create, rename, and delete domains entirely from within the app.
+The **Domains** tab is your control panel for organising your The Curator. Instead of manually creating folders in Finder, you can create, rename, and delete domains entirely from within the app.
 
 ### What is a domain?
 
@@ -354,7 +376,7 @@ The folder is removed from disk and disappears from all dropdowns. Obsidian refl
 
 ### Obsidian and domain management
 
-Because Second Brain writes directly to the `domains/` folder that Obsidian watches, all domain changes are reflected in Obsidian instantly — no refresh or export needed. A new domain becomes a new folder in Obsidian's file explorer. A renamed or deleted domain updates the graph accordingly.
+Because The Curator writes directly to the `domains/` folder that Obsidian watches, all domain changes are reflected in Obsidian instantly — no refresh or export needed. A new domain becomes a new folder in Obsidian's file explorer. A renamed or deleted domain updates the graph accordingly.
 
 ---
 
@@ -374,14 +396,16 @@ This is useful for a quick check. For a much richer experience — including the
 
 ## 12. See your knowledge graph in Obsidian
 
-Obsidian is a free note-taking app that reads the exact same markdown files that Second Brain writes. It gives you an interactive, visual knowledge graph — like the one shown in the concept video.
+Obsidian is a free note-taking app that reads the exact same markdown files that The Curator writes. It gives you an interactive, visual knowledge graph — like the one shown in the concept video.
+
+The Curator is purpose-built to act as the *engine* for Obsidian's visual interface. Obsidian is the IDE; the AI is the programmer; the wiki is the codebase. The Curator handles Atomic Decomposition — breaking sources into Entities, Concepts, and Summaries — so Obsidian can visualize the resulting neural network.
 
 ### First-time setup
 
 1. Download and install **Obsidian** from [obsidian.md](https://obsidian.md) (it's free)
 2. Open Obsidian
 3. On the welcome screen, click **Open folder as vault**
-4. Navigate to your `second-brain` folder on your computer, then go inside the `domains` folder
+4. Navigate to your `the-curator` folder on your computer, then go inside the `domains` folder
 5. Select `domains` and click **Open**
 
 Obsidian will scan all the markdown files and build an index instantly.
@@ -442,7 +466,7 @@ SORT created DESC
 They share the same files — there is nothing to sync or export.
 
 ```
-Second Brain app          Obsidian
+The Curator app          Obsidian
 (localhost:3333)          (desktop app)
        │                       │
        │   Both read/write     │
@@ -451,7 +475,7 @@ Second Brain app          Obsidian
 
 **The intended workflow:**
 
-1. Use the **Second Brain app** to ingest documents and ask questions
+1. Use **The Curator app** to ingest documents and ask questions
 2. Open **Obsidian** to visually explore the knowledge graph, browse pages, and manually add your own notes
 
 You can have both open at the same time. When you ingest something in the app, switch to Obsidian and press `Ctrl/Cmd + R` to refresh — the new pages appear instantly.
@@ -485,7 +509,7 @@ Re-ingesting is safe — it merges new information with what already exists. Pag
 
 A healthy knowledge network passes this test: open any **concept** page, set the local graph depth to 2. You should see the concept connected to multiple summaries *and* multiple entities. If a concept connects to only one or two things, you need to ingest more sources that reference it.
 
-**The Orphan check:** In Obsidian's Graph View, zoom out and look for dots floating alone with no connections. Every page should have at least one `[[link]]`. Your goal is zero orphans — Second Brain actively cross-references all pages during ingest.
+**The Orphan check:** In Obsidian's Graph View, zoom out and look for dots floating alone with no connections. Every page should have at least one `[[link]]`. Your goal is zero orphans — The Curator actively cross-references all pages during ingest.
 
 ---
 
@@ -516,7 +540,7 @@ Use **Obsidian** when you want to:
 ### They are complementary, not competing
 
 ```
-                 Second Brain app
+                 The Curator app
                  (Chat tab)
                        │
           Multi-turn AI reasoning
@@ -542,7 +566,7 @@ Both tools read the same `domains/` folder. There is nothing to sync. Ingest in 
 
 ## 14. Daily workflow
 
-Here is the recommended way to use Second Brain day-to-day:
+Here is the recommended way to use The Curator day-to-day:
 
 ### When you find something worth keeping
 
@@ -593,10 +617,10 @@ You only do this once. After that, syncing is two button clicks.
 
 #### Step 2 — Create a Personal Access Token
 
-This is how Second Brain gets permission to read and write your private repository.
+This is how The Curator gets permission to read and write your private repository.
 
-1. Go to **[github.com/settings/tokens/new](https://github.com/settings/tokens/new?scopes=repo&description=second-brain)** (you may need to sign in)
-2. Give the token any name — e.g. `second-brain`
+1. Go to **[github.com/settings/tokens/new](https://github.com/settings/tokens/new?scopes=repo&description=the-curator)** (you may need to sign in)
+2. Give the token any name — e.g. `the-curator`
 3. Under **Select scopes**, check the **repo** box ☑
 4. Set **Expiration** to "No expiration" (recommended — so you don't need to regenerate it)
 5. Scroll down and click **Generate token**
@@ -604,7 +628,7 @@ This is how Second Brain gets permission to read and write your private reposito
 
 #### Step 3 — Connect in the app
 
-1. Click the **Sync** tab in Second Brain
+1. Click the **Sync** tab in The Curator
 2. Click **Set Up Sync — takes 3 minutes**
 3. **Step 1 of 3:** Paste your repository URL → click Continue
 4. **Step 2 of 3:** Paste your token → click Continue
@@ -676,7 +700,7 @@ Node.js is not installed, or the terminal can't find it. Download it from [nodej
 
 Your `.env` file is missing or the key is not set correctly. Check:
 - The file is named `.env` (not `.env.example` or `.env.txt`)
-- It is inside the `second-brain` folder
+- It is inside the `the-curator` folder
 - The line reads `GEMINI_API_KEY=` followed immediately by your key (no spaces around `=`)
 
 **The server starts but `http://localhost:3333` shows "This site can't be reached"**
@@ -707,4 +731,4 @@ Then restart the server and go to `http://localhost:4000` instead.
 
 **I closed the terminal — the app stopped working**
 
-That's expected. The server runs in your terminal. Always keep the terminal window open while using the app. To restart: open a new terminal, navigate to the project folder (`cd second-brain`), and run `node src/server.js`.
+That's expected. The server runs in your terminal. Always keep the terminal window open while using the app. To restart: open a new terminal, navigate to the project folder (`cd the-curator`), and run `node src/server.js`.

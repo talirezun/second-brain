@@ -2306,3 +2306,101 @@ Pages created or updated:
   - concepts/autonomous-loops-in-ai.md
   - concepts/context-engineering-for-ai-agents.md
 
+## [2026-04-13] ingest | From Google AI Studio to Production: Building Lumina v1 in 48 Hours
+Pages created or updated:
+  - summaries/from-google-ai-studio-to-production-building-lumina-v1-in-48-hours.md
+  - concepts/vibe-coding.md
+  - concepts/context-engineering.md
+  - concepts/agent-handoffs.md
+  - concepts/development-democratization.md
+  - concepts/mvp-development.md
+  - concepts/production-deployment.md
+  - entities/tali-rezun.md
+  - entities/lumina.md
+  - entities/google-ai-studio.md
+  - entities/augment-code.md
+  - entities/anthropic-haiku-4.5.md
+  - entities/google-gemini-2.5-flash.md
+  - entities/react-19.md
+  - entities/typescript.md
+  - entities/vite.md
+  - entities/tailwind-css.md
+  - entities/firebase-hosting.md
+  - entities/firestore.md
+  - entities/google-cloud-functions.md
+  - entities/google-cloud-storage.md
+  - entities/google-oauth.md
+  - entities/firebase-console.md
+  - entities/pdf-parse.md
+  - entities/stripe.md
+  - entities/digitalocean.md
+  - entities/cotrugli-business-school.md
+  - entities/google.md
+  - concepts/paid-firebase-hosting.md
+  - concepts/google-oauth-authentication.md
+
+## [2026-04-13] ingest | The Great Reckoning: Vanguard Leadership in the Age of Intelligent Machines
+Pages created or updated:
+  - summaries/the-great-reckoning-vanguard-leadership-in-the-age-of-intelligent-machines.md
+  - concepts/neo-era.md
+  - concepts/vanguard-leadership-framework.md
+  - concepts/neo-cotrugli-triple-entry-ncte.md
+  - concepts/machine-economy.md
+  - concepts/three-horizon-model-ai-impact.md
+  - concepts/democratization-paradox-ai.md
+  - concepts/context-engineering.md
+  - concepts/the-70-percent-problem.md
+  - concepts/ai-assisted-development-economics.md
+  - concepts/human-ai-integration-hai5.md
+  - concepts/strategic-abdication-regulation.md
+  - concepts/leapfrog-development-africa.md
+  - concepts/vanguard-leadership-imperative.md
+  - entities/drazen-kapusta.md
+  - entities/tali-rezun.md
+  - entities/cotrugli-business-school.md
+  - entities/hashnet-technologies.md
+  - entities/unido.md
+  - entities/eu-ai-initiatives.md
+  - entities/african-development-bank.md
+  - entities/undp.md
+  - entities/8ra-consortium.md
+  - entities/slovenia-si-chain.md
+  - entities/dell-technologies.md
+  - entities/anthropic.md
+  - entities/mit.md
+  - entities/goldman-sachs.md
+  - entities/j-p-morgan.md
+  - entities/y-combinator.md
+  - entities/gartner.md
+  - entities/google-deepmind.md
+  - entities/benedetto-cotrugli.md
+  - entities/dario-amodei.md
+  - entities/addy-osmani.md
+  - entities/nicholas-zakas.md
+  - entities/zen-van-riel.md
+  - entities/boris-cherny.md
+  - entities/amelia-wattenberger.md
+  - entities/joseph-dimon.md
+  - entities/google-ai-studio.md
+  - entities/claude-desktop.md
+  - entities/augment-code.md
+  - entities/lumina-ai.md
+  - entities/amazon.md
+  - entities/ups.md
+  - entities/intel.md
+  - entities/citigroup.md
+  - entities/nissan.md
+  - entities/nestle.md
+  - entities/microsoft.md
+  - entities/bosch.md
+  - entities/verizon.md
+  - entities/accenture.md
+  - entities/ford.md
+  - entities/novo-nordisk.md
+  - entities/procter-gamble.md
+  - entities/siemens.md
+  - entities/pwc.md
+  - entities/ibm.md
+  - entities/morgan-stanley.md
+  - entities/eu-ai-act.md
+

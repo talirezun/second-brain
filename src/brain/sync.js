@@ -132,8 +132,8 @@ export async function setup(repoUrl, token, mode) {
 
   // Init and configure git identity
   await git('init');
-  await git('config user.email "secondbrain@local"');
-  await git('config user.name "Second Brain"');
+  await git('config user.email "thecurator@local"');
+  await git('config user.name "The Curator"');
 
   // Set remote (add or update)
   try {
@@ -145,7 +145,7 @@ export async function setup(repoUrl, token, mode) {
   if (mode === 'push') {
     await git('add -A');
     try {
-      await git('commit -m "Initial Second Brain sync"');
+      await git('commit -m "Initial The Curator sync"');
     } catch (err) {
       if (!err.message.includes('nothing to commit')) throw err;
     }
@@ -182,7 +182,7 @@ export async function push() {
   const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 
   await git('add -A');
-  await git(`commit -m "Second Brain sync — ${date} ${time} — ${changesCount} change${changesCount !== 1 ? 's' : ''}"`);
+  await git(`commit -m "The Curator sync — ${date} ${time} — ${changesCount} change${changesCount !== 1 ? 's' : ''}"`);
   await git('push', { timeout: 120000 });
 
   return { pushed: true, changesCount };

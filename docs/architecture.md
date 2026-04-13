@@ -4,7 +4,11 @@
 
 ## Overview
 
-Second Brain is a local Node.js web application. It has no external database — all knowledge is stored as plain markdown files on disk. An LLM (Google Gemini or Anthropic Claude, selected by which API key is in `.env`) is the only external dependency at runtime.
+The Curator is a local Node.js web application. It has no external database — all knowledge is stored as plain markdown files on disk. An LLM (Google Gemini or Anthropic Claude, selected by which API key is in `.env`) is the only external dependency at runtime.
+
+### Core design philosophy: Curation, not retrieval
+
+The Curator implements the "compiling wiki" pattern rather than standard RAG. When a source is ingested, the LLM does not merely index it for later retrieval — it integrates the knowledge into persistent wiki pages. On every subsequent ingest, existing entity and concept pages are updated rather than duplicated. The result is a knowledge base that compounds over time: cross-references are pre-built, contradictions are flagged at write time, and the synthesis already reflects the full corpus when a query arrives. This is why the chat pipeline can send the entire wiki to the LLM in a single context window rather than relying on embedding-based chunk retrieval.
 
 ```
 Browser (http://localhost:3333)
@@ -67,7 +71,7 @@ Obsidian (a separate desktop app) reads the same `domains/` folder directly — 
 ## Directory structure
 
 ```
-second-brain/
+the-curator/
 ├── src/
 │   ├── server.js               Express entry point (port 3333)
 │   ├── routes/
@@ -346,3 +350,6 @@ Obsidian's Properties system (introduced 2023) and the Dataview plugin both cons
 
 **Why include `type/entity`, `type/concept`, `type/summary` as tag values rather than a separate field?**
 Obsidian's Graph View Groups filter operates on tags, not on arbitrary frontmatter fields. Using `tags: [..., type/entity]` means one setting in the graph panel (`tag:#type/entity → Blue`) colors all current and future entity nodes with no further configuration. A separate `nodeColor: blue` field would have no effect on the graph — Obsidian doesn't read custom fields for visual styling. The tag approach is the only mechanism that hooks into Obsidian's native graph coloring.
+
+**Why "Atomic Decomposition" rather than "chunking"?**
+Standard RAG pipelines chunk documents by token count or paragraph boundary — a mechanical split with no semantic awareness. The Curator's ingest pipeline performs Atomic Decomposition: the LLM reads the entire source and extracts discrete, named artifacts — Entities (nouns: specific people, tools, companies) and Concepts (verbs/ideas: techniques, frameworks, principles) — and writes a persistent page for each. These are semantically coherent units with cross-references baked in, not arbitrary text fragments. The distinction matters: chunks are retrieval units; atomic pages are knowledge units. They compound.

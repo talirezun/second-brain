@@ -22,7 +22,7 @@ document.getElementById('stop-btn').addEventListener('click', async () => {
     <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;
                 height:100vh;gap:16px;font-family:system-ui;color:#e2e8f0;background:#0f1117;">
       <div style="font-size:48px;">🧠</div>
-      <div style="font-size:20px;font-weight:600;">Second Brain stopped</div>
+      <div style="font-size:20px;font-weight:600;">The Curator stopped</div>
       <div style="font-size:14px;color:#64748b;">Click the app icon to start it again.</div>
     </div>`;
 });

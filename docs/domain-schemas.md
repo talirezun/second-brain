@@ -1,5 +1,7 @@
 # Domain Schemas
 
+The schema file (previously called `CLAUDE.md` by convention from the original Karpathy pattern) is the single configuration artifact that shapes The Curator's Atomic Decomposition for a given domain. It tells the AI which types of Entities and Concepts to extract, how to name and structure pages, and how to maintain cross-references as the wiki grows.
+
 Every domain has a `CLAUDE.md` file that acts as the **system prompt** for all Claude operations in that domain. It is the single most important configuration file in the system.
 
 Claude reads this file before every ingest and every query. It controls:

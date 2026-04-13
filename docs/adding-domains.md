@@ -80,7 +80,7 @@ This is the most important file — it tells the AI how to structure knowledge f
 ```markdown
 # Domain: My Domain
 
-This is a dedicated second brain for [describe the topic].
+This is a dedicated wiki managed by The Curator for [describe the topic].
 
 ## Scope
 [What topics belong here.]
