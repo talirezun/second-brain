@@ -272,15 +272,28 @@ export async function injectSummaryBacklinks(summarySlug, summaryContent, wikiDi
     // Strip folder prefix if the LLM included it (e.g. "entities/tali-rezun" → "tali-rezun")
     if (entityName.includes('/')) entityName = entityName.split('/').pop();
 
-    // Apply the same title-prefix stripping as writePage() — redirects "dr-tali-rezun" → "tali-rezun"
+    // Pass A: strip title prefix (dr-, mr-, prof-, etc.)
     const stripped = entityName.replace(TITLE_PREFIX_RE, '');
     if (stripped !== entityName) {
       const canonFile = path.join(wikiDir, 'entities', `${stripped}.md`);
       if (existsSync(canonFile)) entityName = stripped;
     }
 
-    const entityFile = path.join(wikiDir, 'entities', `${entityName}.md`);
-    if (!existsSync(entityFile)) continue;
+    // Pass B: hyphen-normalised match — "talirezun" → "tali-rezun.md", same
+    // logic as writePage() so backlinks always reach the canonical entity file
+    // even when the LLM drops or adds hyphens in the entity name.
+    let entityFile = path.join(wikiDir, 'entities', `${entityName}.md`);
+    if (!existsSync(entityFile)) {
+      try {
+        const norm = entityName.replace(/-/g, '').toLowerCase();
+        const existing = await readdir(path.join(wikiDir, 'entities'));
+        const match = existing.find(f =>
+          f.endsWith('.md') && f.replace(/-/g, '').toLowerCase() === norm + '.md'
+        );
+        if (match) entityFile = path.join(wikiDir, 'entities', match);
+        else continue;
+      } catch { continue; }
+    }
 
     try {
       let entityContent = await readFile(entityFile, 'utf8');
