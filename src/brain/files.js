@@ -239,6 +239,51 @@ function stripBlanksInBulletSections(content) {
   return result.join('\n');
 }
 
+/**
+ * After a summary page is written, inject [[summaries/slug]] backlinks into
+ * every entity page listed under "Entities Mentioned" in that summary.
+ *
+ * This creates bidirectional graph connections in Obsidian automatically —
+ * every entity knows which summaries reference it, not just the other way around.
+ * Safe to call on re-ingest: dedupKey() prevents duplicate backlinks.
+ */
+export async function injectSummaryBacklinks(summarySlug, summaryContent, wikiDir) {
+  // Extract the summary title from the # heading for use in the backlink description
+  const titleMatch = summaryContent.match(/^#\s+(.+)$/m);
+  const title = titleMatch ? titleMatch[1].trim() : summarySlug;
+
+  const entityBullets = extractBulletsFromSection(summaryContent, 'Entities Mentioned');
+
+  for (const bullet of entityBullets) {
+    const linkMatch = bullet.match(/\[\[([^\]]+)\]\]/);
+    if (!linkMatch) continue;
+    let entityName = linkMatch[1].trim();
+
+    // Strip folder prefix if the LLM included it (e.g. "entities/tali-rezun" → "tali-rezun")
+    if (entityName.includes('/')) entityName = entityName.split('/').pop();
+
+    // Apply the same title-prefix stripping as writePage() — redirects "dr-tali-rezun" → "tali-rezun"
+    const stripped = entityName.replace(TITLE_PREFIX_RE, '');
+    if (stripped !== entityName) {
+      const canonFile = path.join(wikiDir, 'entities', `${stripped}.md`);
+      if (existsSync(canonFile)) entityName = stripped;
+    }
+
+    const entityFile = path.join(wikiDir, 'entities', `${entityName}.md`);
+    if (!existsSync(entityFile)) continue;
+
+    try {
+      let entityContent = await readFile(entityFile, 'utf8');
+      const backlink = `- [[summaries/${summarySlug}]] — ${title}`;
+      entityContent = injectBulletsIntoSection(entityContent, 'Related', [backlink]);
+      entityContent = stripBlanksInBulletSections(entityContent);
+      await writeFile(entityFile, entityContent, 'utf8');
+    } catch (err) {
+      console.warn(`[injectSummaryBacklinks] Failed to update ${entityName}: ${err.message}`);
+    }
+  }
+}
+
 function mergeWikiPage(existingContent, incomingContent) {
   const ACCUMULATE = [
     'Related',
@@ -361,6 +406,14 @@ export async function writePage(domain, relativePath, content) {
   if (!skipMerge) final = stripBlanksInBulletSections(final);
 
   await writeFile(fullPath, final, 'utf8');
+
+  // 6. For summary pages, inject [[summaries/slug]] backlinks into every
+  //    entity listed under "Entities Mentioned" — builds the full bidirectional
+  //    graph automatically so Obsidian shows all connections.
+  if (canonPath.startsWith('summaries/')) {
+    const summarySlug = path.basename(canonPath, '.md');
+    await injectSummaryBacklinks(summarySlug, final, wikiPath(domain));
+  }
 }
 
 export async function appendLog(domain, entry) {
