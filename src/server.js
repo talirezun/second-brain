@@ -39,16 +39,6 @@ app.get('/api/health',  (_req, res) => res.json({ ok: true, version }));
 // Version endpoint — used by the UI to display the current app version
 app.get('/api/version', (req, res) => res.json({ version }));
 
-// ── Shutdown endpoint — stops the server ─────────────────────────────────────
-app.post('/api/shutdown', (_req, res) => {
-  res.json({ ok: true });
-  setTimeout(() => {
-    if (typeof server.closeAllConnections === 'function') server.closeAllConnections();
-    server.close(() => process.exit(0));
-    setTimeout(() => process.exit(0), 1500);
-  }, 300);
-});
-
 // ── Restart endpoint — used after updates ────────────────────────────────────
 // Closes this server (frees port), spawns a new process, then exits.
 app.post('/api/restart', (_req, res) => {

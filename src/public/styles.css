@@ -134,25 +134,6 @@ nav {
 }
 .tab-btn.active svg { opacity: 1; }
 
-/* ── Stop button (power icon) ── */
-.btn.stop {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: none;
-  border: 1px solid var(--border-subtle);
-  color: var(--text-muted);
-  padding: 5px;
-  margin-left: auto;
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: color 0.15s, border-color 0.15s, background 0.15s;
-}
-.btn.stop:hover {
-  color: var(--error);
-  border-color: rgba(243,139,168,0.4);
-  background: var(--error-dim);
-}
 
 /* ── Version badge ── */
 .app-version {

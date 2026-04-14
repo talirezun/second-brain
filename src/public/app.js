@@ -7,22 +7,6 @@ fetch('/api/version')
   })
   .catch(() => {}); // non-critical — silently skip if unavailable
 
-// ── Stop button (stops the server) ────────────────────────────────────────────
-document.getElementById('stop-btn').addEventListener('click', async () => {
-  try {
-    await fetch('/api/shutdown', { method: 'POST' });
-  } catch {}
-  // Show stopped screen
-  document.body.innerHTML = `
-    <div style="display:flex;flex-direction:column;align-items:center;
-         justify-content:center;height:100vh;gap:16px;font-family:system-ui;
-         color:#e2e8f0;background:#0f1117;">
-      <div style="font-size:48px;">🧠</div>
-      <div style="font-size:20px;font-weight:600;">The Curator stopped</div>
-      <div style="font-size:14px;color:#64748b;">You can close this tab. Click the app icon to start again.</div>
-    </div>`;
-});
-
 // ── Tabs ──────────────────────────────────────────────────────────────────────
 const tabBtns = document.querySelectorAll('.tab-btn');
 const tabs = document.querySelectorAll('.tab');
