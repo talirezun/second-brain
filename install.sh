@@ -195,26 +195,21 @@ if [[ ! -f "${INSTALL_DIR}/The Curator.app/Contents/Info.plist" ]]; then
   exit 1
 fi
 
-# Apply the brain icon and set app metadata
+# Apply the brain icon (must happen BEFORE codesign)
 if [[ -f "$APP_ICON" ]]; then
   cp "$APP_ICON" "${INSTALL_DIR}/The Curator.app/Contents/Resources/applet.icns"
 fi
 
-# Set proper app name in Info.plist (osacompile defaults to "applet")
-PLIST="${INSTALL_DIR}/The Curator.app/Contents/Info.plist"
-if [[ -f "$PLIST" ]]; then
-  /usr/libexec/PlistBuddy -c "Set :CFBundleName 'The Curator'" "$PLIST" 2>/dev/null || true
-fi
-
-# Remove macOS quarantine flag (set by Gatekeeper on downloaded files)
-# Without this, macOS may block the app or refuse to show the icon
+# Remove macOS quarantine flag so the app can launch without Gatekeeper prompts
 xattr -rd com.apple.quarantine "${INSTALL_DIR}/The Curator.app" 2>/dev/null || true
 
-# Re-sign the app so macOS treats it as a valid application bundle
+# Ad-hoc code sign — must be the LAST modification to the .app bundle
+# (any file change after signing invalidates the signature)
 codesign --force --deep --sign - "${INSTALL_DIR}/The Curator.app" 2>/dev/null || true
 
-# Force macOS to refresh the icon cache
+# Force macOS to recognise the new .app and refresh its icon
 touch "${INSTALL_DIR}/The Curator.app"
+killall Dock 2>/dev/null || true
 
 # ── Done ──────────────────────────────────────────────────────────────────────
 echo ""
