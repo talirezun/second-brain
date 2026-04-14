@@ -135,43 +135,8 @@ fi
 # ── Build The Curator.app ─────────────────────────────────────────────────────
 echo "  🔨  Building The Curator.app..."
 
-# Generate brain icon via Swift (optional — app works without custom icon)
-HAS_ICON=false
-cat > /tmp/curator_icon.swift << 'SWIFTEOF'
-import AppKit
-import Foundation
-let size = 1024
-let nsSize = NSSize(width: size, height: size)
-let image = NSImage(size: nsSize)
-image.lockFocus()
-NSColor(red: 0.38, green: 0.40, blue: 0.93, alpha: 1.0).setFill()
-NSBezierPath(roundedRect: NSRect(x:0,y:0,width:size,height:size), xRadius:200, yRadius:200).fill()
-NSColor(red: 0.55, green: 0.57, blue: 0.98, alpha: 0.25).setFill()
-NSBezierPath(roundedRect: NSRect(x:30,y:30,width:size-60,height:size-60), xRadius:170, yRadius:170).fill()
-let emoji = "🧠" as NSString
-let font = NSFont.systemFont(ofSize: 640)
-let attrs: [NSAttributedString.Key: Any] = [.font: font]
-let ts = emoji.size(withAttributes: attrs)
-emoji.draw(at: NSPoint(x:(Double(size)-ts.width)/2, y:(Double(size)-ts.height)/2-10), withAttributes: attrs)
-image.unlockFocus()
-let tiff = image.tiffRepresentation!
-let bmp = NSBitmapImageRep(data: tiff)!
-let png = bmp.representation(using: .png, properties: [:])!
-try! png.write(to: URL(fileURLWithPath: "/tmp/curator_icon_1024.png"))
-SWIFTEOF
-
-if swift /tmp/curator_icon.swift 2>/dev/null; then
-  ICONSET=/tmp/CuratorIcon.iconset
-  rm -rf "$ICONSET" && mkdir "$ICONSET"
-  for SIZE in 16 32 128 256 512; do
-    sips -z $SIZE $SIZE /tmp/curator_icon_1024.png --out "$ICONSET/icon_${SIZE}x${SIZE}.png" >/dev/null 2>&1
-    sips -z $((SIZE*2)) $((SIZE*2)) /tmp/curator_icon_1024.png --out "$ICONSET/icon_${SIZE}x${SIZE}@2x.png" >/dev/null 2>&1
-  done
-  sips -z 1024 1024 /tmp/curator_icon_1024.png --out "$ICONSET/icon_512x512@2x.png" >/dev/null 2>&1
-  if iconutil -c icns "$ICONSET" -o /tmp/CuratorIcon.icns 2>/dev/null; then
-    HAS_ICON=true
-  fi
-fi
+# App icon — pre-built .icns is included in the repo (no Swift or Xcode needed)
+APP_ICON="${INSTALL_DIR}/images/applet.icns"
 
 NODE_PATH="$(which node)"
 cat > /tmp/TheCurator.applescript << ASEOF
@@ -228,9 +193,9 @@ if ! osacompile -o "${INSTALL_DIR}/The Curator.app" /tmp/TheCurator.applescript 
   exit 1
 fi
 
-# Apply custom icon if it was generated successfully
-if [[ "$HAS_ICON" == "true" ]]; then
-  cp /tmp/CuratorIcon.icns "${INSTALL_DIR}/The Curator.app/Contents/Resources/applet.icns"
+# Apply the brain icon to the .app
+if [[ -f "$APP_ICON" ]]; then
+  cp "$APP_ICON" "${INSTALL_DIR}/The Curator.app/Contents/Resources/applet.icns"
 fi
 touch "${INSTALL_DIR}/The Curator.app"
 
@@ -240,18 +205,39 @@ echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━
 echo -e "${GREEN}  ✅  The Curator installed successfully!${NC}"
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
-echo "  📍  Installed at: ${INSTALL_DIR}"
+echo "  📍  Installed at: ~/the-curator"
 echo ""
-echo -e "  ${BOLD}Next steps:${NC}"
-echo "  1. Open Finder → Go → Go to Folder (Cmd+Shift+G)"
-echo "  2. Type: ${INSTALL_DIR}"
-echo "  3. Drag 'The Curator.app' to your Dock"
-echo "  4. Click the Dock icon to launch"
-echo ""
-echo "  The app will open a setup wizard to guide you through"
-echo "  adding your API key and creating your first domain."
+echo -e "  ${BOLD}To add The Curator to your Dock:${NC}"
+echo "  1. Open Finder"
+echo "  2. Press Cmd+Shift+G and type:  ~/the-curator"
+echo "  3. Drag 'The Curator' to your Dock"
 echo ""
 
-# Auto-open the app on first install
-echo -e "  ${BLUE}Opening The Curator now...${NC}"
-open "${INSTALL_DIR}/The Curator.app"
+# Auto-open: start the server and open the browser directly
+# (more reliable than launching the .app, which may fail on first run
+#  due to macOS Gatekeeper prompts or unsigned app restrictions)
+echo -e "  ${BLUE}Starting The Curator...${NC}"
+cd "${INSTALL_DIR}"
+nohup "${NODE_PATH}" src/server.js >> /tmp/the-curator.log 2>&1 &
+echo $! > /tmp/the-curator.pid
+
+# Wait for server to be ready
+ATTEMPTS=0
+while [[ $ATTEMPTS -lt 20 ]]; do
+  sleep 1
+  ATTEMPTS=$((ATTEMPTS + 1))
+  if curl -s --max-time 1 http://localhost:3333 > /dev/null 2>&1; then
+    echo ""
+    echo -e "  ${GREEN}The Curator is running at http://localhost:3333${NC}"
+    echo "  The setup wizard will guide you through adding your API key."
+    echo ""
+    open "http://localhost:3333"
+    exit 0
+  fi
+done
+
+echo ""
+echo -e "  ${YELLOW}The server is taking longer than expected to start.${NC}"
+echo "  Check the log: cat /tmp/the-curator.log"
+echo "  Or try opening http://localhost:3333 in your browser."
+echo ""
