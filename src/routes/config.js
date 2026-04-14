@@ -113,12 +113,20 @@ router.post('/api-keys', (req, res) => {
 
 // ── Update ──────────────────────────────────────────────────────────────────
 
-/** GET /api/config/update-check — compare local vs remote version */
+/** GET /api/config/update-check — compare local vs remote version AND git commit */
 router.get('/update-check', async (_req, res) => {
   try {
     const pkg = JSON.parse(readFileSync(path.join(PROJECT_ROOT, 'package.json'), 'utf8'));
     const current = pkg.version;
 
+    // Get local git commit hash
+    let localCommit = null;
+    try {
+      const { stdout } = await execAsync('git rev-parse --short HEAD', { cwd: PROJECT_ROOT });
+      localCommit = stdout.trim();
+    } catch { /* not a git repo — skip commit comparison */ }
+
+    // Get remote version from GitHub
     const response = await fetch(
       'https://raw.githubusercontent.com/talirezun/the-curator/main/package.json'
     );
@@ -126,7 +134,31 @@ router.get('/update-check', async (_req, res) => {
     const remote = await response.json();
     const latest = remote.version;
 
-    res.json({ current, latest, updateAvailable: latest !== current });
+    // Get remote git commit hash
+    let remoteCommit = null;
+    try {
+      const commitRes = await fetch(
+        'https://api.github.com/repos/talirezun/the-curator/commits/main',
+        { headers: { 'Accept': 'application/vnd.github.v3.sha' } }
+      );
+      if (commitRes.ok) {
+        const sha = await commitRes.text();
+        remoteCommit = sha.trim().slice(0, 7);
+      }
+    } catch { /* GitHub API unavailable — fall back to version comparison only */ }
+
+    // Update is available if version differs OR if commits differ
+    const versionDiffers = latest !== current;
+    const commitsDiffer = localCommit && remoteCommit && localCommit !== remoteCommit;
+    const updateAvailable = versionDiffers || commitsDiffer;
+
+    res.json({
+      current,
+      latest,
+      localCommit,
+      remoteCommit,
+      updateAvailable,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

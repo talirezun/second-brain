@@ -1586,8 +1586,11 @@ document.getElementById('settings-update-btn')?.addEventListener('click', async 
     if (!r.ok) throw new Error(data.error);
 
     if (data.updateAvailable) {
+      const versionInfo = data.current !== data.latest
+        ? `v${data.current} → v${data.latest}`
+        : `v${data.current} (${data.localCommit} → ${data.remoteCommit})`;
       status.innerHTML = `
-        <span style="color:var(--warning)">Update available: v${data.current} → v${data.latest}</span>
+        <span style="color:var(--warning)">Update available: ${versionInfo}</span>
         <button id="settings-do-update" class="btn primary pill" style="margin-left:12px;font-size:12px;padding:4px 14px">
           Update Now
         </button>`;
