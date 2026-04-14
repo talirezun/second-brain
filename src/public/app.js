@@ -15,15 +15,12 @@ setInterval(() => {
 // Send initial heartbeat immediately
 fetch('/api/heartbeat', { method: 'POST' }).catch(() => {});
 
-// ── Stop button (closes the app) ─────────────────────────────────────────────
+// ── Stop button (stops the server) ────────────────────────────────────────────
 document.getElementById('stop-btn').addEventListener('click', async () => {
-  if (!confirm('Stop The Curator? The server will shut down.')) return;
   try {
     await fetch('/api/shutdown', { method: 'POST' });
   } catch {}
-  // Close this tab
-  window.close();
-  // If window.close() doesn't work (not opened by script), show message
+  // Show stopped screen
   document.body.innerHTML = `
     <div style="display:flex;flex-direction:column;align-items:center;
          justify-content:center;height:100vh;gap:16px;font-family:system-ui;

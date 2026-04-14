@@ -139,53 +139,54 @@ echo "  🔨  Building The Curator.app..."
 APP_ICON="${INSTALL_DIR}/images/applet.icns"
 
 cat > /tmp/TheCurator.applescript << ASEOF
+-- The Curator — macOS App Wrapper
+-- The server opens the browser automatically when it starts.
+-- This applet just ensures the server is running.
+
 property appURL : "http://localhost:3333"
 property projectPath : "${INSTALL_DIR}"
 
-on startServer()
-    -- Kill anything on port 3333 first
+on doStart()
+    -- Kill anything on port 3333 first (prevents EADDRINUSE)
     try
         do shell script "lsof -ti :3333 | xargs kill -9 2>/dev/null"
     end try
     delay 0.5
-    -- Start the server (single run, no loop — server manages its own lifecycle)
+    -- Start the server — it will open the browser automatically
     do shell script "source ~/.zprofile 2>/dev/null; source ~/.zshrc 2>/dev/null; cd " & quoted form of projectPath & " && nohup node src/server.js >> /tmp/the-curator.log 2>&1 &"
-    -- Wait for server to be ready
+    -- Wait for it to be ready
     set attempts to 0
     repeat
         delay 1
         set attempts to attempts + 1
         try
             do shell script "curl -s --max-time 1 " & appURL & " > /dev/null 2>&1"
-            exit repeat
+            return
         end try
         if attempts > 20 then
-            display dialog "The Curator could not start." & return & return & "Check the log: /tmp/the-curator.log" buttons {"OK"} default button 1 with icon stop
+            display dialog "The Curator could not start." & return & return & "Log: /tmp/the-curator.log" buttons {"OK"} default button 1 with icon stop
             return
         end if
     end repeat
-end startServer
+end doStart
 
 on run
-    -- If server is already running, just open the browser
+    -- If already running, just open the browser
     try
         do shell script "curl -s --max-time 1 " & appURL & " > /dev/null 2>&1"
         do shell script "open " & appURL
         return
     end try
-    -- Not running — start it
-    my startServer()
-    do shell script "open " & appURL
+    my doStart()
 end run
 
 on reopen
-    -- Dock icon clicked while applet is in Dock
+    -- Same logic: if running open browser, if not start it
     try
         do shell script "curl -s --max-time 1 " & appURL & " > /dev/null 2>&1"
         do shell script "open " & appURL
     on error
-        my startServer()
-        do shell script "open " & appURL
+        my doStart()
     end try
 end reopen
 ASEOF
