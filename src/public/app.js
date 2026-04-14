@@ -1608,12 +1608,53 @@ document.getElementById('settings-update-btn')?.addEventListener('click', async 
 
 async function doUpdate() {
   const status = document.getElementById('settings-update-status');
-  showStatus(status, 'info', 'Updating... this may take a moment.');
+  status.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--accent);
+           border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0"></div>
+      <span>Updating... pulling latest code and installing dependencies. This may take a minute.</span>
+    </div>`;
+  status.className = 'status';
+
   try {
-    await fetch('/api/config/update', { method: 'POST' });
-  } catch {}
-  // Server will restart — show the stopped screen and poll for restart
-  document.getElementById('stop-btn').click();
+    const r = await fetch('/api/config/update', { method: 'POST' });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error);
+  } catch {
+    // Expected — server exits before fully responding
+  }
+
+  // Poll for the server to come back after restart
+  status.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--success);
+           border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0"></div>
+      <span>Update complete. Waiting for server to restart...</span>
+    </div>`;
+
+  // Wait for the server to come back, then reload
+  const poll = setInterval(async () => {
+    try {
+      const r = await fetch('/api/health', { signal: AbortSignal.timeout(1000) });
+      if (r.ok) {
+        clearInterval(poll);
+        status.innerHTML = '<span style="color:var(--success)">✓ Updated! Reloading...</span>';
+        status.className = 'status';
+        setTimeout(() => location.reload(), 500);
+      }
+    } catch {
+      // Server still restarting — keep polling
+    }
+  }, 2000);
+
+  // After 30 seconds, show manual instructions
+  setTimeout(() => {
+    clearInterval(poll);
+    status.innerHTML = `
+      <span style="color:var(--warning)">Update installed. Click the Dock icon to restart the app,
+      then <a href="http://localhost:3333" style="color:var(--accent)">reload this page</a>.</span>`;
+    status.className = 'status';
+  }, 30000);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════

@@ -131,10 +131,11 @@ export async function setup(repoUrl, token, mode) {
 
   const remoteUrl = buildRemoteUrl(repoUrl, token);
 
-  // Init and configure git identity
+  // Init and configure git identity + auto-upstream for push
   await git('init');
   await git('config user.email "thecurator@local"');
   await git('config user.name "The Curator"');
+  await git('config push.autoSetupRemote true');
 
   // Set remote (add or update)
   try {
@@ -199,7 +200,7 @@ export async function push() {
     return { pushed: false, message: 'Everything is already up to date — nothing new to sync.' };
   }
 
-  await git('push', { timeout: 120000 });
+  await git('push -u origin main', { timeout: 120000 });
   return { pushed: true, changesCount: changesCount || aheadCount };
 }
 
