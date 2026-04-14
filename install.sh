@@ -146,10 +146,18 @@ property projectPath : "${INSTALL_DIR}"
 property nodePath : "${NODE_PATH}"
 
 on startServer()
+    -- Kill any leftover server process to avoid port conflicts
     try
-        do shell script "rm -f /tmp/the-curator.pid /tmp/the-curator-stopped"
+        do shell script "kill $(cat /tmp/the-curator.pid 2>/dev/null) 2>/dev/null; rm -f /tmp/the-curator.pid"
     end try
+    -- Also kill anything on port 3333 as a safety net
+    try
+        do shell script "lsof -ti :3333 | xargs kill -9 2>/dev/null"
+    end try
+    delay 1
+    -- Start the server
     do shell script "source ~/.zprofile 2>/dev/null; source ~/.zshrc 2>/dev/null; cd " & quoted form of projectPath & " && nohup " & nodePath & " src/server.js >> /tmp/the-curator.log 2>&1 & echo \$! > /tmp/the-curator.pid"
+    -- Wait for server to be ready
     set attempts to 0
     repeat
         delay 1
