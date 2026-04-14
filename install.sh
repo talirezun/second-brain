@@ -186,8 +186,10 @@ on reopen
 end reopen
 ASEOF
 
-if ! osacompile -o "${INSTALL_DIR}/The Curator.app" /tmp/TheCurator.applescript 2>/dev/null; then
+osacompile -o "${INSTALL_DIR}/The Curator.app" /tmp/TheCurator.applescript 2>/tmp/the-curator-build.log
+if [[ ! -f "${INSTALL_DIR}/The Curator.app/Contents/Info.plist" ]]; then
   echo -e "  ${RED}Failed to build The Curator.app${NC}"
+  cat /tmp/the-curator-build.log 2>/dev/null
   echo "  You can still run the app manually: cd ~/the-curator && node src/server.js"
   echo "  Then open http://localhost:3333 in your browser."
   exit 1
@@ -204,14 +206,15 @@ if [[ -f "$PLIST" ]]; then
   /usr/libexec/PlistBuddy -c "Set :CFBundleName 'The Curator'" "$PLIST" 2>/dev/null || true
 fi
 
-# Force macOS to refresh the icon cache for this app
-touch "${INSTALL_DIR}/The Curator.app"
-touch "${INSTALL_DIR}/The Curator.app/Contents/Info.plist"
-touch "${INSTALL_DIR}/The Curator.app/Contents/Resources/applet.icns"
+# Remove macOS quarantine flag (set by Gatekeeper on downloaded files)
+# Without this, macOS may block the app or refuse to show the icon
+xattr -rd com.apple.quarantine "${INSTALL_DIR}/The Curator.app" 2>/dev/null || true
 
-# Clear the icon cache so macOS picks up the new icon immediately
-/usr/bin/GetFileInfo -a "${INSTALL_DIR}/The Curator.app" >/dev/null 2>&1 || true
-/usr/bin/SetFile -a C "${INSTALL_DIR}/The Curator.app" 2>/dev/null || true
+# Re-sign the app so macOS treats it as a valid application bundle
+codesign --force --deep --sign - "${INSTALL_DIR}/The Curator.app" 2>/dev/null || true
+
+# Force macOS to refresh the icon cache
+touch "${INSTALL_DIR}/The Curator.app"
 
 # ── Done ──────────────────────────────────────────────────────────────────────
 echo ""
