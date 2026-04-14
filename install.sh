@@ -195,16 +195,21 @@ if [[ ! -f "${INSTALL_DIR}/The Curator.app/Contents/Info.plist" ]]; then
   exit 1
 fi
 
-# Apply the brain icon (must happen BEFORE codesign)
+# Apply the brain icon
 if [[ -f "$APP_ICON" ]]; then
   cp "$APP_ICON" "${INSTALL_DIR}/The Curator.app/Contents/Resources/applet.icns"
 fi
+
+# Make it a stay-open applet so it remains in the Dock after first launch.
+# This is essential: when the user clicks Stop and then clicks the Dock icon,
+# the "on reopen" handler fires and restarts the server automatically.
+/usr/libexec/PlistBuddy -c "Add :OSAAppletStayOpen bool true" \
+  "${INSTALL_DIR}/The Curator.app/Contents/Info.plist" 2>/dev/null || true
 
 # Remove macOS quarantine flag so the app can launch without Gatekeeper prompts
 xattr -rd com.apple.quarantine "${INSTALL_DIR}/The Curator.app" 2>/dev/null || true
 
 # Ad-hoc code sign — must be the LAST modification to the .app bundle
-# (any file change after signing invalidates the signature)
 codesign --force --deep --sign - "${INSTALL_DIR}/The Curator.app" 2>/dev/null || true
 
 # Force macOS to recognise the new .app and refresh its icon

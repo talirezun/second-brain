@@ -37,16 +37,17 @@ app.get('/api/health',  (_req, res) => res.json({ ok: true, version }));
 // Version endpoint — used by the UI to display the current app version
 app.get('/api/version', (req, res) => res.json({ version }));
 
-// Shutdown endpoint — drains open connections then exits cleanly
+// Shutdown endpoint — exits cleanly; AppleScript's on reopen restarts the server
 app.post('/api/shutdown', (_req, res) => {
   res.json({ ok: true });
-  setImmediate(() => {
-    // closeAllConnections() available in Node 18.2+ — drops keep-alive sockets
+  // Give the response time to flush, then exit.
+  // The AppleScript wrapper detects the server is down and restarts it
+  // when the user clicks the Dock icon (on reopen handler).
+  setTimeout(() => {
     if (typeof server.closeAllConnections === 'function') server.closeAllConnections();
     server.close(() => process.exit(0));
-    // Safety fallback: if server.close never fires (no active connections), exit anyway
     setTimeout(() => process.exit(0), 1500);
-  });
+  }, 300);
 });
 
 // Catch-all: serve index.html for SPA
