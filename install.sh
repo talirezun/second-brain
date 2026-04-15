@@ -138,6 +138,8 @@ echo "  🔨  Building The Curator.app..."
 # App icon — pre-built .icns is included in the repo (no Swift or Xcode needed)
 APP_ICON="${INSTALL_DIR}/images/applet.icns"
 
+NODE_PATH="$(which node 2>/dev/null || echo '/usr/local/bin/node')"
+
 cat > /tmp/TheCurator.applescript << ASEOF
 -- The Curator — macOS App Wrapper
 -- The server opens the browser automatically when it starts.
@@ -145,6 +147,7 @@ cat > /tmp/TheCurator.applescript << ASEOF
 
 property appURL : "http://localhost:3333"
 property projectPath : "${INSTALL_DIR}"
+property nodeBin : "${NODE_PATH}"
 
 on doStart()
     -- Kill anything on port 3333 first (prevents EADDRINUSE)
@@ -152,8 +155,8 @@ on doStart()
         do shell script "lsof -ti :3333 | xargs kill -9 2>/dev/null"
     end try
     delay 0.5
-    -- Start the server — it will open the browser automatically
-    do shell script "source ~/.zprofile 2>/dev/null; source ~/.zshrc 2>/dev/null; cd " & quoted form of projectPath & " && nohup node src/server.js >> /tmp/the-curator.log 2>&1 &"
+    -- Start the server — use absolute node path (do shell script has no user PATH)
+    do shell script "export PATH=\"/usr/local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:\$PATH\"; cd " & quoted form of projectPath & " && nohup " & quoted form of nodeBin & " src/server.js >> /tmp/the-curator.log 2>&1 &"
     -- Wait for it to be ready
     set attempts to 0
     repeat
@@ -161,6 +164,7 @@ on doStart()
         set attempts to attempts + 1
         try
             do shell script "curl -s --max-time 1 " & appURL & " > /dev/null 2>&1"
+            do shell script "open " & appURL
             return
         end try
         if attempts > 20 then

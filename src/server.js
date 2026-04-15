@@ -41,24 +41,21 @@ app.get('/api/version', (req, res) => res.json({ version }));
 
 // ── Restart endpoint — used after updates ────────────────────────────────────
 // Closes this server (frees port), spawns a new process, then exits.
+// CURATOR_NO_OPEN=1 prevents the new process from auto-opening a browser tab
+// (the frontend already handles the reload via polling).
 app.post('/api/restart', (_req, res) => {
+  const nodeBin = process.execPath;          // absolute path to current node binary
+  const startCmd = `cd "${PROJECT_ROOT}" && CURATOR_NO_OPEN=1 nohup "${nodeBin}" src/server.js >> /tmp/the-curator.log 2>&1 &`;
   res.json({ ok: true, restarting: true });
   setTimeout(() => {
     if (typeof server.closeAllConnections === 'function') server.closeAllConnections();
     server.close(() => {
-      // Port is free — spawn new server and open browser
-      exec(
-        `cd "${PROJECT_ROOT}" && nohup node src/server.js >> /tmp/the-curator.log 2>&1 &`,
-        { cwd: PROJECT_ROOT }
-      );
+      exec(startCmd, { cwd: PROJECT_ROOT });
       setTimeout(() => process.exit(0), 500);
     });
     // Safety timeout
     setTimeout(() => {
-      exec(
-        `cd "${PROJECT_ROOT}" && nohup node src/server.js >> /tmp/the-curator.log 2>&1 &`,
-        { cwd: PROJECT_ROOT }
-      );
+      exec(startCmd, { cwd: PROJECT_ROOT });
       process.exit(0);
     }, 3000);
   }, 300);
@@ -80,6 +77,8 @@ const server = app.listen(PORT, () => {
     console.warn(`⚠️  ${err.message}`);
   }
 
-  // Auto-open the browser when server starts
-  exec(`open http://localhost:${PORT}`);
+  // Auto-open the browser when server starts (skip during restart — frontend reloads itself)
+  if (!process.env.CURATOR_NO_OPEN) {
+    exec(`open http://localhost:${PORT}`);
+  }
 });
