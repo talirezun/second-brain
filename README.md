@@ -154,6 +154,8 @@ curl -fsSL https://raw.githubusercontent.com/talirezun/the-curator/main/install.
 
 The script auto-detects and installs Node.js if needed, clones the repo, installs dependencies, and builds **The Curator.app** — all in one step. When it finishes, the app opens automatically. An onboarding wizard walks you through API key setup on first launch.
 
+> **Optional:** The repo includes a `research/` folder with articles and papers about second brain architecture. This is **not required to run the app**. If you want to save disk space after installation, you can safely delete `~/the-curator/research/` — the app will work perfectly without it. The research folder is available for interested users who want to explore the concepts behind The Curator.
+
 ---
 
 ### Option B — Manual setup
