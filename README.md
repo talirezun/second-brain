@@ -23,6 +23,15 @@ Built on the [Karpathy llm-wiki](https://gist.github.com/karpathy/442a6bf5559148
 
 ---
 
+## Product Demo
+
+<video width="100%" controls autoplay muted loop>
+  <source src="images/the-curator-product-video.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
+
+---
+
 ## How it works
 
 ```
