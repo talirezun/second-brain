@@ -25,10 +25,7 @@ Built on the [Karpathy llm-wiki](https://gist.github.com/karpathy/442a6bf5559148
 
 ## Product Demo
 
-<video width="100%" controls autoplay muted loop>
-  <source src="images/the-curator-product-video.mp4" type="video/mp4">
-  Your browser does not support the video tag.
-</video>
+📹 **[Watch the product demo video](images/the-curator-product-video.mp4?raw=true)** — see The Curator in action: drop a PDF, watch it atomize into an interlinked wiki, explore the knowledge graph, and chat with your knowledge.
 
 ---
 
