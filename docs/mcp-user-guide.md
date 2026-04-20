@@ -73,6 +73,51 @@ Once connected, these prompts unlock what the graph layer is actually for:
 
 ---
 
+## How to prompt Claude Desktop
+
+Natural language works — you almost never need to name tools explicitly. Claude reads each tool's description and picks the right one based on what you're asking. Here is the rule of thumb.
+
+### Natural prompts (90% of the time)
+
+Describe intent, not tool names. Claude maps what you want to the right tool.
+
+| You say (natural) | Claude picks | Why |
+|---|---|---|
+| "What domains do I have?" | `list_domains` | "domains" matches the tool |
+| "Show me everything about organisational resilience" | `search_wiki` → `get_node` | "about X" = search, then fetch top results |
+| "What does my wiki know about Andrej Karpathy?" | `get_node` → `get_backlinks` | Named entity → direct fetch + see who references them |
+| "How is my AI knowledge connected?" | `get_graph_overview` → `get_connected_nodes` | "connected / topology" signals graph tools |
+| "Find themes tagged `ai-safety` and synthesise" | `get_tags` (with filter) → `get_node` | "tagged X" signals tag inventory |
+| "Trace every source that mentions OpenAI" | `get_backlinks` on the `openai` entity | "every source that mentions" = incoming edges |
+| "What connects AI research across my domains?" | `search_cross_domain` | Multi-domain query |
+
+### When to name tools explicitly
+
+Three situations where naming a tool pays off:
+
+1. **You hit a size limit and want a different shape.** Give exact parameters so Claude doesn't guess:
+   > *"Use `get_graph_overview` on `articles` with `include_nodes: true` and `min_connections: 3` so I can see every well-connected page."*
+
+2. **You want a specific research protocol.** Dictate the order:
+   > *"First use `get_graph_overview` to find the top 5 hubs. Then for each hub, use `get_backlinks` to see who references it. Then synthesise."*
+
+3. **Claude picked the wrong tool.** Rare, but a nudge works:
+   > *"Use `get_tags` with a filter instead — I want the tag inventory, not a keyword search."*
+
+### The opening move that usually works
+
+For any deep research session, a two-line natural prompt is often enough:
+
+> *"Orient yourself first with `get_graph_overview` on my `articles` domain. Then based on what you see, decide which entities and concepts are worth pulling in detail to answer: **[your actual question]**."*
+
+That gives Claude the research protocol — topology first, then targeted retrieval, then synthesis — and from there you can stay natural ("dig deeper on that", "what else connects", "contradictions?") and Claude will keep picking the right tools itself.
+
+Every tool description also includes hints like *"Call this early in a research session to orient yourself"* and *"For a single page's neighborhood, prefer `get_connected_nodes`"* — so the model gets scaffolding for its own decisions without you having to memorise tool names.
+
+**Bottom line:** describe the work, not the tool. Only name tools when you want tight control over the plan or a specific parameter (`min_connections`, `max_results`, `include_nodes`, `filter`).
+
+---
+
 ## Things to know
 
 **If you move your domains folder, MCP stops working.** The config file has an absolute path baked in. When you change the Knowledge Base Location in the Domains tab (or move the Curator install), come back to Settings → My Curator, click **Regenerate**, paste the new snippet, and restart Claude Desktop. The wizard detects staleness and shows a warning banner when it happens.
