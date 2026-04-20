@@ -233,7 +233,43 @@ export async function pull() {
   // so accepting the remote version for git conflicts is safe and avoids the
   // "could not apply" rebase errors when both computers edit the same entity pages.
   const { stdout: pullOut } = await git('pull --no-rebase -X theirs origin main', { timeout: 120000 });
-  return { pulled: true, details: pullOut };
+
+  // Prune ghost domain directories. When another machine deletes a domain, the
+  // pull removes every tracked file, but empty dirs are left behind because git
+  // doesn't track them. A directory is a "real" domain only if it has a
+  // CLAUDE.md schema after the pull — if that's gone, everything under it is
+  // untracked leftovers and we can safely remove the whole folder.
+  const pruned = await pruneGhostDomainDirs();
+
+  return { pulled: true, details: pullOut, pruned };
+}
+
+/**
+ * Remove any directory under the domains root that has no CLAUDE.md.
+ * Called after pull so sync-delete from another machine fully takes effect.
+ * Returns the list of pruned domain names (usually empty).
+ */
+async function pruneGhostDomainDirs() {
+  const base = getDomainsDir();
+  const pruned = [];
+  let entries;
+  try {
+    const { readdir } = await import('fs/promises');
+    entries = await readdir(base, { withFileTypes: true });
+  } catch { return pruned; }
+
+  for (const entry of entries) {
+    if (!entry.isDirectory() || entry.name.startsWith('.')) continue;
+    const dirPath = path.join(base, entry.name);
+    const schemaPath = path.join(dirPath, 'CLAUDE.md');
+    if (existsSync(schemaPath)) continue;    // real domain, keep
+    // Schema is gone → ghost directory. Remove it recursively.
+    try {
+      await rm(dirPath, { recursive: true, force: true });
+      pruned.push(entry.name);
+    } catch { /* best-effort; fall through */ }
+  }
+  return pruned;
 }
 
 export async function sync() {

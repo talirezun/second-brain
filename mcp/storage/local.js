@@ -64,10 +64,21 @@ export function createStorageAdapter({ domainsPath } = {}) {
     async listDomains() {
       try {
         const entries = await fs.readdir(base, { withFileTypes: true });
-        return entries
+        const candidates = entries
           .filter(e => e.isDirectory() && !e.name.startsWith('.'))
-          .map(e => e.name)
-          .sort();
+          .map(e => e.name);
+        // A directory is only a real domain if it has a CLAUDE.md schema.
+        // Sync-deleted domains sometimes leave empty dir shells behind because
+        // git doesn't track empty directories — filtering on the schema file
+        // ignores those ghosts.
+        const real = [];
+        for (const name of candidates) {
+          try {
+            const s = await fs.stat(path.join(base, name, 'CLAUDE.md'));
+            if (s.isFile()) real.push(name);
+          } catch { /* no schema → not a real domain */ }
+        }
+        return real.sort();
       } catch {
         return [];
       }

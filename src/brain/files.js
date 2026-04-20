@@ -1,4 +1,4 @@
-import { readdir, readFile, writeFile, mkdir, unlink, rm, rename as fsRename } from 'fs/promises';
+import { readdir, readFile, writeFile, mkdir, unlink, rm, rename as fsRename, stat } from 'fs/promises';
 import { existsSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -19,10 +19,25 @@ export function rawPath(domain) {
 }
 
 export async function listDomains() {
-  const entries = await readdir(getDomainsDir(), { withFileTypes: true });
-  return entries
+  const base = getDomainsDir();
+  const entries = await readdir(base, { withFileTypes: true });
+  const candidates = entries
     .filter(e => e.isDirectory() && !e.name.startsWith('.'))
     .map(e => e.name);
+
+  // A directory is only a "domain" if it has a CLAUDE.md schema. This protects
+  // against ghost directories left behind after a sync deletion (git doesn't
+  // track empty dirs, so `domains/<name>/wiki/` can stay on disk after the
+  // remote deleted everything inside it).
+  const real = [];
+  for (const name of candidates) {
+    const schemaPath = path.join(base, name, 'CLAUDE.md');
+    try {
+      const s = await stat(schemaPath);
+      if (s.isFile()) real.push(name);
+    } catch { /* no schema → not a real domain */ }
+  }
+  return real;
 }
 
 export async function readSchema(domain) {
