@@ -1836,7 +1836,7 @@ function renderHealthReport(report) {
 
 function renderSection(report, type) {
   const meta = HEALTH_META[type];
-  const issues = report[type] || [];
+  let issues = report[type] || [];
   const n = issues.length;
   if (n === 0) return '';
 
@@ -1846,6 +1846,12 @@ function renderSection(report, type) {
   };
   const fixableCount = meta.autoFix ? issues.filter(canFixIssue).length : 0;
   const btnLabel = type === 'brokenLinks' ? 'Apply' : 'Fix';
+
+  // Sort fixable rows to the top so users can see the actionable ones without
+  // scrolling through hundreds of review-only entries.
+  if (type === 'brokenLinks' && fixableCount > 0) {
+    issues = [...issues].sort((a, b) => (b.suggestedTarget ? 1 : 0) - (a.suggestedTarget ? 1 : 0));
+  }
 
   const rows = issues.map(issue => {
     const description = describeIssue(type, issue);

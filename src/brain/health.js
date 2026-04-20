@@ -334,7 +334,9 @@ async function fixBrokenLink(wikiDir, issue) {
   if (!existsSync(full)) return false;
   const before = await readFile(full, 'utf8');
   const esc = issue.linkText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const re = new RegExp(`\\[\\[${esc}(\\|[^\\]]+)?\\]\\]`, 'g');
+  // Allow whitespace inside [[ ... ]] — the scanner trims linkText but the source
+  // file may have `[[ Cline]]` or `[[Cline ]]` with stray spaces from LLM output.
+  const re = new RegExp(`\\[\\[\\s*${esc}\\s*(\\|[^\\]]+)?\\]\\]`, 'g');
   const after = before.replace(re, (_m, alias) => `[[${issue.suggestedTarget}${alias || ''}]]`);
   if (after === before) return false;
   await writeFile(full, after, 'utf8');
