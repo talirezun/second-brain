@@ -11,6 +11,28 @@ const execAsync = promisify(exec);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(__dirname, '../..');
 
+/**
+ * When The Curator is launched via the .app wrapper, AppleScript's `do shell script`
+ * starts the node process with a minimal PATH (`/usr/bin:/bin:/usr/sbin:/sbin`).
+ * That finds `git` (Xcode CLT at `/usr/bin/git`) but NOT `npm`, which lives next
+ * to the node binary in `/usr/local/bin` or `/opt/homebrew/bin`. Every subprocess
+ * the updater spawns inherits this bare PATH, so `npm install` fails with
+ * "npm: command not found". We prepend the node binary's directory plus the
+ * common Homebrew / system prefixes so the child shells can resolve everything.
+ */
+const NODE_BIN_DIR = path.dirname(process.execPath);
+const SUBPROCESS_PATH = [
+  NODE_BIN_DIR,
+  '/usr/local/bin',
+  '/opt/homebrew/bin',
+  '/usr/bin',
+  '/bin',
+  '/usr/sbin',
+  '/sbin',
+  process.env.PATH || '',
+].filter(Boolean).join(':');
+const SUBPROCESS_ENV = { ...process.env, PATH: SUBPROCESS_PATH };
+
 const router = Router();
 
 /** GET /api/config — returns current app configuration */
@@ -41,7 +63,7 @@ router.post('/pick-folder', async (_req, res) => {
   try {
     const { stdout } = await execAsync(
       `osascript -e 'POSIX path of (choose folder with prompt "Select your Knowledge Base folder:")'`,
-      { timeout: 60000 }
+      { timeout: 60000, env: SUBPROCESS_ENV }
     );
     const picked = stdout.trim();
     if (picked) {
@@ -122,7 +144,7 @@ router.get('/update-check', async (_req, res) => {
     // Get local git commit hash
     let localCommit = null;
     try {
-      const { stdout } = await execAsync('git rev-parse --short HEAD', { cwd: PROJECT_ROOT });
+      const { stdout } = await execAsync('git rev-parse --short HEAD', { cwd: PROJECT_ROOT, env: SUBPROCESS_ENV });
       localCommit = stdout.trim();
     } catch { /* not a git repo — skip commit comparison */ }
 
@@ -173,24 +195,28 @@ router.get('/update-check', async (_req, res) => {
  * .sync-config.json) is all gitignored, so hard-reset is safe.
  */
 router.post('/update', async (_req, res) => {
+  // Shared exec options — the env override is what makes `npm` resolvable under
+  // the .app wrapper's minimal PATH.
+  const execOpts = (extra = {}) => ({ cwd: PROJECT_ROOT, env: SUBPROCESS_ENV, ...extra });
   try {
     // 1. Fetch before resetting so we never hard-reset to a stale ref if the remote is unreachable.
-    await execAsync('git fetch origin main', { cwd: PROJECT_ROOT, timeout: 30000 });
+    await execAsync('git fetch origin main', execOpts({ timeout: 30000 }));
 
     // 2. Record before/after SHAs so the response explains what changed.
-    const { stdout: beforeSha } = await execAsync('git rev-parse HEAD', { cwd: PROJECT_ROOT, timeout: 5000 });
+    const { stdout: beforeSha } = await execAsync('git rev-parse HEAD', execOpts({ timeout: 5000 }));
 
     // 3. Hard-sync to origin/main. Discards any local modifications to tracked files
     //    (including the common `package-lock.json` regeneration) without touching gitignored data.
-    await execAsync('git reset --hard origin/main', { cwd: PROJECT_ROOT, timeout: 10000 });
+    await execAsync('git reset --hard origin/main', execOpts({ timeout: 10000 }));
 
-    const { stdout: afterSha } = await execAsync('git rev-parse HEAD', { cwd: PROJECT_ROOT, timeout: 5000 });
+    const { stdout: afterSha } = await execAsync('git rev-parse HEAD', execOpts({ timeout: 5000 }));
 
-    // 4. Install deps. Non-fatal if npm emits warnings.
-    await execAsync('npm install --silent --no-audit --no-fund', { cwd: PROJECT_ROOT, timeout: 120000 });
+    // 4. Install deps. Uses the absolute node binary's directory so `npm` resolves
+    //    under the .app wrapper's minimal PATH.
+    await execAsync('npm install --silent --no-audit --no-fund', execOpts({ timeout: 120000 }));
 
     // 5. Rebuild the .app so the AppleScript stays current with the code
-    await execAsync('bash scripts/build-app.sh', { cwd: PROJECT_ROOT, timeout: 30000 }).catch(() => {});
+    await execAsync('bash scripts/build-app.sh', execOpts({ timeout: 30000 })).catch(() => {});
 
     res.json({
       ok: true,

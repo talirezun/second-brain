@@ -13,6 +13,16 @@ const CONFIG_FILE = path.join(ROOT, '.sync-config.json');
 
 const execAsync = promisify(exec);
 
+// AppleScript's `do shell script` launches us with a minimal PATH. Prepend the
+// usual locations for git/node/npm so subprocesses resolve them reliably.
+const NODE_BIN_DIR = path.dirname(process.execPath);
+const SUBPROCESS_PATH = [
+  NODE_BIN_DIR, '/usr/local/bin', '/opt/homebrew/bin',
+  '/usr/bin', '/bin', '/usr/sbin', '/sbin',
+  process.env.PATH || '',
+].filter(Boolean).join(':');
+const SUBPROCESS_ENV = { ...process.env, PATH: SUBPROCESS_PATH };
+
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 function sanitize(str) {
@@ -26,7 +36,8 @@ async function git(cmd, opts = {}) {
   try {
     const { stdout, stderr } = await execAsync(full, {
       timeout: opts.timeout || 30000,
-      cwd: ROOT,  // Explicit cwd prevents "getcwd: Operation not permitted" on macOS
+      cwd: ROOT,              // Explicit cwd prevents "getcwd: Operation not permitted" on macOS
+      env: SUBPROCESS_ENV,    // Ensure git is findable under the .app wrapper's minimal PATH
     });
     return { stdout: stdout.trim(), stderr: stderr.trim() };
   } catch (err) {
