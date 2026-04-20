@@ -1458,6 +1458,10 @@ document.querySelector('[data-tab="settings"]')?.addEventListener('click', () =>
   if (!settingsInitialised) {
     settingsInitialised = true;
     initSettings();
+  } else {
+    // Already initialised — still refresh the MCP section so stale UI state
+    // (e.g. from closing the wizard) gets reconciled with current server status.
+    refreshMcpSection();
   }
 });
 
@@ -1470,7 +1474,258 @@ async function initSettings() {
     const { version } = await r.json();
     document.getElementById('settings-version').textContent = `v${version}`;
   } catch {}
+  // Load My Curator MCP status + snippet
+  await refreshMcpSection();
 }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MY CURATOR (MCP) — Settings section (landing → wizard → connected)
+// ══════════════════════════════════════════════════════════════════════════════
+
+// Cached latest status so buttons can act without re-fetching
+let mcpLatestStatus = null;
+let mcpLatestSnippet = null;
+
+async function refreshMcpSection() {
+  const checking    = document.getElementById('mcp-checking');
+  const unconfigured = document.getElementById('mcp-unconfigured');
+  const configured  = document.getElementById('mcp-configured');
+  if (!checking) return; // section not in DOM
+
+  try {
+    const [statusRes, snippetRes, fullRes] = await Promise.all([
+      fetch('/api/mcp/config'),
+      fetch('/api/mcp/claude-config'),
+      fetch('/api/mcp/claude-full-config'),
+    ]);
+    const status = await statusRes.json();
+    const claudeSnippet = await snippetRes.json();
+    const full = await fullRes.json();
+
+    mcpLatestStatus = status;
+    mcpLatestSnippet = claudeSnippet;
+
+    // Populate snippet + diff (used by the wizard when opened)
+    const snippetStr = JSON.stringify(claudeSnippet, null, 2);
+    const snippetEl = document.getElementById('mcp-snippet');
+    if (snippetEl) { snippetEl.textContent = snippetStr; snippetEl.dataset.copy = snippetStr; }
+    const diffAfter = document.getElementById('mcp-diff-after');
+    if (diffAfter) diffAfter.textContent = JSON.stringify(full.merged, null, 2);
+    const diffBefore = document.getElementById('mcp-diff-before');
+    if (diffBefore) {
+      if (full.was_empty) {
+        diffBefore.textContent = '{}';
+      } else {
+        // Diff should show the user's file WITHOUT our entry
+        const clone = JSON.parse(JSON.stringify(full.merged));
+        if (clone.mcpServers) {
+          const { [status.mcp_server_name]: _removed, ...rest } = clone.mcpServers;
+          if (Object.keys(rest).length === 0) delete clone.mcpServers;
+          else clone.mcpServers = rest;
+        }
+        diffBefore.textContent = Object.keys(clone).length === 0 ? '{}' : JSON.stringify(clone, null, 2);
+      }
+    }
+    const configPathEl = document.getElementById('mcp-config-path');
+    if (configPathEl) configPathEl.textContent = mcpHomeShorten(status.claude_config_path);
+    const snippetMeta = document.getElementById('mcp-snippet-meta');
+    if (snippetMeta) snippetMeta.textContent = `Points at: ${mcpHomeShorten(status.domains_dir)}`;
+
+    // Warn on landing if domains folder missing
+    const domainsWarn = document.getElementById('mcp-domains-warn');
+    const startBtn = document.getElementById('mcp-open-wizard-btn');
+    if (domainsWarn) domainsWarn.classList.toggle('hidden', status.domains_dir_exists);
+    if (startBtn) startBtn.disabled = !status.domains_dir_exists;
+
+    // Decide which state to show
+    checking.classList.add('hidden');
+    const showConfigured = status.installed && !status.stale;
+    unconfigured.classList.toggle('hidden', showConfigured);
+    configured.classList.toggle('hidden', !showConfigured && !status.stale);
+
+    if (status.installed && status.stale) {
+      // Treat stale as configured-with-warning so we show the reconnect card
+      configured.classList.remove('hidden');
+      unconfigured.classList.add('hidden');
+      document.getElementById('mcp-stale-alert').classList.remove('hidden');
+      document.getElementById('mcp-configured-meta').textContent = 'Claude Desktop has an entry, but it points at a different folder.';
+    } else if (status.installed) {
+      document.getElementById('mcp-stale-alert').classList.add('hidden');
+      const domainCount = (status.domains_dir_exists ? (mcpLatestStatus._domainsCount ?? null) : null);
+      document.getElementById('mcp-configured-meta').textContent =
+        `Claude Desktop → ${status.mcp_server_name} → ${mcpHomeShorten(status.domains_dir)}`;
+    } else {
+      // Unconfigured path — ensure landing (not mid-wizard) is visible
+      document.getElementById('mcp-landing')?.classList.remove('hidden');
+      document.getElementById('mcp-wizard')?.classList.add('hidden');
+      mcpGoToStep(1);
+    }
+  } catch (err) {
+    checking.textContent = 'Could not load My Curator status: ' + err.message;
+  }
+}
+
+function mcpHomeShorten(p) {
+  if (!p) return '';
+  return p.replace(/^\/Users\/[^/]+\//, '~/');
+}
+
+// ── Landing → Wizard ─────────────────────────────────────────────────────────
+
+function openMcpWizard() {
+  document.getElementById('mcp-landing')?.classList.add('hidden');
+  document.getElementById('mcp-configured')?.classList.add('hidden');
+  document.getElementById('mcp-unconfigured')?.classList.remove('hidden');
+  document.getElementById('mcp-wizard')?.classList.remove('hidden');
+  mcpGoToStep(1);
+}
+
+function closeMcpWizard() {
+  // Hide the wizard and reset its internal step to 1 for next open
+  const wizard = document.getElementById('mcp-wizard');
+  if (wizard) wizard.classList.add('hidden');
+  mcpGoToStep(1);
+  // Re-read state — refreshMcpSection decides whether to show landing or connected
+  refreshMcpSection();
+}
+
+function mcpGoToStep(step) {
+  for (let i = 1; i <= 3; i++) {
+    const panel = document.getElementById(`mcp-step-${i}`);
+    if (panel) panel.classList.toggle('hidden', i !== step);
+    const pip = document.querySelector(`.mcp-progress-step[data-step="${i}"]`);
+    if (pip) {
+      pip.classList.toggle('active', i === step);
+      pip.classList.toggle('done',   i <  step);
+    }
+  }
+}
+
+// Make the landing button and configured-panel reconfigure button open the wizard
+document.getElementById('mcp-open-wizard-btn')?.addEventListener('click', openMcpWizard);
+document.getElementById('mcp-reconfigure-btn')?.addEventListener('click', async () => {
+  await refreshMcpSection();   // always regenerate with the current domainsDir
+  // Force unconfigured view even if installed — user wants to re-run
+  document.getElementById('mcp-configured')?.classList.add('hidden');
+  document.getElementById('mcp-unconfigured')?.classList.remove('hidden');
+  openMcpWizard();
+});
+
+// ── Step 1: copy & continue ───────────────────────────────────────────────────
+document.getElementById('mcp-wizard-next-1')?.addEventListener('click', async () => {
+  const snippetEl = document.getElementById('mcp-snippet');
+  const btn = document.getElementById('mcp-wizard-next-1');
+  try {
+    const text = snippetEl.dataset.copy || snippetEl.textContent;
+    if (text) await navigator.clipboard.writeText(text);
+    btn.textContent = '✓ Copied — advancing…';
+    setTimeout(() => {
+      mcpGoToStep(2);
+      btn.textContent = 'Copy & Continue →';
+    }, 450);
+  } catch {
+    // Clipboard not available — still advance, user can select-copy manually
+    mcpGoToStep(2);
+  }
+});
+document.getElementById('mcp-wizard-back-1')?.addEventListener('click', () => {
+  // Cancel from step 1 — go back to whichever state the user came from
+  closeMcpWizard();
+});
+
+document.getElementById('mcp-regenerate-btn')?.addEventListener('click', async () => {
+  const btn = document.getElementById('mcp-regenerate-btn');
+  btn.disabled = true;
+  await refreshMcpSection();
+  btn.disabled = false;
+  btn.textContent = '✓ Regenerated';
+  setTimeout(() => { btn.textContent = '↻ Regenerate'; }, 1500);
+});
+
+// ── Step 2: paste / reveal ────────────────────────────────────────────────────
+document.getElementById('mcp-reveal-btn')?.addEventListener('click', async () => {
+  const btn = document.getElementById('mcp-reveal-btn');
+  btn.disabled = true;
+  try {
+    const r = await fetch('/api/mcp/reveal-config', { method: 'POST' });
+    const data = await r.json();
+    if (!data.ok) throw new Error(data.error);
+  } catch (err) {
+    alert('Could not open Finder: ' + err.message);
+  } finally {
+    btn.disabled = false;
+  }
+});
+document.getElementById('mcp-wizard-next-2')?.addEventListener('click', () => mcpGoToStep(3));
+document.getElementById('mcp-wizard-back-2')?.addEventListener('click', () => mcpGoToStep(1));
+
+// ── Step 3: restart + self-test + finish ──────────────────────────────────────
+async function runSelfTestInto(btnId, resultId) {
+  const btn = document.getElementById(btnId);
+  const out = document.getElementById(resultId);
+  if (!btn || !out) return;
+  btn.disabled = true;
+  out.classList.remove('hidden', 'mcp-selftest-ok', 'mcp-selftest-fail');
+  out.classList.add('mcp-selftest-running');
+  out.textContent = 'Running self-test…';
+  try {
+    const r = await fetch('/api/mcp/self-test', { method: 'POST' });
+    const data = await r.json();
+    out.classList.remove('mcp-selftest-running');
+    if (data.ok) {
+      out.classList.add('mcp-selftest-ok');
+      const domainsText = data.domains && data.domains.length
+        ? `${data.domains.length} domain${data.domains.length === 1 ? '' : 's'} (${data.domains.join(', ')})`
+        : 'no domains yet';
+      out.innerHTML = `<strong>✓ My Curator responded.</strong>
+        ${data.tool_count} tools registered, ${domainsText}.
+        The bridge is working — if Claude Desktop still can't see it,
+        the issue is inside its config file.`;
+    } else {
+      out.classList.add('mcp-selftest-fail');
+      out.innerHTML = `<strong>✗ Self-test failed.</strong> ${escapeHtml(data.error || 'Unknown error')}
+        ${data.stderr ? `<pre class="mcp-selftest-stderr">${escapeHtml(data.stderr)}</pre>` : ''}`;
+    }
+  } catch (err) {
+    out.classList.remove('mcp-selftest-running');
+    out.classList.add('mcp-selftest-fail');
+    out.textContent = 'Self-test failed: ' + err.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+document.getElementById('mcp-selftest-btn')?.addEventListener('click', () =>
+  runSelfTestInto('mcp-selftest-btn', 'mcp-selftest-result'));
+document.getElementById('mcp-configured-selftest-btn')?.addEventListener('click', () =>
+  runSelfTestInto('mcp-configured-selftest-btn', 'mcp-configured-selftest-result'));
+
+document.getElementById('mcp-wizard-back-3')?.addEventListener('click', () => mcpGoToStep(2));
+document.getElementById('mcp-wizard-done-btn')?.addEventListener('click', () => closeMcpWizard());
+
+// Expose for onboarding: lets the first-run wizard jump straight here
+window.openMcpSettingsWizard = function () {
+  document.querySelector('[data-tab="settings"]')?.click();
+  setTimeout(() => openMcpWizard(), 300);
+};
+
+// Delegated handler for inline code-block copy buttons (works for both snippet and diff-after)
+document.addEventListener('click', async (e) => {
+  const btn = e.target.closest('.mcp-code-copy');
+  if (!btn) return;
+  const targetId = btn.dataset.copyTarget;
+  const el = targetId && document.getElementById(targetId);
+  if (!el) return;
+  const text = el.dataset.copy || el.textContent || '';
+  try {
+    await navigator.clipboard.writeText(text);
+    btn.classList.add('copied');
+    const prev = btn.getAttribute('aria-label');
+    btn.setAttribute('aria-label', 'Copied');
+    setTimeout(() => { btn.classList.remove('copied'); btn.setAttribute('aria-label', prev || 'Copy'); }, 1500);
+  } catch {
+    alert('Clipboard copy failed — select the code manually.');
+  }
+});
 
 async function loadApiKeyStatus() {
   try {
@@ -1726,8 +1981,26 @@ document.getElementById('ob-step3-sync')?.addEventListener('click', () => {
   document.querySelector('[data-tab="sync"]')?.click();
 });
 
-document.getElementById('ob-step3-done')?.addEventListener('click', () => {
+document.getElementById('ob-step3-next')?.addEventListener('click', () => obGoToStep4());
+
+function obGoToStep4() {
+  document.getElementById('ob-step-3').classList.add('hidden');
+  document.getElementById('ob-step-4').classList.remove('hidden');
+  document.querySelector('.ob-step[data-step="3"]').classList.remove('active');
+  document.querySelector('.ob-step[data-step="3"]').classList.add('done');
+  document.querySelector('.ob-step[data-step="4"]').classList.add('active');
+}
+
+document.getElementById('ob-step4-later')?.addEventListener('click', () => closeOnboarding());
+document.getElementById('ob-step4-done')?.addEventListener('click', () => closeOnboarding());
+document.getElementById('ob-step4-now')?.addEventListener('click', () => {
   closeOnboarding();
+  // Open the Settings tab and launch the MCP wizard directly
+  if (typeof window.openMcpSettingsWizard === 'function') {
+    window.openMcpSettingsWizard();
+  } else {
+    document.querySelector('[data-tab="settings"]')?.click();
+  }
 });
 
 function closeOnboarding() {

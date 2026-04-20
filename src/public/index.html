@@ -583,6 +583,224 @@
         <div id="settings-keys-status" class="status hidden"></div>
       </div>
 
+      <!-- My Curator (MCP) -->
+      <div class="settings-section mcp-section">
+        <h3>My Curator — Private MCP Bridge</h3>
+
+        <!-- Initial status check -->
+        <div id="mcp-checking" class="mcp-checking">
+          <span class="spinner"></span>
+          <span>Checking My Curator status…</span>
+        </div>
+
+        <!-- NOT CONFIGURED: landing + wizard -->
+        <div id="mcp-unconfigured" class="hidden">
+
+          <!-- Landing -->
+          <div id="mcp-landing" class="mcp-landing">
+            <div class="mcp-hero">
+              <div class="mcp-hero-icon">🔌</div>
+              <h2>Connect to Claude Desktop</h2>
+              <p>Use frontier models (Opus, Sonnet) to do deep research against your
+                second brain — with full graph context: tags, links, bidirectional backlinks.
+                <strong>My Curator</strong> is your private bridge. Nothing leaves this machine.</p>
+            </div>
+            <div class="mcp-what-grid">
+              <div class="mcp-what-col mcp-what-yes">
+                <div class="mcp-what-label">What frontier models get</div>
+                <div>✓&nbsp; 10 structured tools</div>
+                <div>✓&nbsp; Graph topology &amp; tags</div>
+                <div>✓&nbsp; Bidirectional backlinks</div>
+              </div>
+              <div class="mcp-what-col mcp-what-no">
+                <div class="mcp-what-label">Stays on this computer</div>
+                <div>✗&nbsp; No cloud upload</div>
+                <div>✗&nbsp; No shared access</div>
+                <div>✗&nbsp; No telemetry</div>
+              </div>
+            </div>
+            <div class="mcp-domains-warn hidden" id="mcp-domains-warn">
+              ⚠ Your knowledge base folder isn't set up yet. Create a domain in the
+              <strong>Domains</strong> tab first.
+            </div>
+            <button id="mcp-open-wizard-btn" class="btn primary mcp-start-btn">
+              Set Up My Curator — takes 2 minutes
+            </button>
+          </div>
+
+          <!-- Wizard -->
+          <div id="mcp-wizard" class="mcp-wizard hidden">
+
+            <!-- Step progress -->
+            <div class="mcp-progress" id="mcp-progress">
+              <div class="mcp-progress-step active" data-step="1">1</div>
+              <div class="mcp-progress-line"></div>
+              <div class="mcp-progress-step" data-step="2">2</div>
+              <div class="mcp-progress-line"></div>
+              <div class="mcp-progress-step" data-step="3">3</div>
+            </div>
+
+            <!-- Step 1: Copy snippet -->
+            <div id="mcp-step-1" class="mcp-step">
+              <h3 class="mcp-step-title">Copy your private MCP snippet</h3>
+              <p class="hint">This tiny JSON snippet tells Claude Desktop how to launch your Curator wiki as a private tool — pointed only at your local folder.</p>
+              <div class="mcp-code-wrap">
+                <pre class="mcp-code-block" id="mcp-snippet">Loading…</pre>
+                <button class="mcp-code-copy" data-copy-target="mcp-snippet" title="Copy snippet to clipboard" aria-label="Copy snippet">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                </button>
+              </div>
+              <div class="mcp-step-meta">
+                <span id="mcp-snippet-meta"></span>
+                <button id="mcp-regenerate-btn" class="btn btn-sm" title="Rebuild from the current Knowledge Base Location">↻ Regenerate</button>
+              </div>
+              <div class="mcp-step-actions">
+                <button id="mcp-wizard-back-1" class="btn">← Cancel</button>
+                <button id="mcp-wizard-next-1" class="btn primary">Copy &amp; Continue →</button>
+              </div>
+            </div>
+
+            <!-- Step 2: Paste into Claude Desktop config -->
+            <div id="mcp-step-2" class="mcp-step hidden">
+              <h3 class="mcp-step-title">Paste into Claude Desktop's config file</h3>
+              <p class="hint">Open the config file in any text editor. If your file already has an <code>mcpServers</code> key, add the <code>my-curator</code> entry inside it. Otherwise the whole snippet becomes the file. Save when done.</p>
+              <div class="mcp-instructions">
+                <div class="mcp-instr-row">
+                  <span class="mcp-instr-num">1</span>
+                  <div class="mcp-instr-content">
+                    <div class="mcp-instr-line">Open this file:</div>
+                    <div class="mcp-path-row">
+                      <code class="mcp-path-inline" id="mcp-config-path">~/Library/Application Support/Claude/claude_desktop_config.json</code>
+                      <button class="mcp-icon-btn" id="mcp-reveal-btn" title="Reveal in Finder" aria-label="Reveal in Finder">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v13a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1h-8l-2-3H4a1 1 0 0 0-1 1z"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div class="mcp-instr-row">
+                  <span class="mcp-instr-num">2</span>
+                  <div class="mcp-instr-content">
+                    <div class="mcp-instr-line">Paste the snippet inside the <code>mcpServers</code> key (create it if missing).</div>
+                  </div>
+                </div>
+                <div class="mcp-instr-row">
+                  <span class="mcp-instr-num">3</span>
+                  <div class="mcp-instr-content">
+                    <div class="mcp-instr-line">Save the file.</div>
+                  </div>
+                </div>
+              </div>
+              <div class="mcp-diff">
+                <div class="mcp-diff-col">
+                  <div class="mcp-diff-label">Your file now</div>
+                  <pre class="mcp-code-block mcp-code-before" id="mcp-diff-before">{}</pre>
+                </div>
+                <div class="mcp-diff-col">
+                  <div class="mcp-diff-label mcp-diff-label-after">After pasting</div>
+                  <div class="mcp-code-wrap">
+                    <pre class="mcp-code-block mcp-code-after" id="mcp-diff-after">Loading…</pre>
+                    <button class="mcp-code-copy" data-copy-target="mcp-diff-after" title="Copy the merged JSON" aria-label="Copy merged JSON">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="mcp-step-actions">
+                <button id="mcp-wizard-back-2" class="btn">← Back</button>
+                <button id="mcp-wizard-next-2" class="btn primary">I've pasted it →</button>
+              </div>
+            </div>
+
+            <!-- Step 3: Restart & verify -->
+            <div id="mcp-step-3" class="mcp-step hidden">
+              <h3 class="mcp-step-title">Restart Claude Desktop &amp; verify</h3>
+              <p class="hint">Fully quit Claude Desktop (⌘Q) and reopen it. You should see <em>my-curator</em> in its tools list.</p>
+              <div class="mcp-verify-box">
+                <div class="mcp-verify-title">Bridge self-test</div>
+                <div class="mcp-verify-desc">Verify the MCP server itself responds correctly from this machine. If this passes, any remaining issue is inside Claude Desktop's config file.</div>
+                <button id="mcp-selftest-btn" class="btn primary">▶ Run self-test</button>
+                <div id="mcp-selftest-result" class="mcp-selftest-result hidden"></div>
+              </div>
+              <div class="mcp-verify-box">
+                <div class="mcp-verify-title">Try a prompt in Claude Desktop</div>
+                <code class="mcp-example">Use list_domains to show my available knowledge domains, then use get_graph_overview on the most interesting one to see how everything is connected.</code>
+              </div>
+              <div class="mcp-step-actions">
+                <button id="mcp-wizard-back-3" class="btn">← Back</button>
+                <button id="mcp-wizard-done-btn" class="btn primary">Finish</button>
+              </div>
+            </div>
+
+          </div><!-- /#mcp-wizard -->
+
+        </div><!-- /#mcp-unconfigured -->
+
+        <!-- CONFIGURED panel -->
+        <div id="mcp-configured" class="hidden">
+          <div class="mcp-status-card">
+            <div class="mcp-connected-row">
+              <span class="mcp-connected-badge">✅ Connected</span>
+              <span class="mcp-connected-meta" id="mcp-configured-meta">Claude Desktop is configured for this wiki.</span>
+            </div>
+          </div>
+
+          <div class="mcp-stale-alert hidden" id="mcp-stale-alert">
+            <strong>⚠ Config is out of date.</strong>
+            Your knowledge base folder has moved since you last connected.
+            Click <strong>Reconnect</strong> to generate a new snippet.
+          </div>
+
+          <div class="mcp-action-cards">
+            <div class="mcp-action-card">
+              <div class="mcp-action-header">
+                <span class="mcp-action-arrow">▶</span>
+                <span class="mcp-action-title">Self-test</span>
+              </div>
+              <p class="mcp-action-desc">Verify the bridge responds correctly. Useful when Claude Desktop acts strange.</p>
+              <button id="mcp-configured-selftest-btn" class="btn mcp-action-btn">Run self-test</button>
+            </div>
+            <div class="mcp-action-card">
+              <div class="mcp-action-header">
+                <span class="mcp-action-arrow">✎</span>
+                <span class="mcp-action-title">View &amp; Edit Config</span>
+              </div>
+              <p class="mcp-action-desc">Re-open the wizard to inspect the snippet, copy it again, or regenerate if your knowledge base folder moved.</p>
+              <button id="mcp-reconfigure-btn" class="btn mcp-action-btn">Open Wizard</button>
+            </div>
+          </div>
+
+          <div id="mcp-configured-selftest-result" class="mcp-selftest-result hidden"></div>
+
+          <div class="mcp-runtime-note">
+            <strong>Good to know:</strong> The Curator app doesn't need to be running for
+            Claude Desktop to use My Curator. The MCP is a separate process that Claude Desktop
+            launches on demand and reads your wiki directly.
+          </div>
+
+          <details class="mcp-details">
+            <summary>What can frontier models do with this?</summary>
+            <div class="mcp-details-body">
+              <p>Ten tools expose your wiki as a <strong>knowledge graph</strong>, not just files:</p>
+              <ul class="mcp-tool-list">
+                <li><code>list_domains</code> · <code>get_index</code> — discover what's there</li>
+                <li><code>get_graph_overview</code> — topology: hubs, clusters, orphans</li>
+                <li><code>get_tags</code> — tag-based research across the wiki</li>
+                <li><code>search_wiki</code> · <code>search_cross_domain</code> — ranked search with link-count enrichment</li>
+                <li><code>get_node</code> · <code>get_backlinks</code> — pull a page with its full graph context</li>
+                <li><code>get_connected_nodes</code> — multi-hop graph traversal</li>
+                <li><code>get_summary</code> — trace knowledge back to source</li>
+              </ul>
+            </div>
+          </details>
+
+          <div class="mcp-disconnect-note">
+            To remove My Curator from Claude Desktop, delete the <code>my-curator</code>
+            entry from <code>claude_desktop_config.json</code> and restart Claude Desktop.
+          </div>
+        </div><!-- /#mcp-configured -->
+
+      </div>
+
       <!-- App -->
       <div class="settings-section">
         <h3>App</h3>
@@ -617,6 +835,8 @@
           <div class="ob-step" data-step="2"><span>2</span> Domain</div>
           <div class="ob-step-line"></div>
           <div class="ob-step" data-step="3"><span>3</span> Sync</div>
+          <div class="ob-step-line"></div>
+          <div class="ob-step" data-step="4"><span>4</span> Claude Desktop</div>
         </div>
 
         <!-- Step 1: API Key -->
@@ -676,7 +896,36 @@
           <p class="hint">Back up and sync your wiki across computers using a private GitHub repository. You can set this up anytime from the Sync tab.</p>
           <div class="ob-actions">
             <button id="ob-step3-sync" class="btn">Set Up Sync</button>
-            <button id="ob-step3-done" class="btn primary pill">Start Using The Curator</button>
+            <button id="ob-step3-next" class="btn primary pill">Skip — Continue →</button>
+          </div>
+        </div>
+
+        <!-- Step 4: MCP / Claude Desktop -->
+        <div id="ob-step-4" class="ob-panel hidden">
+          <h3>Connect to Claude Desktop <span class="ob-optional-tag">optional</span></h3>
+          <p class="hint">Give frontier models (Opus, Sonnet) access to your second brain for deep research
+            — with the full graph context: tags, links, backlinks. Your wiki never leaves this machine.</p>
+
+          <div class="ob-mcp-preview">
+            <div class="ob-mcp-preview-icon">🔌</div>
+            <div class="ob-mcp-preview-text">
+              <strong>My Curator</strong>
+              <span>Your private MCP bridge · 10 structured tools · local-only</span>
+            </div>
+          </div>
+
+          <p class="hint ob-mcp-hint">
+            You can set this up in under 2 minutes from the <strong>Settings</strong> tab
+            at any time. A short wizard walks you through copying the config snippet and
+            pasting it into Claude Desktop.
+          </p>
+
+          <div class="ob-actions">
+            <button id="ob-step4-later" class="btn">Set Up Later</button>
+            <button id="ob-step4-now" class="btn primary pill">Set Up Now →</button>
+          </div>
+          <div class="ob-actions ob-actions-secondary">
+            <button id="ob-step4-done" class="btn-link">Start Using The Curator</button>
           </div>
         </div>
       </div>

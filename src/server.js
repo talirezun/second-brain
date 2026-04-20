@@ -12,6 +12,7 @@ import chatRouter from './routes/chat.js';
 import syncRouter from './routes/sync.js';
 import configRouter  from './routes/config.js';
 import healthRouter from './routes/health.js';
+import mcpRouter    from './routes/mcp.js';
 import { getProviderInfo } from './brain/llm.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -36,6 +37,7 @@ app.use('/api/chat', chatRouter);
 app.use('/api/sync', syncRouter);
 app.use('/api/config',  configRouter);
 app.use('/api/health',  healthRouter);
+app.use('/api/mcp',     mcpRouter);
 
 // Version endpoint — used by the UI to display the current app version
 app.get('/api/version', (req, res) => res.json({ version }));

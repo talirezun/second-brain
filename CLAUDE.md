@@ -37,7 +37,18 @@ src/
     health.js     — GET /api/health/:domain, POST /api/health/:domain/fix[-all]
     sync.js       — sync endpoints
     config.js     — Settings/config endpoints (API keys, updates, domains path)
-  public/         — vanilla JS frontend (no build step, includes Settings tab, Health tab, onboarding wizard)
+    mcp.js        — My Curator MCP wizard endpoints (config, claude-config, self-test, reveal-config)
+  public/         — vanilla JS frontend (no build step; Settings tab hosts the MCP wizard, Health tab, onboarding wizard)
+mcp/              — My Curator: local read-only MCP server that bridges the wiki to Claude Desktop
+  server.js       — stdio-transport entry point (spawned by Claude Desktop as a child process)
+  graph.js        — wiki parser: frontmatter, [[wikilinks]], backlinks, tag inventory (cached in-process)
+  storage/
+    local.js      — filesystem adapter; resolves domains path from arg/env/.curator-config.json/default
+  util.js         — shared helpers: isValidDomain, isValidSlug, normaliseSlug, resolveNodeSlug
+  tools/
+    index.js      — tool registration hub + response-size guard (900 KB cap with progressive trim)
+    domains.js, index-tool.js, search.js, nodes.js, connected.js,
+    summary.js, cross.js, overview.js, tags.js, backlinks.js  — 10 tool modules
 scripts/
   inject-summary-backlinks.js   — retroactive backlink repair for existing summaries
   fix-wiki-duplicates.js        — one-time entity/concept deduplication
@@ -268,6 +279,7 @@ The vault root should point to `domains/<domain>/wiki/` (or a parent folder cove
 | `v2.1.0` | Remove Stop button + /api/shutdown; server runs until quit; update rebuilds .app; build-app.sh |
 | `f80b2db` | Absolute node path in AppleScript — fixes "node: No such file or directory"; process.execPath in restart; CURATOR_NO_OPEN prevents double browser tabs |
 | `c5eddef` | Auto-refresh UI state after ingest, sync, and tab switches — domain stats, wiki tab, and dropdowns update without manual browser reload |
+| `v2.3.0`  | My Curator MCP — local stdio MCP server exposes 10 tools to Claude Desktop (7 retrieval + 3 graph-native: graph_overview, tags, backlinks). `mcp/` directory, `/api/mcp` routes, Settings-tab wizard with visual diff + self-test button. Existing wikis work as-is; no re-ingest required. Scalable-by-default responses (compact summaries + size guard); path-traversal hardening via `resolveInsideBase()` + slug/domain validators in `mcp/util.js`; `execFile` for reveal-config. Added optional step 4 to the onboarding overlay. |
 
 ---
 
@@ -345,4 +357,10 @@ bash scripts/build-app.sh
 - **Restart uses `process.execPath`** — the `/api/restart` endpoint uses the absolute path to the currently running Node binary (`process.execPath`) instead of bare `node`, ensuring the restarted server finds the same Node regardless of shell environment.
 - **UI auto-refreshes after mutations** — after ingest, domain stats (page count, conversation count) update automatically; after sync down/both, domain dropdowns and stats also refresh; switching to the Domains or Wiki tab reloads their data. No manual browser reload needed.
 - **Onboarding wizard** — 3-step modal on first run (API keys → create domain → sync setup); appears when no API keys are configured in either `.curator-config.json` or `.env`.
-- **Version:** 2.1.0
+- **My Curator MCP (v2.3.0)** — a local read-only MCP server (`mcp/server.js`) that Claude Desktop spawns as a child process via stdio. Reads markdown directly from `getDomainsDir()`; does NOT require the Curator web server to be running. Exposes 10 tools: 7 retrieval (list_domains, get_index, search_wiki, get_node, get_connected_nodes, get_summary, search_cross_domain) and 3 graph-native (get_graph_overview, get_tags, get_backlinks). The graph tools are the reason MCP exists — they expose frontmatter, tags, [[wikilink]] edges (section-labeled), and bidirectional backlinks as structured data, so a frontier model can reason about topology, not just fetch pages. The generated `claude_desktop_config.json` entry uses absolute paths (`process.execPath` + `mcp/server.js` + `--domains-path <absolute>`); moving the domains folder makes it stale — the wizard detects staleness and shows a banner.
+- **MCP wizard lives in Settings** — not a top-level tab. Section uses the sync-tab three-state pattern: **landing** (hero + what/privacy grid + "Set Up My Curator" CTA), **wizard** (3 numbered steps with progress pips: Copy snippet · Paste into config · Restart & verify), **connected** (status card + Self-test / View & Edit Config cards + runtime note). The wizard also joins the onboarding overlay as step 4 ("Connect to Claude Desktop", optional, skippable). Re-entering the Settings tab always refreshes the MCP status via `refreshMcpSection()` so stale UI can't persist after closing the wizard.
+- **MCP scalability** — default tool responses are shaped to fit under the 1 MB MCP response ceiling regardless of wiki size. `get_graph_overview` default = compact summary (stats + top 20 hubs + orphan sample + top 10 tags, ~4 KB at any scale). `include_nodes: true` enumerates pages, `include_edges: true` returns the full edge list — both size-guarded. `get_tags` default = top 50 tags with 50-page samples each. `tools/index.js` runs every tool response through `enforceSizeLimit()` (900 KB cap) that progressively trims heavy arrays (edges → nodes → results → tags → backlinks) and appends a `_truncated` field when it has to drop data.
+- **MCP security** — defense in depth against LLM-driven path traversal. `storage/local.js` has a single `resolveInsideBase()` chokepoint that rejects absolute paths, `..` segments, and anything resolving outside the domains folder. Tools additionally validate their `domain`/`slug` args via `isValidDomain` / `isValidSlug` from `mcp/util.js` (strict alphanum+hyphen+underscore) for clean error messages. The `/api/mcp/reveal-config` endpoint uses `execFile` (not `exec`) so no shell interpretation. The MCP is read-only — there is no write/mutate tool.
+- **MCP graph cache** — `buildGraph()` caches per-domain with a 10-minute TTL and a file-count check for invalidation. An ingest that changes the file count forces a rebuild on the next tool call; otherwise graph re-use is safe for the life of one Claude Desktop conversation.
+- **Self-test isolation** — `POST /api/mcp/self-test` spawns `mcp/server.js` locally, sends initialize + tools/list + list_domains over stdio, and reports round-trip results. If this passes but Claude Desktop still can't see the tool, the issue is in `claude_desktop_config.json`, not the bridge.
+- **Version:** 2.3.0

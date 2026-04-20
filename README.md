@@ -103,14 +103,15 @@ This is the shift from a file cabinet to a neural network.
 
 ---
 
-## Two ways to explore your knowledge
+## Three ways to explore your knowledge
 
 | Mode | Tool | Best for |
 |------|------|----------|
 | **Chat** | Built-in AI (Chat tab) | "How does X relate to Y?", synthesising across sources, multi-turn conversation |
 | **Visual** | Obsidian graph view | Seeing the full knowledge map, spotting clusters, browsing pages |
+| **Frontier LLM** | Claude Desktop via *My Curator* MCP bridge (v2.3+) | Deep research with Opus / Sonnet over the full graph — tags, links, backlinks, topology |
 
-Both read the same files — no sync or export needed between them.
+All three read the same markdown files — no sync or export needed between them. Set up *My Curator* from the Settings tab; see [`docs/mcp-user-guide.md`](docs/mcp-user-guide.md).
 
 ---
 

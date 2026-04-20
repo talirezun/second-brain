@@ -1,17 +1,19 @@
 {
   "name": "the-curator",
-  "version": "2.2.2",
+  "version": "2.3.0",
   "description": "A local, AI-powered knowledge curation system. Drop in a document — the AI atomizes it into an interlinked wiki of entities, concepts, and summaries. Chat with your knowledge. Explore it visually in Obsidian.",
   "homepage": "https://github.com/talirezun/the-curator",
   "type": "module",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "node --watch src/server.js"
+    "dev": "node --watch src/server.js",
+    "mcp": "node mcp/server.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
     "@google/generative-ai": "^0.24.0",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "dotenv": "^16.5.0",
     "express": "^4.21.2",
     "jsonrepair": "^3.13.3",
