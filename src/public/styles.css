@@ -148,6 +148,17 @@ nav {
   opacity: 0.7;
   user-select: none;
 }
+.app-version.app-version-stale {
+  color: var(--warning);
+  background: var(--warning-dim);
+  border-color: rgba(249,226,175,0.3);
+  opacity: 1;
+  cursor: help;
+}
+.app-version.app-version-stale::after {
+  content: ' · restart';
+  font-weight: 600;
+}
 
 /* ── Tabs ── */
 .tab { display: none; }

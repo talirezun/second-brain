@@ -39,8 +39,18 @@ app.use('/api/config',  configRouter);
 app.use('/api/health',  healthRouter);
 app.use('/api/mcp',     mcpRouter);
 
-// Version endpoint — used by the UI to display the current app version
-app.get('/api/version', (req, res) => res.json({ version }));
+// Version endpoint — used by the UI to display the current app version.
+// Also reports on-disk version (from package.json) so the UI can detect
+// "files updated but process not restarted" and prompt the user.
+app.get('/api/version', (req, res) => {
+  let onDiskVersion = version;
+  try {
+    const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url)));
+    onDiskVersion = pkg.version;
+  } catch { /* fall back to startup version */ }
+  const restartRequired = onDiskVersion !== version;
+  res.json({ version, onDiskVersion, restartRequired });
+});
 
 // ── Restart endpoint — used after updates ────────────────────────────────────
 // Closes this server (frees port), spawns a new process, then exits.

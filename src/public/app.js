@@ -1,9 +1,14 @@
 // ── Version badge ─────────────────────────────────────────────────────────────
 fetch('/api/version')
   .then(r => r.json())
-  .then(({ version }) => {
+  .then(({ version, onDiskVersion, restartRequired }) => {
     const el = document.getElementById('app-version');
-    if (el) el.textContent = `v${version}`;
+    if (!el) return;
+    el.textContent = `v${version}`;
+    if (restartRequired) {
+      el.title = `Files on disk are v${onDiskVersion} — please quit and relaunch The Curator to load the new code.`;
+      el.classList.add('app-version-stale');
+    }
   })
   .catch(() => {}); // non-critical — silently skip if unavailable
 
@@ -1498,6 +1503,20 @@ async function refreshMcpSection() {
       fetch('/api/mcp/claude-config'),
       fetch('/api/mcp/claude-full-config'),
     ]);
+    // Detect the "stale running server" case: Express falls through to the SPA
+    // catch-all when the /api/mcp route doesn't exist, so we get HTML instead of JSON.
+    const looksLikeHtml = (r) => (r.headers.get('content-type') || '').includes('text/html');
+    if (looksLikeHtml(statusRes) || !statusRes.ok) {
+      checking.innerHTML =
+        '<div style="padding:14px;border-radius:8px;background:var(--warning-dim);' +
+        'border:1px solid rgba(249,226,175,0.3);color:var(--warning);font-size:13px;line-height:1.55">' +
+        '<strong>Restart needed.</strong> The files for My Curator have been updated, but the ' +
+        'running app is still the old version. Right-click The Curator in the Dock → <strong>Quit</strong>, ' +
+        'then re-open the .app to load the MCP bridge.' +
+        '</div>';
+      checking.classList.remove('hidden');
+      return;
+    }
     const status = await statusRes.json();
     const claudeSnippet = await snippetRes.json();
     const full = await fullRes.json();
@@ -1809,12 +1828,32 @@ document.getElementById('settings-update-btn')?.addEventListener('click', async 
     const data = await r.json();
     if (!r.ok) throw new Error(data.error);
 
+    // Check whether the files on disk are newer than the currently running server.
+    // This happens when a user ran the manual recovery command (git reset --hard + npm install)
+    // but didn't restart the .app — the disk is on v2.3.x but the process is still v2.2.x.
+    let versionInfo = null;
+    try {
+      const vr = await fetch('/api/version');
+      versionInfo = await vr.json();
+    } catch { /* non-critical */ }
+
+    if (versionInfo?.restartRequired) {
+      status.innerHTML = `
+        <span style="color:var(--warning)">
+          <strong>Files are updated (v${versionInfo.onDiskVersion})</strong>
+          but the running app is still v${versionInfo.version}.
+          Please quit and relaunch The Curator — right-click the Dock icon → Quit, then re-open the .app.
+        </span>`;
+      status.className = 'status';
+      return;
+    }
+
     if (data.updateAvailable) {
-      const versionInfo = data.current !== data.latest
+      const versionText = data.current !== data.latest
         ? `v${data.current} → v${data.latest}`
         : `v${data.current} (${data.localCommit} → ${data.remoteCommit})`;
       status.innerHTML = `
-        <span style="color:var(--warning)">Update available: ${versionInfo}</span>
+        <span style="color:var(--warning)">Update available: ${versionText}</span>
         <button id="settings-do-update" class="btn primary pill" style="margin-left:12px;font-size:12px;padding:4px 14px">
           Update Now
         </button>`;
