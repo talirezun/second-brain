@@ -1879,23 +1879,32 @@ async function doUpdate() {
     </div>`;
   status.className = 'status';
 
+  let updateData = null;
   try {
     const r = await fetch('/api/config/update', { method: 'POST' });
-    const data = await r.json();
-    if (!r.ok) throw new Error(data.error);
+    updateData = await r.json();
+    if (!r.ok) throw new Error(updateData.error);
   } catch (err) {
     status.innerHTML = `<span style="color:var(--error)">Update failed: ${err.message || 'Unknown error'}</span>`;
     status.className = 'status';
     return;
   }
 
-  // Update succeeded — now restart the server
+  // Update succeeded — now restart the server. If it was a partial success
+  // (files synced but npm couldn't run — common when the fix itself is in the
+  // update being pulled), surface the warning text so the user understands.
+  const banner = updateData?.partial && updateData?.warning
+    ? `<div style="color:var(--warning);font-size:12px;margin-top:6px;line-height:1.5">${updateData.warning}</div>`
+    : '';
+  const versionLine = updateData?.from && updateData?.to
+    ? `<span style="color:var(--text-muted);font-family:var(--mono);font-size:11px">${updateData.from} → ${updateData.to}</span>`
+    : '';
   status.innerHTML = `
     <div style="display:flex;align-items:center;gap:10px">
       <div style="width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--success);
            border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0"></div>
-      <span>Update complete. Restarting server...</span>
-    </div>`;
+      <span>Update complete. Restarting server... ${versionLine}</span>
+    </div>${banner}`;
 
   // Trigger restart — this spawns a new server process, then kills this one
   try { await fetch('/api/restart', { method: 'POST' }); } catch {}

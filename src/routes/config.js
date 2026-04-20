@@ -198,34 +198,68 @@ router.post('/update', async (_req, res) => {
   // Shared exec options — the env override is what makes `npm` resolvable under
   // the .app wrapper's minimal PATH.
   const execOpts = (extra = {}) => ({ cwd: PROJECT_ROOT, env: SUBPROCESS_ENV, ...extra });
+  let beforeSha = null, afterSha = null;
+
   try {
     // 1. Fetch before resetting so we never hard-reset to a stale ref if the remote is unreachable.
     await execAsync('git fetch origin main', execOpts({ timeout: 30000 }));
 
     // 2. Record before/after SHAs so the response explains what changed.
-    const { stdout: beforeSha } = await execAsync('git rev-parse HEAD', execOpts({ timeout: 5000 }));
+    const before = await execAsync('git rev-parse HEAD', execOpts({ timeout: 5000 }));
+    beforeSha = before.stdout.trim().slice(0, 7);
 
     // 3. Hard-sync to origin/main. Discards any local modifications to tracked files
     //    (including the common `package-lock.json` regeneration) without touching gitignored data.
     await execAsync('git reset --hard origin/main', execOpts({ timeout: 10000 }));
-
-    const { stdout: afterSha } = await execAsync('git rev-parse HEAD', execOpts({ timeout: 5000 }));
+    const after = await execAsync('git rev-parse HEAD', execOpts({ timeout: 5000 }));
+    afterSha = after.stdout.trim().slice(0, 7);
 
     // 4. Install deps. Uses the absolute node binary's directory so `npm` resolves
     //    under the .app wrapper's minimal PATH.
-    await execAsync('npm install --silent --no-audit --no-fund', execOpts({ timeout: 120000 }));
+    try {
+      await execAsync('npm install --silent --no-audit --no-fund', execOpts({ timeout: 120000 }));
+    } catch (npmErr) {
+      // "npm: command not found" is the classic sign of a pre-v2.3.5 running app:
+      // the files on disk already contain the PATH fix, but the currently-running
+      // process (which is what spawned this subprocess) doesn't. Restarting picks
+      // up the fixed version. Since v2.3.4→v2.3.5 added no dependencies, the
+      // existing node_modules is still correct and a restart is sufficient.
+      //
+      // For any OTHER npm error, we re-throw and surface it — auto-restarting
+      // into a broken-dependency state would be worse than reporting the failure.
+      const msg = (npmErr.message || '').toLowerCase();
+      const pathIssue = msg.includes('npm: command not found') || msg.includes('npm: not found');
+      if (pathIssue) {
+        return res.json({
+          ok: true,
+          restarting: true,
+          partial: true,
+          from: beforeSha,
+          to:   afterSha,
+          warning: `Files updated ${beforeSha} → ${afterSha}. ` +
+                   `npm couldn't be found under the running app's PATH — a known issue in ` +
+                   `older versions that's fixed in the update you just pulled. Restarting will ` +
+                   `load the fixed updater. No dependency install is needed for this version bump.`,
+        });
+      }
+      throw npmErr;
+    }
 
-    // 5. Rebuild the .app so the AppleScript stays current with the code
+    // 5. Rebuild the .app so the AppleScript stays current with the code (non-fatal).
     await execAsync('bash scripts/build-app.sh', execOpts({ timeout: 30000 })).catch(() => {});
 
     res.json({
       ok: true,
       restarting: true,
-      from: beforeSha.trim().slice(0, 7),
-      to:   afterSha.trim().slice(0, 7),
+      from: beforeSha,
+      to:   afterSha,
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({
+      error: err.message,
+      from: beforeSha,
+      to:   afterSha,
+    });
   }
 });
 
