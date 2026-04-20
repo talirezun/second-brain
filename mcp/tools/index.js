@@ -30,9 +30,11 @@ export const tools = [
   { definition: getSummaryDefinition,      handler: getSummaryHandler },
 ];
 
-// Response size cap — Claude Desktop rejects MCP tool responses over 1 MB.
-// We cap at 900 KB of JSON to leave headroom for transport framing.
-const MAX_RESPONSE_BYTES = 900 * 1024;
+// Response size cap. 1 MB of JSON is ~250 000 tokens — alone it would saturate
+// Opus's 200 k context window, leaving no room for subsequent tool calls or the
+// model's reasoning. We cap at 400 KB (~100 k tokens) so multiple tool calls
+// can coexist in one conversation without exhausting context.
+const MAX_RESPONSE_BYTES = 400 * 1024;
 
 /**
  * Ensure tool output fits within the MCP response limit.
@@ -50,7 +52,11 @@ function enforceSizeLimit(toolName, result) {
   }
 
   // Object result — progressively trim known heavy arrays
-  const trimmable = ['edges', 'nodes', 'results', 'tags', 'backlinks', 'outgoing_links', 'connected'];
+  const trimmable = [
+    'edges', 'nodes', 'results', 'tags',
+    'backlinks', 'outgoing_links', 'connected',
+    'outgoing_from_start', 'backlinks_to_start',
+  ];
   const trimmed = { ...result };
   const trimmedFields = [];
 

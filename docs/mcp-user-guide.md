@@ -29,10 +29,11 @@ The key idea: a frontier model doesn't just *read* your wiki — it can *travers
 
 ## How it scales
 
-MCP tool responses have a hard 1 MB cap enforced by the client (Claude Desktop). My Curator is designed to fit under that ceiling regardless of wiki size:
+MCP tool responses feed into the model's context window as tokens — so the practical limit isn't just the 1 MB MCP cap, it's also the model's context. My Curator caps every tool response at **~400 KB (≈100 000 tokens)** so multi-turn conversations can sustain several tool calls without exhausting Opus's 200 000-token window.
 
 - **`get_graph_overview`** returns a compact summary by default (≈4 KB at any scale): node/edge/tag counts, type breakdown, top 20 hubs, orphan sample, top 10 tags. Ask for `include_nodes: true` to enumerate every page, or `include_edges: true` for the full edge list — both are size-guarded: if the response would exceed the limit, it auto-trims heavy arrays and flags what was dropped.
 - **`get_tags`** defaults to the top 50 tags with 50-page samples each. Use `filter` to zoom in on a single tag and `max_pages_per_tag: 0` for the full page list.
+- **`get_connected_nodes`** caps at `max_nodes: 60` by default, ranked by hop distance then by degree. Max depth is 2. On hub entities the neighbourhood can be hundreds of nodes — raise `max_nodes` explicitly if you need more.
 - **`search_wiki`** and **`search_cross_domain`** are ranked, so `max_results` keeps responses small.
 
 Practical guidance:
