@@ -1784,7 +1784,33 @@ async function loadApiKeyStatus() {
     } else {
       badge.classList.add('hidden');
     }
+
+    // Surface model-lifecycle fallback when the provider has retired the
+    // pinned default and we auto-recovered onto the next model in the chain.
+    // Rendered as an amber callout just below the provider badge — tells the
+    // user exactly which model is in use and nudges them to Check for Updates.
+    renderFallbackBanner(data.fallback);
   } catch {}
+}
+
+function renderFallbackBanner(fallback) {
+  let el = document.getElementById('settings-model-fallback');
+  if (!fallback) {
+    if (el) el.remove();
+    return;
+  }
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'settings-model-fallback';
+    el.className = 'settings-fallback-banner';
+    const badge = document.getElementById('settings-provider-badge');
+    badge?.parentNode?.insertBefore(el, badge.nextSibling);
+  }
+  const providerLabel = fallback.provider === 'gemini' ? 'Gemini' : 'Anthropic';
+  el.innerHTML =
+    `<strong>⚠ Using fallback model.</strong> ${providerLabel}'s <code>${escapeHtml(fallback.requestedModel)}</code> ` +
+    `is unavailable; currently running on <code>${escapeHtml(fallback.usingModel)}</code>. ` +
+    `Open <strong>Check for Updates</strong> above to pull the latest Curator with an updated default model.`;
 }
 
 // Save API keys

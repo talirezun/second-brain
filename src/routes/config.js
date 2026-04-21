@@ -5,7 +5,7 @@ import { promisify } from 'util';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { getConfig, setDomainsDir, getApiKeys, setApiKeys } from '../brain/config.js';
-import { getProviderInfo } from '../brain/llm.js';
+import { getProviderInfo, getFallbackStatus } from '../brain/llm.js';
 
 const execAsync = promisify(exec);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -108,6 +108,9 @@ router.get('/api-keys', (_req, res) => {
     hasAnthropicKey: !!keys.anthropicApiKey,
     activeProvider:  provider?.provider || null,
     activeModel:     provider?.model || null,
+    // null if primary model is working; populated when the fallback chain kicked in
+    // because the pinned default has been retired by the provider.
+    fallback:        getFallbackStatus(),
   });
 });
 

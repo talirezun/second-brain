@@ -19,6 +19,47 @@ const DEFAULTS = {
   anthropic: 'claude-sonnet-4-6',
 };
 
+/**
+ * Model-lifecycle safety net.
+ *
+ * When a provider retires the pinned default (e.g., Google removes
+ * `gemini-2.5-flash-lite` in a future release), we don't want end-user
+ * installations to break before the next Curator update lands. On a
+ * model-not-found error, we try a small ordered chain of next-best models.
+ * Successful fallback is logged and exposed via getFallbackStatus() so the
+ * Settings UI can prompt the user to update.
+ *
+ * Order: most-similar model first, then broadly-available stable aliases.
+ * Rate-limit (429) and service-unavailable (503) errors DO NOT trigger
+ * fallback — those are handled by the existing retry loop.
+ */
+const FALLBACK_CHAINS = {
+  gemini: [
+    'gemini-2.5-flash',             // next tier up in the same family
+    'gemini-1.5-flash',             // previous-gen stable
+    'gemini-1.5-flash-latest',      // Google's rolling alias as last resort
+  ],
+  anthropic: [
+    'claude-sonnet-4-5',            // previous Sonnet generation
+    'claude-3-7-sonnet-latest',     // rolling alias recognised by SDK types
+    'claude-3-5-sonnet-latest',     // broadly-available stable fallback
+  ],
+};
+
+/**
+ * Module-level snapshot of the most recent fallback event.
+ * null when the primary model is working; populated when a fallback is in use.
+ * Cleared automatically when a subsequent primary call succeeds.
+ */
+let _activeFallback = null;
+
+/**
+ * @returns {null | {provider: string, requestedModel: string, usingModel: string, at: string}}
+ */
+export function getFallbackStatus() {
+  return _activeFallback;
+}
+
 export function getProviderInfo() {
   if (getEffectiveKey('gemini')) {
     return {
@@ -125,9 +166,33 @@ export async function generateText(systemPrompt, userPrompt, maxTokens = 8192, r
   }
 }
 
-async function callLLM(systemPrompt, userPrompt, maxTokens, responseFormat) {
-  const { provider, model } = getProviderInfo();
+/**
+ * Detect "model not found" errors across both provider SDKs.
+ *
+ * Anthropic throws `NotFoundError` with status 404 and a message containing
+ * "not_found_error" / "model".
+ * Gemini returns an error whose message includes "404", "not found",
+ * "is not supported", or "model_not_found" depending on the API surface.
+ *
+ * Rate limits (429) and service-unavailable (503) are deliberately excluded —
+ * those go through the existing retry path, not the fallback chain.
+ */
+function isModelNotFound(err) {
+  if (!err) return false;
+  if (err.status === 404) return true;
+  const msg = (err.message || '').toLowerCase();
+  if (msg.includes('404') && (msg.includes('not found') || msg.includes('is not supported'))) return true;
+  if (msg.includes('model_not_found') || msg.includes('model not found')) return true;
+  if (msg.includes('not_found_error') && msg.includes('model')) return true;
+  if (msg.includes('model') && msg.includes('does not exist')) return true;
+  return false;
+}
 
+/**
+ * Invoke a specific provider+model. No retry/fallback here — pure dispatch.
+ * Called by `callLLM` which handles fallback, and by the retry loop in `generateText`.
+ */
+async function callProvider(provider, model, systemPrompt, userPrompt, maxTokens, responseFormat) {
   // ── Google Gemini ────────────────────────────────────────────────────────
   if (provider === 'gemini') {
     const genAI = new GoogleGenerativeAI(getEffectiveKey('gemini'));
@@ -149,6 +214,9 @@ async function callLLM(systemPrompt, userPrompt, maxTokens, responseFormat) {
   }
 
   // ── Anthropic Claude ─────────────────────────────────────────────────────
+  // Note: Anthropic's API has no native JSON mode equivalent. Prompts that ask
+  // for JSON rely on the "Return ONLY valid JSON" directive in the system prompt
+  // plus the jsonrepair fallback in parseJSON (see src/brain/ingest.js).
   const client = new Anthropic({ apiKey: getEffectiveKey('anthropic') });
   const message = await client.messages.create({
     model,
@@ -157,4 +225,59 @@ async function callLLM(systemPrompt, userPrompt, maxTokens, responseFormat) {
     messages: [{ role: 'user', content: userPrompt }],
   });
   return message.content[0].text;
+}
+
+/**
+ * Call the active LLM with automatic fallback on model-not-found errors.
+ *
+ * Order of attempts:
+ *   1. Primary model from DEFAULTS / LLM_MODEL env override
+ *   2. Each entry in FALLBACK_CHAINS[provider]
+ *
+ * Only "model not found" errors trigger the next attempt. Any other error
+ * (auth, rate-limit, network, 5xx) is re-thrown immediately so the outer
+ * retry loop or caller can handle it appropriately.
+ */
+async function callLLM(systemPrompt, userPrompt, maxTokens, responseFormat) {
+  const { provider, model } = getProviderInfo();
+  const chain = [model, ...(FALLBACK_CHAINS[provider] || [])];
+  let lastErr = null;
+
+  for (let i = 0; i < chain.length; i++) {
+    const candidate = chain[i];
+    try {
+      const result = await callProvider(provider, candidate, systemPrompt, userPrompt, maxTokens, responseFormat);
+
+      if (i === 0) {
+        // Primary succeeded — clear any previous fallback state for this provider
+        if (_activeFallback && _activeFallback.provider === provider) {
+          console.log(`[llm] Primary model "${model}" is available again — clearing fallback state.`);
+          _activeFallback = null;
+        }
+      } else {
+        // A fallback succeeded — record for the UI to surface
+        _activeFallback = {
+          provider,
+          requestedModel: chain[0],
+          usingModel: candidate,
+          at: new Date().toISOString(),
+        };
+        console.warn(
+          `[llm] Primary model "${chain[0]}" is unavailable; using fallback "${candidate}". ` +
+          `Please run "Check for Updates" in Settings to upgrade to a current model.`
+        );
+      }
+      return result;
+    } catch (err) {
+      if (isModelNotFound(err) && i < chain.length - 1) {
+        console.warn(`[llm] Model "${candidate}" returned "not found"; trying fallback "${chain[i + 1]}"...`);
+        lastErr = err;
+        continue;
+      }
+      // Non-deprecation error, or out of fallbacks — propagate
+      throw err;
+    }
+  }
+  // Should be unreachable — the loop either returns or throws — but be safe
+  throw lastErr || new Error(`All ${provider} models failed`);
 }
