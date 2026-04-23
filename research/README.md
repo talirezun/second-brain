@@ -42,6 +42,10 @@ See [CONTRIBUTING.md](../CONTRIBUTING.md) for detailed guidelines.
   By Dr. Tali Režun  
   *An exploration of how compiling knowledge — rather than retrieving it — creates intellectual leverage that compounds over time.*
 
+- **[Building Knowledge Immortality Through the Second Brain Architecture and The Curator App](./articles/knowledge-immortality-second-brain.md)**  
+  By Dr. Tali Režun  
+  *On why recorded, structured knowledge is the only thing that survives — and how a local app built on markdown files, Obsidian, and a spark from Andrej Karpathy makes knowledge immortality achievable for anyone.*
+
 ### Case Studies
 
 *(Coming soon)*
@@ -61,6 +65,14 @@ If you're referencing articles from this research series, please cite them as fo
   year = {2026},
   month = {April},
   url = {https://github.com/talirezun/the-curator/blob/main/research/articles/the-second-brain-that-grows-smarter.md}
+}
+
+@article{rezun2026knowledge-immortality,
+  author = {Režun, Tali},
+  title = {Building Knowledge Immortality Through the Second Brain Architecture and The Curator App},
+  year = {2026},
+  month = {April},
+  url = {https://github.com/talirezun/the-curator/blob/main/research/articles/knowledge-immortality-second-brain.md}
 }
 ```
 
