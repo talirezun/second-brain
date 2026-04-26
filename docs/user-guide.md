@@ -390,6 +390,46 @@ Conversations are saved automatically and persist across server restarts. You ca
 
 > The AI only answers from your wiki. If you haven't ingested any sources about a topic, it will say so honestly rather than making things up.
 
+### Compiling a conversation to your wiki (v2.5.0)
+
+A chat is a great place to think out loud, but the conversation itself is not part of your wiki — it lives in the chat history. **Compile to Wiki** turns any conversation into permanent wiki pages. Use it after a focused brainstorm, a research thread, or a working session whose conclusions you want to keep.
+
+**How it works**
+
+1. Have a conversation in the Chat tab. The **Compile to Wiki** button appears in the top-right of the thread once you've sent at least 2 messages.
+2. Click **Compile to Wiki**. A progress bar shows what's happening — loading the conversation, asking the AI to extract durable knowledge, writing pages, syncing entity backlinks, updating the index.
+3. After 15–45 seconds you see a summary panel: how many pages were **created** (✨) and how many were **updated** (✏️), with byte sizes and per-section bullet deltas. Unchanged pages are hidden by default — click *"Show unchanged"* if you want to see them.
+
+**What gets written**
+
+- **One summary page** under `summaries/` capturing what was learned. Filename is `<conversation-title>-<YYYY-MM-DD>-<short-hash>.md` — the hash makes the slug deterministic, so re-compiling the same conversation never creates a duplicate file.
+- **Entity and concept pages** for any people, tools, or ideas central to the discussion — created if new, merged if they already exist in the wiki.
+- **Cross-links** between everything: every entity mentioned in the summary gets a backlink to it; the summary references all the entities and concepts.
+- An entry in the wiki's `log.md` recording the compile.
+
+The same merge pipeline that handles ingest runs here too: typo-variant slugs are normalised, duplicates are caught, folder-prefix link errors are stripped, summary backlinks are injected automatically.
+
+**Compiling the same conversation twice**
+
+The Curator refuses re-compiles when nothing has changed:
+
+> *Already compiled to summaries/X.md. Send another message in this conversation to extend it, or delete that file in your wiki to start over.*
+
+This is intentional — a second LLM run on identical input produces slightly different bullet phrasings, and the merge pipeline would silently inflate every related page's section bullets across dozens of files. If you want to add to the compiled summary, send another message in the conversation and click Compile again. The new turn changes the conversation hash → new slug → no collision → a fresh summary file is created alongside the old one.
+
+**Good use cases**
+
+- **Brainstorming sessions** — explore an idea with the AI, then commit the conclusions to the wiki when you're done.
+- **Research threads** — ask "what does my wiki say about X, and how does it connect to Y?", then compile the synthesis.
+- **Meeting / dictation notes** — paste meeting notes or speak through a tool that types into the chat, then compile to a structured wiki entry.
+- **Decision records** — talk through a decision with the AI ("should we use approach A or B?"), then save the reasoning permanently.
+
+**Tips**
+
+- Give the conversation a focused topic before compiling. A wide-ranging chat compiles into a noisy summary.
+- Re-read the summary page in the Wiki tab after compile — you can edit it directly in any text editor or in Obsidian if you want to refine it.
+- The conversation itself stays in the Chat sidebar after compile — compile doesn't delete it.
+
 ---
 
 ## 10. Manage your domains

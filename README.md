@@ -89,6 +89,12 @@ This is the shift from a file cabinet to a neural network.
   let Obsidian color-code every node automatically; set it up once, every future ingest colors itself
 - **Multi-turn AI chat** with persistent conversation history — ask follow-ups, connect the dots
   across sources, pick up where you left off
+- **Compile to Wiki (v2.5.0)** — turn any chat conversation into permanent wiki pages with one
+  click. The AI reads the dialogue, extracts the durable knowledge, writes a summary page plus
+  any new entities/concepts that emerged, and updates everything related — same merge pipeline
+  as ingest, no parallel write surface. Compiling the same conversation twice is a safe no-op.
+  After every compile (and every ingest) you see exactly which pages were created and which
+  were updated, with byte counts and per-section bullet deltas.
 - Visual knowledge graph via [Obsidian](https://obsidian.md) (free app, reads the same files)
 - **GitHub sync** — one-time 3-minute setup, then Sync Up / Sync Down across any number of computers
 - **Domain management** — create, rename, and delete domains from the UI; four AI-tuned templates

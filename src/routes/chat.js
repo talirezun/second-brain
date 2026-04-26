@@ -9,6 +9,11 @@ import { listDomains } from '../brain/files.js';
 
 const router = Router();
 
+// Conversation IDs are server-generated UUIDs. Reject non-conforming IDs
+// before they reach the filesystem layer — defense in depth against
+// path-traversal via crafted IDs.
+const CONVERSATION_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 // List conversations for a domain
 router.get('/:domain', async (req, res) => {
   try {
@@ -22,6 +27,9 @@ router.get('/:domain', async (req, res) => {
 // Load a full conversation
 router.get('/:domain/:id', async (req, res) => {
   try {
+    if (!CONVERSATION_ID_RE.test(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid conversationId' });
+    }
     const conversation = await readConversation(req.params.domain, req.params.id);
     if (!conversation) return res.status(404).json({ error: 'Conversation not found' });
     res.json(conversation);
@@ -54,6 +62,9 @@ router.post('/:domain', async (req, res) => {
 // Delete a conversation
 router.delete('/:domain/:id', async (req, res) => {
   try {
+    if (!CONVERSATION_ID_RE.test(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid conversationId' });
+    }
     await deleteConversation(req.params.domain, req.params.id);
     res.json({ success: true });
   } catch (err) {

@@ -69,6 +69,7 @@ router.post('/', upload.single('file'), async (req, res) => {
       type: 'done',
       title: result.title,
       pagesWritten: result.pagesWritten,
+      changes: result.changes, // structured per-file change records (v2.5.0+)
       wasOverwrite: overwrite === 'true',
     });
   } catch (err) {

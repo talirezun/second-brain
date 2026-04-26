@@ -2422,3 +2422,204 @@ input::placeholder, textarea::placeholder { color: var(--text-muted); }
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+/* ── Compile to Wiki — chat thread header (v2.5.0) ── */
+.chat-thread-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg);
+  flex-shrink: 0;
+}
+.chat-thread-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.btn.ghost.compile-btn {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-2);
+  font-size: 12px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+.btn.ghost.compile-btn:hover:not(:disabled) {
+  background: var(--accent-dim);
+  border-color: rgba(124,90,245,0.4);
+  color: var(--accent-2);
+}
+.btn.ghost.compile-btn:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+.btn.ghost.compile-btn.compiling .compile-btn-icon {
+  animation: compile-pulse 1.2s ease-in-out infinite;
+}
+@keyframes compile-pulse {
+  0%, 100% { opacity: 0.4; }
+  50%      { opacity: 1; }
+}
+.btn.ghost.compile-btn.hidden { display: none; }
+
+/* ── Compile progress strip (v2.5.0) ── */
+.compile-progress {
+  margin: 0 24px;
+  padding: 12px 0 4px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.compile-progress .progress-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.compile-progress .progress-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-right: 12px;
+}
+.compile-progress .progress-pct {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--accent-2);
+}
+.compile-progress .progress-track {
+  height: 3px;
+  background: var(--border-subtle);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.compile-progress .progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  width: 0%;
+  transition: width 0.3s ease-out;
+  box-shadow: 0 0 8px var(--accent-glow);
+}
+
+/* ── Result panel: shared by ingest + compile (v2.5.0) ── */
+.result-panel {
+  margin: 14px 18px;
+  flex-shrink: 0;
+  max-height: 38vh;
+  overflow-y: auto;
+}
+.result-panel .change-summary,
+.result .change-summary {
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 16px 20px;
+}
+/* When the existing .result wrapper already provides a card, keep change-summary
+   transparent so we don't double-frame it. */
+.result .change-summary {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+.change-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 14px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.change-section { margin-bottom: 14px; }
+.change-section:last-child { margin-bottom: 0; }
+.change-header {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.change-icon { font-size: 12px; }
+.change-created .change-header { color: var(--success); }
+.change-updated .change-header { color: var(--accent-2); }
+.change-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.change-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 3px 0;
+  color: var(--text-2);
+  border-bottom: 1px solid rgba(36,36,64,0.5);
+}
+.change-list li:last-child { border-bottom: none; }
+.change-path {
+  flex: 1;
+  word-break: break-all;
+  color: var(--accent-2);
+}
+.change-detail {
+  color: var(--text-muted);
+  font-size: 11px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.change-toggle {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 4px 0;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+}
+.change-toggle:hover { color: var(--text-2); }
+.change-empty {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-style: italic;
+}
+
+/* Compile-specific feedback states */
+.compile-error {
+  background: rgba(243,139,168,0.10);
+  border: 1px solid rgba(243,139,168,0.3);
+  color: #f38ba8;
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  font-size: 13px;
+}
+.compile-refused {
+  background: var(--warning-dim);
+  border: 1px solid rgba(249,226,175,0.25);
+  color: var(--warning);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  font-size: 13px;
+}

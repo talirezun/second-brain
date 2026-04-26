@@ -218,6 +218,53 @@ function injectBulletsIntoSection(content, sectionName, extraBullets) {
  * Keyed on the same dedupKey() as the injection logic — link target for Related-
  * style bullets, full text otherwise.
  */
+/**
+ * Parse all `## Section` headings in a markdown document and collect the
+ * bullet lines under each. Returns a Map of section-name → array of bullet
+ * lines (trimmed). Used by diffBulletSections() to compute change records.
+ */
+function parseAllBulletSections(content) {
+  const sections = new Map();
+  const lines = content.split('\n');
+  let currentSection = null;
+  for (const line of lines) {
+    const heading = line.match(/^##\s+(.+?)\s*$/);
+    if (heading) {
+      currentSection = heading[1].trim();
+      if (!sections.has(currentSection)) sections.set(currentSection, []);
+      continue;
+    }
+    if (currentSection && /^\s*[-*]\s/.test(line)) {
+      sections.get(currentSection).push(line.trim());
+    }
+  }
+  return sections;
+}
+
+/**
+ * Compare bullet sections between existing and final content.
+ * Returns the section names whose bullet count grew, and the total bullet delta.
+ * Bullet-count growth is a hint, not a deep diff — sufficient for the v2.5.0
+ * "what changed" panel; a re-ordering or one-for-one swap won't be flagged
+ * (status='updated' + bytesBefore≠bytesAfter still accurately signals change).
+ */
+function diffBulletSections(existing, final) {
+  const existingSections = parseAllBulletSections(existing);
+  const finalSections = parseAllBulletSections(final);
+  const sectionsChanged = [];
+  let bulletsAdded = 0;
+  const allNames = new Set([...existingSections.keys(), ...finalSections.keys()]);
+  for (const name of allNames) {
+    const before = existingSections.get(name) || [];
+    const after = finalSections.get(name) || [];
+    if (after.length > before.length) {
+      sectionsChanged.push(name);
+      bulletsAdded += (after.length - before.length);
+    }
+  }
+  return { sectionsChanged, bulletsAdded };
+}
+
 function deduplicateBulletSections(content) {
   const ACCUMULATE = new Set([
     'Key Facts', 'Key Ideas', 'Key Points', 'Related',
@@ -607,7 +654,7 @@ export async function writePage(domain, relativePath, content) {
   const basename = path.basename(canonPath);
   if (!basename || !basename.endsWith('.md')) {
     console.warn(`[writePage] Skipping invalid path (no filename): "${relativePath}"`);
-    return;
+    return null;
   }
 
   // 3. For entity paths, apply two deduplication passes so the LLM never
@@ -669,14 +716,22 @@ export async function writePage(domain, relativePath, content) {
   const dir = path.dirname(fullPath);
   await mkdir(dir, { recursive: true });
 
+  // Capture pre-write state once — used both by the merge step below and by
+  // the change-record computation after the write.
+  const existedBefore = existsSync(fullPath);
+  let existingContent = '';
+  if (existedBefore) {
+    try { existingContent = await readFile(fullPath, 'utf8'); }
+    catch { /* unreadable; treat as if it didn't exist */ }
+  }
+
   // 4. Merge with existing content instead of overwriting — bullet-list
   //    sections (Key Facts, Related, etc.) accumulate across ingests.
   let final = processed;
   const skipMerge = canonPath === 'index.md' || canonPath === 'log.md';
-  if (!skipMerge && existsSync(fullPath)) {
+  if (!skipMerge && existedBefore) {
     try {
-      const existing = await readFile(fullPath, 'utf8');
-      final = mergeWikiPage(existing, processed);
+      final = mergeWikiPage(existingContent, processed);
     } catch {
       // If merge fails, fall back to plain write — better than crashing
     }
@@ -784,10 +839,28 @@ export async function writePage(domain, relativePath, content) {
     await injectSummaryBacklinks(summarySlug, final, wikiPath(domain));
   }
 
-  // Return the canonical path so callers (ingestFile) can use the actual
-  // path written to disk, not the original LLM path which may have been
-  // redirected by Pass A, Pass B, step 3b, or normalizePath().
-  return canonPath;
+  // Compute change record — what callers (ingest, compile, MCP) report to users.
+  // canonPath is the actual path written to disk (may differ from input after
+  // redirects by Pass A, Pass B, step 3b, or normalizePath()).
+  const bytesBefore = Buffer.byteLength(existingContent, 'utf8');
+  const bytesAfter = Buffer.byteLength(final, 'utf8');
+  let status;
+  if (!existedBefore) status = 'created';
+  else if (existingContent === final) status = 'unchanged';
+  else status = 'updated';
+
+  const { sectionsChanged, bulletsAdded } = (existedBefore && !skipMerge && status === 'updated')
+    ? diffBulletSections(existingContent, final)
+    : { sectionsChanged: [], bulletsAdded: 0 };
+
+  return {
+    canonPath,
+    status,
+    bytesBefore,
+    bytesAfter,
+    sectionsChanged,
+    bulletsAdded,
+  };
 }
 
 export async function appendLog(domain, entry) {

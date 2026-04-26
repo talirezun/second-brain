@@ -240,14 +240,111 @@ function hideDuplicateBanner() {
 }
 
 function showIngestResult(data) {
-  const label = data.wasOverwrite ? 'Re-ingested &amp; updated:' : 'Ingested:';
-  ingestResult.innerHTML = `
-    <h3>${label} ${escHtml(data.title)}</h3>
-    <ul>
-      ${data.pagesWritten.map(p => `<li><span>${escHtml(p)}</span></li>`).join('')}
-    </ul>
+  const titlePrefix = data.wasOverwrite ? 'Re-ingested:' : 'Ingested:';
+  // Prefer the structured change records (v2.5.0+); fall back to the flat
+  // pagesWritten list if an older response somehow arrives.
+  if (data.changes && data.changes.length) {
+    renderChangeRecords(ingestResult, {
+      title: `${titlePrefix} ${data.title}`,
+      changes: data.changes,
+    });
+  } else {
+    ingestResult.innerHTML = `
+      <h3>${escHtml(titlePrefix)} ${escHtml(data.title || '')}</h3>
+      <ul>
+        ${(data.pagesWritten || []).map(p => `<li><span>${escHtml(p)}</span></li>`).join('')}
+      </ul>
+    `;
+    showEl(ingestResult);
+  }
+}
+
+// ── Shared change-records renderer (v2.5.0) ───────────────────────────────────
+// Used by ingest, chat compile, and (later) MCP write surfaces. Splits records
+// into created / updated / unchanged. Unchanged is collapsed by default to
+// keep the panel quiet — most users only care about new + updated.
+function formatBytes(n) {
+  if (n == null) return '';
+  if (n < 1024) return `${n} B`;
+  return `${(n / 1024).toFixed(1)} KB`;
+}
+
+function renderChangeRecords(container, { title, changes }) {
+  if (!changes || changes.length === 0) {
+    container.innerHTML = '';
+    hideEl(container);
+    return;
+  }
+
+  const created = changes.filter(c => c.status === 'created');
+  const updated = changes.filter(c => c.status === 'updated');
+  const unchanged = changes.filter(c => c.status === 'unchanged');
+
+  const formatRecord = (c) => {
+    let detail = '';
+    if (c.status === 'updated' && c.bulletsAdded > 0) {
+      const sections = c.sectionsChanged && c.sectionsChanged.length
+        ? ` in ${c.sectionsChanged.map(escHtml).join(', ')}`
+        : '';
+      detail = `<span class="change-detail">+${c.bulletsAdded} bullet${c.bulletsAdded === 1 ? '' : 's'}${sections}</span>`;
+    } else if (c.status === 'created') {
+      detail = `<span class="change-detail">${formatBytes(c.bytesAfter)}</span>`;
+    } else if (c.status === 'updated') {
+      detail = `<span class="change-detail">${formatBytes(c.bytesBefore)} → ${formatBytes(c.bytesAfter)}</span>`;
+    }
+    return `<li><span class="change-path">${escHtml(c.canonPath)}</span>${detail}</li>`;
+  };
+
+  const headerRow = title
+    ? `<h3 class="change-title">${escHtml(title)}</h3>`
+    : '';
+
+  const createdBlock = created.length ? `
+    <div class="change-section change-created">
+      <div class="change-header"><span class="change-icon">✨</span> ${created.length} new ${created.length === 1 ? 'page' : 'pages'}</div>
+      <ul class="change-list">${created.map(formatRecord).join('')}</ul>
+    </div>` : '';
+
+  const updatedBlock = updated.length ? `
+    <div class="change-section change-updated">
+      <div class="change-header"><span class="change-icon">✏️</span> ${updated.length} ${updated.length === 1 ? 'page' : 'pages'} updated</div>
+      <ul class="change-list">${updated.map(formatRecord).join('')}</ul>
+    </div>` : '';
+
+  const unchangedBlock = unchanged.length ? `
+    <div class="change-section change-unchanged">
+      <button class="change-toggle" type="button">Show ${unchanged.length} unchanged ${unchanged.length === 1 ? 'page' : 'pages'}</button>
+      <ul class="change-list hidden">${unchanged.map(formatRecord).join('')}</ul>
+    </div>` : '';
+
+  // Empty edge case: every record was unchanged (e.g. re-compile of identical convo)
+  const emptyBlock = (!created.length && !updated.length) ? `
+    <div class="change-empty">No changes — every page was already up to date.</div>` : '';
+
+  container.innerHTML = `
+    <div class="change-summary">
+      ${headerRow}
+      ${createdBlock}
+      ${updatedBlock}
+      ${emptyBlock}
+      ${unchangedBlock}
+    </div>
   `;
-  showEl(ingestResult);
+
+  // Wire the "show unchanged" toggle
+  const toggle = container.querySelector('.change-toggle');
+  if (toggle) {
+    toggle.addEventListener('click', () => {
+      const ul = toggle.nextElementSibling;
+      const isHidden = ul.classList.contains('hidden');
+      ul.classList.toggle('hidden');
+      toggle.textContent = isHidden
+        ? `Hide ${unchanged.length} unchanged ${unchanged.length === 1 ? 'page' : 'pages'}`
+        : `Show ${unchanged.length} unchanged ${unchanged.length === 1 ? 'page' : 'pages'}`;
+    });
+  }
+
+  showEl(container);
 }
 
 // ── CHAT TAB ──────────────────────────────────────────────────────────────────
@@ -256,12 +353,22 @@ const newChatBtn     = document.getElementById('new-chat-btn');
 const convListEl     = document.getElementById('conversation-list');
 const chatEmptyEl    = document.getElementById('chat-empty');
 const chatThreadEl   = document.getElementById('chat-thread');
+const chatThreadHeader = document.getElementById('chat-thread-header');
+const chatThreadTitleText = document.getElementById('chat-thread-title-text');
+const compileBtn     = document.getElementById('compile-btn');
+const compileResultEl = document.getElementById('compile-result');
+const compileProgressEl = document.getElementById('compile-progress');
+const compileProgressLabel = document.getElementById('compile-progress-label');
+const compileProgressPct = document.getElementById('compile-progress-pct');
+const compileProgressFill = document.getElementById('compile-progress-fill');
 const chatInputEl    = document.getElementById('chat-input');
 const chatSendBtn    = document.getElementById('chat-send-btn');
 
 let activeConvId   = null;   // currently open conversation ID
 let chatDomain     = null;   // currently selected domain
 let chatBusy       = false;  // prevents double-sends
+let compileBusy    = false;  // prevents double-compiles
+const COMPILE_MIN_USER_MESSAGES = 2;
 
 // ── Domain selector ───────────────────────────────────────────────────────────
 async function loadChatDomains() {
@@ -322,8 +429,14 @@ async function openConversation(id) {
   if (!res.ok) return;
   const conv = await res.json();
 
+  setChatThreadTitle(conv.title);
   renderThread(conv.messages);
   highlightActiveConv(id);
+}
+
+function setChatThreadTitle(title) {
+  if (!chatThreadTitleText) return;
+  chatThreadTitleText.textContent = title || 'Conversation';
 }
 
 function highlightActiveConv(id) {
@@ -345,15 +458,37 @@ async function deleteConversation(id) {
 function showChatEmpty() {
   showEl(chatEmptyEl);
   hideEl(chatThreadEl);
+  hideEl(chatThreadHeader);
+  hideEl(compileResultEl);
+  hideEl(compileProgressEl);
   chatThreadEl.innerHTML = '';
+  compileResultEl.innerHTML = '';
+}
+
+function updateCompileButtonVisibility(messages) {
+  // The header is always visible when a conversation is open (carries the
+  // title). The Compile button itself only enables once we have at least
+  // 2 user messages — too short and there's nothing meaningful to compile.
+  const userTurns = messages.filter(m => m.role === 'user').length;
+  if (compileBtn) {
+    if (userTurns >= COMPILE_MIN_USER_MESSAGES) {
+      compileBtn.classList.remove('hidden');
+    } else {
+      compileBtn.classList.add('hidden');
+    }
+  }
 }
 
 function renderThread(messages) {
   hideEl(chatEmptyEl);
   showEl(chatThreadEl);
+  showEl(chatThreadHeader);
+  hideEl(compileResultEl);
+  compileResultEl.innerHTML = '';
   chatThreadEl.innerHTML = '';
   for (const msg of messages) appendMessage(msg.role, msg.content, msg.citations || []);
   chatThreadEl.scrollTop = chatThreadEl.scrollHeight;
+  updateCompileButtonVisibility(messages);
 }
 
 function appendMessage(role, content, citations = []) {
@@ -436,6 +571,15 @@ chatSendBtn.addEventListener('click', async () => {
     spinner.remove();
     appendMessage('assistant', data.answer, data.citations);
 
+    // Brand-new conversation: the server just titled it from the first user
+    // message. Surface the title in the thread header.
+    if (data.title) setChatThreadTitle(data.title);
+    showEl(chatThreadHeader);
+
+    // Re-evaluate Compile button visibility — count user bubbles already in DOM.
+    const userTurns = chatThreadEl.querySelectorAll('.chat-msg.user').length;
+    updateCompileButtonVisibility(Array.from({ length: userTurns }, () => ({ role: 'user' })));
+
     if (data.conversationId && data.conversationId !== activeConvId) {
       activeConvId = data.conversationId;
       await refreshConversationList();
@@ -449,6 +593,124 @@ chatSendBtn.addEventListener('click', async () => {
     chatInputEl.focus();
   }
 });
+
+// ── Compile to Wiki (v2.5.0) ──────────────────────────────────────────────────
+// Streams progress from /api/compile/conversation and renders the result via
+// the shared change-records panel. Progress events drive a dedicated progress
+// strip below the thread header (mirrors the ingest tab pattern).
+
+function showCompileProgress(pct, label) {
+  if (!compileProgressEl) return;
+  showEl(compileProgressEl);
+  compileProgressFill.style.width = `${Math.max(0, Math.min(100, pct))}%`;
+  compileProgressPct.textContent = `${Math.round(pct)}%`;
+  if (label) compileProgressLabel.textContent = label;
+}
+
+function hideCompileProgress() {
+  if (!compileProgressEl) return;
+  hideEl(compileProgressEl);
+  compileProgressFill.style.width = '0%';
+  compileProgressPct.textContent = '0%';
+  compileProgressLabel.textContent = 'Preparing…';
+}
+
+if (compileBtn) {
+  compileBtn.addEventListener('click', async () => {
+    if (compileBusy) return;
+    if (!activeConvId || !chatDomain) return;
+
+    compileBusy = true;
+    compileBtn.disabled = true;
+    compileBtn.classList.add('compiling');
+    hideEl(compileResultEl);
+    compileResultEl.innerHTML = '';
+    showCompileProgress(0, 'Starting compile…');
+
+    try {
+      const res = await fetch('/api/compile/conversation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domain: chatDomain, conversationId: activeConvId }),
+      });
+
+      if (!res.ok && res.status !== 200) {
+        // Validation errors come back as JSON, not SSE
+        let errMsg = `HTTP ${res.status}`;
+        try { const j = await res.json(); errMsg = j.error || errMsg; } catch {}
+        throw new Error(errMsg);
+      }
+      if (!res.body) throw new Error('Streaming not supported by this browser');
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let final = null;
+      let refused = null;
+      let errored = null;
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          let event;
+          try { event = JSON.parse(line.slice(6)); }
+          catch { continue; }
+
+          if (event.type === 'progress' || event.type === 'wait') {
+            showCompileProgress(event.pct ?? 50, event.message);
+          } else if (event.type === 'done') {
+            final = event;
+          } else if (event.type === 'refused') {
+            refused = event.reason;
+          } else if (event.type === 'error') {
+            errored = event.message;
+          }
+        }
+      }
+
+      if (errored) throw new Error(errored);
+      if (refused) {
+        compileResultEl.innerHTML = `<div class="compile-refused">${escHtml(refused)}</div>`;
+        showEl(compileResultEl);
+        return;
+      }
+      if (!final) throw new Error('Compilation produced no result');
+
+      // Brief moment of "100%" visible before swapping to the result panel
+      showCompileProgress(100, 'Done');
+
+      renderChangeRecords(compileResultEl, {
+        title: `Compiled to wiki: ${final.title}`,
+        changes: final.changes || [],
+      });
+
+      // Refresh the wiki tab and domain stats so changes propagate everywhere
+      // (existing post-mutation pattern used after sync/ingest).
+      try { if (typeof loadDomainList === 'function') await loadDomainList(); } catch {}
+      try {
+        const wikiDomain = document.getElementById('wiki-domain');
+        if (wikiDomain && wikiDomain.value === chatDomain && typeof loadWiki === 'function') {
+          await loadWiki();
+        }
+      } catch {}
+
+    } catch (err) {
+      compileResultEl.innerHTML = `<div class="compile-error">⚠️ ${escHtml(err.message)}</div>`;
+      showEl(compileResultEl);
+    } finally {
+      compileBusy = false;
+      compileBtn.disabled = false;
+      compileBtn.classList.remove('compiling');
+      hideCompileProgress();
+    }
+  });
+}
 
 // ── SYNC TAB ──────────────────────────────────────────────────────────────────
 

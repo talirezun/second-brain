@@ -107,7 +107,32 @@
             <div class="chat-empty-sub">Select a domain, start a new chat, or pick a conversation.</div>
           </div>
 
+          <!-- Thread header: title + Compile button. Shown when a conversation is open. -->
+          <div id="chat-thread-header" class="chat-thread-header hidden">
+            <div class="chat-thread-title">
+              <span id="chat-thread-title-text"></span>
+            </div>
+            <button id="compile-btn" class="btn ghost compile-btn" type="button" title="Compile this conversation into wiki pages — extracts insights and writes them as wiki pages">
+              <svg class="compile-btn-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;vertical-align:-1px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <span class="compile-btn-label">Compile to Wiki</span>
+            </button>
+          </div>
+
+          <!-- Compile progress strip: shown only while a compile is running -->
+          <div id="compile-progress" class="compile-progress hidden">
+            <div class="progress-header">
+              <span id="compile-progress-label" class="progress-label">Preparing…</span>
+              <span id="compile-progress-pct" class="progress-pct">0%</span>
+            </div>
+            <div class="progress-track">
+              <div id="compile-progress-fill" class="progress-fill"></div>
+            </div>
+          </div>
+
           <div id="chat-thread" class="chat-thread hidden"></div>
+
+          <!-- Compile result panel (also reused later by other write-flows) -->
+          <div id="compile-result" class="result-panel hidden"></div>
 
           <div class="chat-input-bar">
             <textarea

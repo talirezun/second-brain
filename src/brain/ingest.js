@@ -30,7 +30,7 @@ async function extractText(filePath) {
  *   3. Bare { … } block somewhere in output  → extract and retry
  *   4. Malformed JSON (unescaped quotes etc.) → jsonrepair and retry
  */
-function parseJSON(raw) {
+export function parseJSON(raw) {
   // 1. Fast path — valid as-is
   try { return JSON.parse(raw); } catch { /* fall through */ }
 
@@ -492,11 +492,17 @@ export async function ingestFile(domain, filePath, originalName, isOverwrite = f
 
   // Write all wiki pages — collect canonical paths (writePage may redirect
   // dr-tali-rezun.md → tali-rezun.md, concepts/google.md → entities/google.md, etc.)
+  // Each writePage now returns a change record {canonPath, status, bytesBefore,
+  // bytesAfter, sectionsChanged, bulletsAdded} — collected for the result panel.
   progress(90, `Writing ${result.pages.length} wiki pages to disk…`);
   const canonicalPaths = [];
+  const changes = [];
   for (const page of result.pages) {
-    const canon = await writePage(domain, page.path, page.content);
-    if (canon) canonicalPaths.push(canon);
+    const record = await writePage(domain, page.path, page.content);
+    if (record) {
+      canonicalPaths.push(record.canonPath);
+      changes.push(record);
+    }
   }
 
   // Post-write: reconcile the summary's "Entities Mentioned" with every entity
@@ -510,7 +516,8 @@ export async function ingestFile(domain, filePath, originalName, isOverwrite = f
 
   // Write updated index
   progress(96, 'Updating index…');
-  await writePage(domain, 'index.md', result.index);
+  const indexRecord = await writePage(domain, 'index.md', result.index);
+  if (indexRecord) changes.push(indexRecord);
 
   // Append to log — use canonical paths for accurate reporting
   const pageList = canonicalPaths.map(p => `  - ${p}`).join('\n');
@@ -521,5 +528,6 @@ export async function ingestFile(domain, filePath, originalName, isOverwrite = f
   return {
     title: result.title,
     pagesWritten: canonicalPaths,
+    changes, // structured per-file change records (v2.5.0+)
   };
 }

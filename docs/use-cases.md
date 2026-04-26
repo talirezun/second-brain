@@ -129,6 +129,35 @@ living them.
 
 ---
 
+## H. Conversation Compounding (v2.5.0+)
+
+Every use case above starts from a *document* — a PDF, an article, a paper. But knowledge also gets created in the act of thinking. The Chat tab is where you brainstorm with the AI, work through a problem, or process notes out loud. Until v2.5.0 those conversations stayed in the chat history and never made it into the wiki. Now they do.
+
+The **Compile to Wiki** button on any chat conversation extracts what was learned — facts, conclusions, new concepts, connections to existing entities — and writes it as wiki pages: a summary plus any new entities/concepts that emerged. The same merge pipeline that handles ingest runs here, so existing entity pages get updated rather than duplicated.
+
+### Concrete examples
+
+- **Decision record after a brainstorm.** "Help me think through whether to switch from Postgres to DuckDB for analytics." Several turns of back-and-forth, then click Compile → a `summaries/postgres-vs-duckdb-decision-2026-04-25-<hash>.md` page captures the conclusion, with `[[postgres]]` and `[[duckdb]]` entity pages updated to reference the new comparison summary.
+- **Meeting / dictation processing.** Paste raw meeting notes into the chat: "Here's what we discussed about the Q3 roadmap…" Ask the AI to structure it. Click Compile → a clean summary lands in the wiki, with the entities mentioned (people, projects, dates) cross-linked.
+- **Research synthesis.** "Summarise everything I know about RAG and tell me which gaps are biggest in my notes." After the conversation, Compile → the synthesis becomes a permanent wiki page you can revisit instead of re-deriving every time.
+- **Content drafting.** Talk through an article outline with the AI. Compile → the outline (and any new concepts you defined during the chat) join the wiki and seed your next writing session.
+
+### How it differs from ingest
+
+| Aspect | Ingest | Compile |
+|---|---|---|
+| Source | A document on disk | A live conversation |
+| Trigger | Drop a file in the Ingest tab | "Compile to Wiki" button in the Chat tab |
+| What gets written | Summary + entities + concepts | Same — uses the same write pipeline |
+| Re-running | Re-ingests merge new info into existing pages | Refused if the conversation hasn't changed (prevents bullet inflation) |
+| Cost | One LLM call per ingest | One LLM call per compile |
+
+### Tip
+
+The conversation isn't deleted when you compile — it stays in the Chat sidebar. So you can keep the brainstorm thread alive, send another message, and compile again later when you've made more progress. The new turn changes the conversation hash, so a fresh summary file is created alongside the previous one — both are kept.
+
+---
+
 ## Shared Pattern Across All Use Cases
 
 Every use case above shares the same underlying mechanics:
