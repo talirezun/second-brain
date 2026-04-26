@@ -432,7 +432,12 @@ export async function syncSummaryEntities(domain, summaryPath, writtenPaths) {
   await injectSummaryBacklinks(summarySlug, cleaned, wikiDir);
 
   const injected = entityBullets.length;
-  console.log(`[syncSummaryEntities] Synced ${injected} entity slugs into ${summaryPath} and propagated backlinks.`);
+  // IMPORTANT: every diagnostic in this module MUST use console.error (stderr).
+  // src/brain/files.js is imported directly by the MCP server (mcp/server.js)
+  // which uses stdout exclusively for JSON-RPC. Any console.log here would
+  // poison the JSON-RPC stream and break Claude Desktop with "Unexpected
+  // token" parse errors. See v2.5.2 release notes.
+  console.error(`[syncSummaryEntities] Synced ${injected} entity slugs into ${summaryPath} and propagated backlinks.`);
 }
 
 export async function injectSummaryBacklinks(summarySlug, summaryContent, wikiDir) {
@@ -713,7 +718,7 @@ export async function writePage(domain, relativePath, content) {
         f.endsWith('.md') && f.replace(/-/g, '').toLowerCase() === norm
       );
       if (match) {
-        console.log(`[writePage] Cross-folder dedup: ${canonPath} → ${siblingFolder}/${match}`);
+        console.error(`[writePage] Cross-folder dedup: ${canonPath} → ${siblingFolder}/${match}`);
         canonPath = `${siblingFolder}/${match}`;
       }
     } catch { /* sibling dir may not exist yet */ }

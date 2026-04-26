@@ -258,9 +258,11 @@ async function callLLM(systemPrompt, userPrompt, maxTokens, responseFormat) {
       const result = await callProvider(provider, candidate, systemPrompt, userPrompt, maxTokens, responseFormat);
 
       if (i === 0) {
-        // Primary succeeded — clear any previous fallback state for this provider
+        // Primary succeeded — clear any previous fallback state for this provider.
+        // Diagnostics use console.error so this module is safe to import from
+        // the MCP child process (stdout reserved for JSON-RPC) — v2.5.2.
         if (_activeFallback && _activeFallback.provider === provider) {
-          console.log(`[llm] Primary model "${model}" is available again — clearing fallback state.`);
+          console.error(`[llm] Primary model "${model}" is available again — clearing fallback state.`);
           _activeFallback = null;
         }
       } else {

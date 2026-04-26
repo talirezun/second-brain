@@ -282,7 +282,9 @@ const BATCH_SIZE = 4;
 
 async function ingestMultiPhase(schema, today, index, existingFiles, originalName, text, isOverwrite, progress) {
   // Phase 1: outline
-  console.log('[ingest] Large document — using multi-phase ingest. Phase 1: outline...');
+  // Diagnostics use console.error so this module is safe to import from the
+  // MCP child process (which reserves stdout for JSON-RPC) — see v2.5.2.
+  console.error('[ingest] Large document — using multi-phase ingest. Phase 1: outline...');
   progress(12, 'Phase 1: planning wiki structure…');
   const outlineRaw = (await generateText(
     schema,
@@ -295,7 +297,7 @@ async function ingestMultiPhase(schema, today, index, existingFiles, originalNam
   const outline = parseJSON(outlineRaw);
   const allPages = outline.pages; // [{path, summary}]
   const totalBatches = Math.ceil(allPages.length / BATCH_SIZE);
-  console.log(`[ingest] Phase 1 complete — ${allPages.length} pages planned.`);
+  console.error(`[ingest] Phase 1 complete — ${allPages.length} pages planned.`);
 
   // Phase 2: batched content  (20% → 78%)
   const writtenPages = []; // [{path, content}]
@@ -304,7 +306,7 @@ async function ingestMultiPhase(schema, today, index, existingFiles, originalNam
     const batch = allPages.slice(i, i + BATCH_SIZE);
     const batchNum = Math.floor(i / BATCH_SIZE) + 1;
     const batchPct = Math.round(20 + (batchNum / totalBatches) * 58);
-    console.log(`[ingest] Phase 2 — batch ${batchNum}/${totalBatches} (${batch.length} pages)...`);
+    console.error(`[ingest] Phase 2 — batch ${batchNum}/${totalBatches} (${batch.length} pages)...`);
     progress(batchPct, `Phase 2: writing content, batch ${batchNum} of ${totalBatches}…`);
 
     const batchRaw = (await generateText(
@@ -334,7 +336,7 @@ async function ingestMultiPhase(schema, today, index, existingFiles, originalNam
           )).trim();
           const singleResult = parseJSON(singleRaw);
           batchResult.pages.push(...singleResult.pages);
-          console.log(`[ingest]   ✓ ${singlePage.path}`);
+          console.error(`[ingest]   ✓ ${singlePage.path}`);
         } catch (singleErr) {
           // Absolute last resort — create a stub page so the ingest completes.
           console.warn(`[ingest]   ✗ ${singlePage.path} — stub created.`);
@@ -350,7 +352,7 @@ async function ingestMultiPhase(schema, today, index, existingFiles, originalNam
   }
 
   // Phase 3: index
-  console.log('[ingest] Phase 3: updating index...');
+  console.error('[ingest] Phase 3: updating index...');
   progress(82, 'Phase 3: updating wiki index…');
   const newIndex = (await generateText(
     schema,
@@ -420,7 +422,7 @@ export async function ingestFile(domain, filePath, originalName, isOverwrite = f
   // Large inputs reliably overflow the output token window in single-pass.
   // Skip straight to multi-phase to avoid two wasted API calls.
   if (text.length > MULTI_PHASE_INPUT_THRESHOLD) {
-    console.log(`[ingest] Input text ${text.length} chars — skipping single-pass, going straight to multi-phase.`);
+    console.error(`[ingest] Input text ${text.length} chars — skipping single-pass, going straight to multi-phase.`);
     singlePassFailed = true;
   }
 
