@@ -44,3 +44,33 @@ export function resolveNodeSlug(raw, graphNodes) {
   }
   return null;
 }
+
+/**
+ * Resolve a tool's `domain` argument with the v2.5.2 default-domain fallback.
+ *
+ * Used by every write tool (compile_to_wiki, scan_wiki_health, fix_wiki_issue,
+ * dismiss_wiki_issue, undismiss_wiki_issue, get_health_dismissed,
+ * scan_semantic_duplicates) so the resolution rule is consistent: explicit
+ * arg → user's configured default → error.
+ *
+ * Returns either { value: <slug> } on success, or { error: "..." } when the
+ * domain is missing, malformed, or not present on disk. Callers spread the
+ * error directly into the tool response.
+ */
+export async function resolveDomainArg(args, storage, getDefaultDomain) {
+  let domain = args?.domain;
+  if (!domain) {
+    domain = getDefaultDomain();
+    if (!domain) {
+      return { error: 'No domain specified and no default domain is configured. Call list_domains, then pass `domain` explicitly. Tip: the user can set a default in Settings → Default domain for MCP writes.' };
+    }
+  }
+  if (!isValidDomain(domain)) {
+    return { error: `Invalid domain: ${domain}` };
+  }
+  const all = await storage.listDomains();
+  if (!all.includes(domain)) {
+    return { error: `Unknown domain: ${domain}. Available: ${all.join(', ') || '(none)'}` };
+  }
+  return { value: domain };
+}

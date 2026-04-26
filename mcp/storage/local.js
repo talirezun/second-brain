@@ -91,6 +91,25 @@ export function createStorageAdapter({ domainsPath } = {}) {
       catch { return null; }
     },
 
+    // Append one record to the per-domain MCP write audit log (v2.5.2+).
+    // Lives at `domains/<d>/.mcp-write-log.jsonl` — sibling to wiki/, NOT
+    // inside it. Gitignored via the rule added in `ensureDomainsGitignore`
+    // so write history stays local: it must not spill to GitHub.
+    //
+    // Format: one JSON object per line, e.g.
+    //   {"ts":"2026-04-26T17:01Z","tool":"compile_to_wiki","paths":["summaries/x.md"], ...}
+    async appendToWriteAudit(domain, entry) {
+      if (typeof domain !== 'string' || !domain || domain.includes('/') || domain.includes('\\') || domain.includes('..')) {
+        return;
+      }
+      const file = resolveInsideBase(path.join(domain, '.mcp-write-log.jsonl'));
+      if (!file) return;
+      try {
+        await fs.mkdir(path.dirname(file), { recursive: true });
+        await fs.appendFile(file, JSON.stringify(entry) + '\n', 'utf8');
+      } catch { /* audit log is best-effort; never fail the write because of it */ }
+    },
+
     /** Returns all .md files under a domain's wiki/ folder with their content. */
     async listWikiFiles(domain) {
       // Reject any domain containing path separators or parent refs

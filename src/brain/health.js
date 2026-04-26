@@ -22,6 +22,29 @@ import { loadDismissed, filterDismissed } from './health-dismissed.js';
 
 const ARTICLE_PREFIX_RE = /^(the|a|an)-/;
 
+/**
+ * Resolve a relative wiki path against `wikiDir` and refuse anything that
+ * escapes that root. Returns the absolute resolved path on success, or null
+ * if the result lives outside `wikiDir` or contains an absolute / empty
+ * component.
+ *
+ * Hardening (v2.5.2+): the in-app Health UI feeds fixIssue with scan-derived
+ * paths (always relative, always inside wiki/), but the new MCP fix_wiki_issue
+ * tool accepts an LLM-crafted issue object — a confused or hostile model
+ * could pass `{keep: "...", remove: "../../../tmp/victim"}` and the rm() call
+ * inside fixCrossFolderDupe would run anywhere on disk where the file exists.
+ * Every fix handler now routes its issue paths through this gate before
+ * touching the filesystem.
+ */
+function resolveInsideWiki(wikiDir, candidate) {
+  if (typeof candidate !== 'string' || !candidate) return null;
+  if (path.isAbsolute(candidate)) return null;
+  const resolved = path.resolve(wikiDir, candidate);
+  const rel = path.relative(wikiDir, resolved);
+  if (rel.startsWith('..') || path.isAbsolute(rel)) return null;
+  return resolved;
+}
+
 // ── Shared helpers (mirror those in files.js / repair-wiki.js) ──────────────
 
 function extractBulletsFromSection(content, sectionName) {
@@ -363,8 +386,8 @@ export const AUTO_FIXABLE = new Set([
 
 async function fixBrokenLink(wikiDir, issue) {
   if (!issue.suggestedTarget) return false;
-  const full = path.join(wikiDir, issue.sourceFile);
-  if (!existsSync(full)) return false;
+  const full = resolveInsideWiki(wikiDir, issue.sourceFile);
+  if (!full || !existsSync(full)) return false;
   const before = await readFile(full, 'utf8');
   const esc = issue.linkText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   // Allow whitespace inside [[ ... ]] — the scanner trims linkText but the source
@@ -377,7 +400,8 @@ async function fixBrokenLink(wikiDir, issue) {
 }
 
 async function fixFolderPrefixLink(wikiDir, issue) {
-  const full = path.join(wikiDir, issue.sourceFile);
+  const full = resolveInsideWiki(wikiDir, issue.sourceFile);
+  if (!full || !existsSync(full)) return false;
   let content = await readFile(full, 'utf8');
   const before = content;
   content = content.replace(/\[\[(entities|concepts)\/([^\]|#\n]+?)(\|[^\]]+)?\]\]/g,
@@ -387,8 +411,9 @@ async function fixFolderPrefixLink(wikiDir, issue) {
 }
 
 async function fixCrossFolderDupe(wikiDir, issue) {
-  const keepPath = path.join(wikiDir, issue.keep);
-  const removePath = path.join(wikiDir, issue.remove);
+  const keepPath = resolveInsideWiki(wikiDir, issue.keep);
+  const removePath = resolveInsideWiki(wikiDir, issue.remove);
+  if (!keepPath || !removePath) return false;
   if (!existsSync(keepPath) || !existsSync(removePath)) return false;
 
   const keepContent   = await readFile(keepPath, 'utf8');
@@ -410,16 +435,21 @@ async function fixCrossFolderDupe(wikiDir, issue) {
 }
 
 async function fixHyphenVariant(wikiDir, issue) {
+  // Tighter slug regex prevents path components from sneaking in via issue.files
+  // or issue.suggestedSlug — defense in depth alongside resolveInsideWiki.
+  const SLUG_RE = /^[a-z0-9][a-z0-9-]*$/i;
   const entitiesDir = path.join(wikiDir, 'entities');
   const canonical = issue.suggestedSlug;
-  const canonPath = path.join(entitiesDir, canonical + '.md');
-  if (!existsSync(canonPath)) return false;
+  if (typeof canonical !== 'string' || !SLUG_RE.test(canonical)) return false;
+  const canonPath = resolveInsideWiki(wikiDir, `entities/${canonical}.md`);
+  if (!canonPath || !existsSync(canonPath)) return false;
 
   let canonContent = await readFile(canonPath, 'utf8');
-  for (const slug of issue.files) {
+  for (const slug of (issue.files || [])) {
     if (slug === canonical) continue;
-    const dupPath = path.join(entitiesDir, slug + '.md');
-    if (!existsSync(dupPath)) continue;
+    if (typeof slug !== 'string' || !SLUG_RE.test(slug)) continue;
+    const dupPath = resolveInsideWiki(wikiDir, `entities/${slug}.md`);
+    if (!dupPath || !existsSync(dupPath)) continue;
     const dupContent = await readFile(dupPath, 'utf8');
     canonContent = mergeBulletSections(canonContent, dupContent);
     await rm(dupPath);
@@ -479,8 +509,9 @@ async function fixMissingBacklink(wikiDir, issue) {
   // bullet in the summary's "Entities Mentioned" section and can land the
   // backlink in a hyphen-variant file (e.g. e-mail.md when the scan pointed
   // at email.md), leaving the flagged file unchanged and the issue unfixed.
-  const entityPath = path.join(wikiDir, issue.entity);
-  const summaryPath = path.join(wikiDir, issue.summary);
+  const entityPath = resolveInsideWiki(wikiDir, issue.entity);
+  const summaryPath = resolveInsideWiki(wikiDir, issue.summary);
+  if (!entityPath || !summaryPath) return false;
   if (!existsSync(entityPath) || !existsSync(summaryPath)) return false;
 
   const summaryContent = await readFile(summaryPath, 'utf8');

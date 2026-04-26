@@ -98,10 +98,30 @@ async function loadConfig() {
 
 // ── Domains .gitignore ────────────────────────────────────────────────────────
 
+// What we want excluded from sync, per-domain:
+//   */raw/                       — uploaded source files (large, local-only)
+//   */.mcp-write-log.jsonl       — MCP audit log (v2.5.2+, machine-private)
+const DOMAINS_GITIGNORE_RULES = [
+  '*/raw/',
+  '*/.mcp-write-log.jsonl',
+];
+
 async function ensureDomainsGitignore() {
   const p = path.join(getDomainsDir(), '.gitignore');
-  if (!existsSync(p)) {
-    await writeFile(p, '*/raw/\n', 'utf8');
+  let existing = '';
+  if (existsSync(p)) {
+    try { existing = await readFile(p, 'utf8'); } catch {}
+  }
+  const lines = existing.split('\n').map(l => l.trim()).filter(Boolean);
+  let changed = false;
+  for (const rule of DOMAINS_GITIGNORE_RULES) {
+    if (!lines.includes(rule)) {
+      lines.push(rule);
+      changed = true;
+    }
+  }
+  if (!existing || changed) {
+    await writeFile(p, lines.join('\n') + '\n', 'utf8');
   }
 }
 

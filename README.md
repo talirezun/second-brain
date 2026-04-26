@@ -278,15 +278,17 @@ Building a second brain is rewarding. **Querying it with a frontier model** is t
 
 For most second-brain users, the loop is: ingest sources → admire the Obsidian graph. The graph is beautiful, the visual structure is enjoyable, and the local Chat tab handles everyday lookups. But the graph is something you *look at*. The synapses — the actual connections between thousands of knowledge nodes accumulated over years — are mostly invisible to you while you're inside the graph.
 
-**My Curator MCP** is the bridge that opens that synapse layer to a frontier model. From v2.3 onwards, The Curator ships a local read-only MCP server that exposes your wiki to any [Model Context Protocol](https://modelcontextprotocol.io/)-compatible client — most importantly **Claude Desktop with Opus or Sonnet**, but also VS Code with an MCP-aware coding agent, [LM Studio](https://lmstudio.ai/) with a local model, or any other MCP client.
+**My Curator MCP** is the bridge that opens that synapse layer to a frontier model. From v2.3 onwards, The Curator ships a local MCP server that exposes your wiki to any [Model Context Protocol](https://modelcontextprotocol.io/)-compatible client — most importantly **Claude Desktop with Opus or Sonnet**, but also VS Code with an MCP-aware coding agent, [LM Studio](https://lmstudio.ai/) with a local model, or any other MCP client. From v2.5.2+, the bridge is **read+write** — Claude can save what you discussed, clean up wiki problems, and manage dismissals without you ever leaving the conversation.
 
-This is not "another way to read your files." It's a *graph-native* access path. Ten dedicated tools (seven retrieval, three explicitly graph-shaped) let the model:
+This is not "another way to read your files." It's a *graph-native* access path. Seventeen dedicated tools — ten read tools (seven retrieval, three explicitly graph-shaped) and seven write tools (compile, scan/fix Health, manage dismissals) — let the model:
 
 - Pull a topology overview of any domain — central hubs, cluster shape, orphan sample, top tags — in one call
 - Traverse multi-hop neighbourhoods around any concept or entity
 - Get bidirectional backlinks — "every source that mentions Karpathy"
 - Search across every domain you've ever built, simultaneously
 - Pivot from a tag to its pages, from a page to its links, from a link to its incoming references
+- **Save research findings back into the wiki** (v2.5.2+) — *"compile what we discussed and add it to my second brain"*
+- **Heal the wiki on request** (v2.5.2+) — *"check for problems and fix what's safe"* (auto-fixes the unambiguous ones, asks before destructive merges)
 
 ### What this enables in practice
 
@@ -304,7 +306,13 @@ Or:
 
 > *"Across my last six months of journal entries, identify recurring patterns I haven't named yet, and propose names for them — citing the specific entries each pattern shows up in."*
 
-That is not a chat interface. That is a frontier model doing **deep research over your own intellectual history** — with full citations, no hallucinations beyond your wiki, and no data ever leaving your machine.
+And after the research, you finish the loop:
+
+> *"Compile everything we just figured out and save it as a research summary in my `business` domain — title it 'Q2 Strategic Patterns'."*
+
+Claude calls `compile_to_wiki`, and the synthesis lands in your wiki as a permanent page with bidirectional links to every entity and concept it referenced. The next research session can build on it.
+
+That is not a chat interface. That is a frontier model doing **deep research over your own intellectual history — and committing the conclusions back into it** — with full citations, no hallucinations beyond your wiki, and no data ever leaving your machine.
 
 ### Why this is first-of-its-kind
 

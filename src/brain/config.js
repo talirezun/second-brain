@@ -165,6 +165,30 @@ export function setAiHealthSettings({ costCeilingTokens, semanticDupeMaxPairs } 
   return getAiHealthSettings();
 }
 
+// ── Default domain (v2.5.2+) ─────────────────────────────────────────────────
+// Used by the MCP write tools when the user says "my wiki" without naming a
+// domain. If unset, MCP tools must require an explicit domain argument and
+// can use list_domains to enumerate.
+
+/** Returns the user's preferred default domain slug, or null if unset. */
+export function getDefaultDomain() {
+  const cfg = readRaw();
+  const v = cfg.defaultDomain;
+  return typeof v === 'string' && v ? v : null;
+}
+
+/** Sets or clears the default domain. Pass null/empty to unset. */
+export function setDefaultDomain(slug) {
+  const cfg = readRaw();
+  if (slug && typeof slug === 'string') {
+    cfg.defaultDomain = slug;
+  } else {
+    delete cfg.defaultDomain;
+  }
+  writeRaw(cfg);
+  return getDefaultDomain();
+}
+
 /**
  * Returns the effective API key for a provider.
  * Priority: .curator-config.json → process.env → null

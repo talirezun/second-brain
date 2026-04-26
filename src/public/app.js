@@ -1762,7 +1762,58 @@ async function initSettings() {
   await refreshMcpSection();
   // Load AI Health limits
   await loadAiHealthSettings();
+  // Load default-domain dropdown (v2.5.2+)
+  await loadDefaultDomain();
 }
+
+async function loadDefaultDomain() {
+  const sel = document.getElementById('settings-default-domain');
+  const status = document.getElementById('settings-default-domain-status');
+  if (!sel) return;
+  try {
+    const r = await fetch('/api/config/default-domain');
+    if (!r.ok) return;
+    const { defaultDomain, domains } = await r.json();
+    // Reset and populate the dropdown
+    sel.innerHTML =
+      '<option value="">— none (always require explicit domain) —</option>' +
+      (domains || []).map(d => `<option value="${escapeAttr(d)}">${escapeHtml(d)}</option>`).join('');
+    sel.value = defaultDomain || '';
+  } catch {
+    if (status) {
+      status.textContent = 'Could not load domains.';
+      status.className = 'status-inline error';
+      status.classList.remove('hidden');
+    }
+  }
+}
+
+document.getElementById('settings-default-domain')?.addEventListener('change', async (e) => {
+  const sel = e.target;
+  const status = document.getElementById('settings-default-domain-status');
+  const value = sel.value || '';
+  try {
+    const r = await fetch('/api/config/default-domain', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ defaultDomain: value }),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Save failed');
+    if (status) {
+      status.textContent = value ? `Saved — '${value}' is the default.` : 'Saved — no default set.';
+      status.className = 'status-inline ok';
+      status.classList.remove('hidden');
+      setTimeout(() => status.classList.add('hidden'), 2200);
+    }
+  } catch (err) {
+    if (status) {
+      status.textContent = err.message;
+      status.className = 'status-inline error';
+      status.classList.remove('hidden');
+    }
+  }
+});
 
 async function loadAiHealthSettings() {
   const ceilingEl = document.getElementById('ai-cost-ceiling');

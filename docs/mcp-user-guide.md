@@ -28,7 +28,9 @@ That's the difference between *"I have a folder of notes"* and *"I have a querya
 
 ## What it does
 
-My Curator exposes **ten tools** to Claude Desktop:
+My Curator exposes **seventeen tools** to Claude Desktop — ten read tools that explore your knowledge graph, and seven write tools (v2.5.2+) that let Claude *update* the wiki on your behalf.
+
+### Read tools (since v2.3.0)
 
 | Tool | Purpose |
 |---|---|
@@ -43,7 +45,19 @@ My Curator exposes **ten tools** to Claude Desktop:
 | `get_backlinks` | Find every page that links TO a given page |
 | `get_summary` | Pull a source summary page |
 
-The key idea: a frontier model doesn't just *read* your wiki — it can *traverse* it. Hubs, clusters, tags, and bidirectional links are exposed as first-class structured data, so the model can reason about your knowledge as a graph.
+### Write tools (v2.5.2+)
+
+| Tool | Purpose |
+|---|---|
+| `compile_to_wiki` | Save a research session, brainstorm, or set of findings as permanent wiki pages |
+| `scan_wiki_health` | Find structural issues — broken links, orphans, duplicate entities, missing backlinks |
+| `fix_wiki_issue` | Apply one Health repair (auto-fix safe ones, confirm destructive ones) |
+| `scan_semantic_duplicates` | Opt-in, cost-gated AI scan that finds same-concept-different-slug pages |
+| `get_health_dismissed` | List previously-skipped Health issues |
+| `dismiss_wiki_issue` | Permanently silence an issue so it stops surfacing on future scans |
+| `undismiss_wiki_issue` | Restore a dismissed issue |
+
+The key idea: a frontier model doesn't just *read* your wiki — it can *traverse* it AND *grow* it. Hubs, clusters, tags, and bidirectional links are exposed as first-class structured data, so the model can reason about your knowledge as a graph; and the write tools mean a research session in Claude Desktop can end with the conclusions saved permanently — no need to switch to The Curator app to commit them.
 
 ## How it scales
 
@@ -134,6 +148,110 @@ That gives Claude the research protocol — topology first, then targeted retrie
 Every tool description also includes hints like *"Call this early in a research session to orient yourself"* and *"For a single page's neighborhood, prefer `get_connected_nodes`"* — so the model gets scaffolding for its own decisions without you having to memorise tool names.
 
 **Bottom line:** describe the work, not the tool. Only name tools when you want tight control over the plan or a specific parameter (`min_connections`, `max_results`, `include_nodes`, `filter`).
+
+---
+
+## Writing to your wiki from Claude Desktop (v2.5.2+)
+
+The biggest unlock of v2.5.2: a research session in Claude Desktop can *end* with the conclusions saved permanently to your wiki — no need to switch to The Curator app to commit them.
+
+### When to use it
+
+You're researching something with Claude — a thesis, a market analysis, a technical deep-dive. After several turns of back-and-forth you have insights worth keeping. Just ask:
+
+> *"Summarise everything we've concluded about [topic] and save it to my second brain."*
+
+Claude calls `compile_to_wiki`, writes a summary page plus any new entity/concept pages that emerged, and reports back what changed.
+
+### Phrases that work
+
+The tool descriptions are written in plain English with the natural phrases you actually use. All of these reliably trigger `compile_to_wiki`:
+
+- *"Save what we discussed to my wiki."*
+- *"Add this to my second brain."*
+- *"Update my Curator with these findings."*
+- *"Compile our conversation as a research note."*
+- *"Store these notes in my `business` domain."*
+- *"Put this in my markdown library."*
+
+### Sample dialogue
+
+> **You:** *"I want to research advanced AI usage in enterprise organisations. Help me explore my wiki and synthesise what we know."*
+>
+> **Claude:** [calls `get_graph_overview`, `search_wiki`, `get_node` on relevant pages] *"Based on your wiki, here are the patterns I see across `enterprise-ai`, `llm-deployment-strategies`, `agentic-workflows`…"* [continues with synthesis]
+>
+> **You:** *[after several turns]* *"Great. Now compile what we figured out and save it to my second brain in the `business` domain. Title it 'Enterprise AI Adoption — 2026 Q2 Research'."*
+>
+> **Claude:** [calls `compile_to_wiki` with `dry_run: true` first] *"Here's the plan: 1 new summary page, 2 new concept pages (`agentic-workflows-in-enterprise`, `llm-cost-controls`), and 4 updated entity pages. Ready to commit?"*
+>
+> **You:** *"Yes."*
+>
+> **Claude:** [calls `compile_to_wiki` with `dry_run: false`] *"Compiled to your business wiki. Created 3 new pages, updated 4 existing ones. Use `get_node` on any of them if you want to read back what was written."*
+
+### What gets written
+
+For every `compile_to_wiki` call:
+
+- **One summary page** under `summaries/<slug>-<date>-<hash>.md` — the durable record of what was learned. The hash makes the slug deterministic, so re-compiling the same conversation never creates a duplicate.
+- **Optional entity / concept pages** for any new people, tools, ideas, or frameworks that emerged. Existing pages are merged additively (bullet sections grow, never replaced).
+- **Cross-links** — every entity mentioned in the summary gets a backlink to it; the summary references all the entities and concepts.
+- **Index update** — the new pages are added to `index.md` automatically.
+- **Log entry** in `log.md` recording the compile.
+
+The same write pipeline used by The Curator app's in-app Compile button runs here — typo-variant slugs are normalised, duplicates caught, folder-prefix link errors stripped, summary backlinks injected automatically. **The MCP and the app are equally-capable clients to the same wiki.**
+
+### Safety features
+
+- **Dry-run mode**: pass `dry_run: true` to preview what *would* be written without touching disk. Claude knows to use this for cautious confirmations before committing.
+- **Hard caps**: 50 KB per page, max 10 pages per call. A confused or malicious model can't trash the wiki in one tool call.
+- **Idempotency**: same conversation + same title + same date → same slug → second call is refused with a clear message ("Already compiled to X").
+- **Default domain**: in The Curator's Settings, you can set a default domain for MCP writes. When you say "my wiki" without specifying which one, Claude uses that. Without a default, Claude must call `list_domains` first and confirm with you.
+- **Audit log**: every MCP write is recorded to `domains/<d>/.mcp-write-log.jsonl` (local-only, never synced to GitHub) — your private record of what happened, when, and by which tool.
+
+---
+
+## Healing your wiki from Claude Desktop (v2.5.2+)
+
+Health checks and repairs are also available through the MCP. Three tiers, encoded in the tool descriptions so Claude knows when to ask vs. when to act:
+
+| Tier | Issue types | Behaviour |
+|---|---|---|
+| **Auto-fix** | broken links *with* a suggested target, folder-prefix violations, cross-folder dupes, hyphen variants, missing backlinks | Claude applies these without asking — they have one clear right answer. |
+| **Confirm first** | orphans, broken links *without* a target | Claude shows you the issue, you say fix / dismiss / leave, Claude calls the tool. |
+| **Always preview** | semantic-duplicate merges (DESTRUCTIVE — deletes a file, rewrites links domain-wide) | Claude calls `fix_wiki_issue` with `preview: true` first to show the diff plan; only after your explicit yes can it call again with `preview: false` to commit. |
+
+### Sample dialogue
+
+> **You:** *"Claude, clean up my `articles` second brain."*
+>
+> **Claude:** [calls `scan_wiki_health`] *"Found 14 issues. 8 are auto-fixable — folder-prefix violations, hyphen variants, missing backlinks. I'll fix those now."* [calls `fix_wiki_issue` 8 times]. *"Done with the safe ones — 8 issues fixed across 12 files."*
+>
+> **Claude:** *"Six remaining need your judgement: 4 broken links without good targets, 2 orphan pages. Want to review them?"*
+>
+> **You:** *"Yes, walk me through them."*
+>
+> **Claude:** *"First — `concepts/foo.md` has a broken link `[[bar]]`. No close match in the wiki. Fix, dismiss, or leave?"*
+>
+> **You:** *"Dismiss it. The link is intentional, I'll create the bar page later."*
+>
+> **Claude:** [calls `dismiss_wiki_issue`] *"Dismissed. Won't surface on future scans."* [continues through the rest]
+
+### Phrases that work
+
+- *"Check my wiki for problems"* → `scan_wiki_health`
+- *"Find broken links"* / *"audit my second brain"* → `scan_wiki_health`
+- *"Fix what's safe to fix"* → loop of `fix_wiki_issue` on auto-fixable types
+- *"Find duplicate pages"* / *"scan for semantic duplicates"* → `scan_semantic_duplicates`
+- *"Stop showing me this"* / *"dismiss this"* → `dismiss_wiki_issue`
+- *"What have I dismissed?"* → `get_health_dismissed`
+
+### Where dismissals live
+
+The MCP and the in-app Health tab share the **same** dismissal store (`domains/<d>/wiki/.health-dismissed.jsonl`, git-tracked, syncs across machines via your existing GitHub sync). Skip a 70-pair semantic scan in Claude Desktop, sync, and the same false positives stay skipped on your other computers and in the in-app Health tab.
+
+### Cost note
+
+`scan_semantic_duplicates` is the only Health tool with a paid LLM call (typically $0.005–$0.03 per scan on Gemini Flash Lite). Use the `estimate_only: true` flag to get the cost estimate before committing — Claude knows to do this when you say *"how much would it cost to scan?"* or similar.
 
 ---
 

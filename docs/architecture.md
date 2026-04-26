@@ -97,16 +97,30 @@ the-curator/
 │       ├── index.html          Single-page UI shell
 │       ├── app.js              Vanilla JS frontend (includes Settings tab + onboarding wizard)
 │       └── styles.css          Dark-theme styles
+├── mcp/                        My Curator MCP — read+write surface to the wiki for Claude Desktop / any MCP client
+│   ├── server.js               stdio entry point (spawned as child process by the MCP client)
+│   ├── graph.js                Wiki parser: frontmatter, [[wikilinks]], backlinks, tag inventory (cached)
+│   ├── util.js                 Slug + domain validators, resolveDomainArg shared helper
+│   ├── storage/local.js        Filesystem adapter (resolveInsideBase chokepoint, audit-log writer)
+│   └── tools/                  Tool modules (10 read + 7 write = 17 tools as of v2.5.2)
+│       ├── index.js            Registration hub + response-size guard (400 KB)
+│       ├── domains.js, index-tool.js, search.js, nodes.js, connected.js,
+│       │                       Read tools (10): list_domains, get_index, search_wiki, get_node, get_connected_nodes,
+│       │                       get_summary, search_cross_domain, get_graph_overview, get_tags, get_backlinks
+│       ├── compile.js          Write tool (v2.5.2): compile_to_wiki — research → wiki pages
+│       ├── health.js           Write tools (v2.5.2): scan_wiki_health, fix_wiki_issue, scan_semantic_duplicates
+│       └── dismissed.js        Write tools (v2.5.2): get_health_dismissed, dismiss_wiki_issue, undismiss_wiki_issue
 ├── domains/
 │   └── <domain>/
 │       ├── CLAUDE.md           Domain schema (system prompt for the LLM)
-│       ├── raw/                Immutable uploaded source files
+│       ├── raw/                Immutable uploaded source files (gitignored)
+│       ├── .mcp-write-log.jsonl Per-domain MCP audit log (v2.5.2+, gitignored, machine-local)
 │       ├── wiki/
 │       │   ├── index.md        Content catalog
-│       │   ├── log.md          Chronological ingest log
+│       │   ├── log.md          Chronological ingest + compile log
 │       │   ├── entities/       People, tools, companies, datasets
 │       │   ├── concepts/       Ideas, techniques, frameworks
-│       │   ├── summaries/      One page per ingested source
+│       │   ├── summaries/      One page per ingested source or compiled conversation
 │       │   └── .health-dismissed.jsonl  Persistent Health-issue dismissals (v2.5.1+); git-tracked, syncs across machines
 │       └── conversations/      Saved chat threads (JSON, gitignored)
 ├── docs/                       This documentation
@@ -385,6 +399,89 @@ existing sync — dismissals propagate across machines automatically.
 Line-oriented format makes concurrent dismissals on different machines
 merge cleanly through git's standard 3-way merge.
 ```
+
+---
+
+## Data flow: My Curator MCP
+
+The MCP server is a **standalone** Node process spawned by the MCP client
+(Claude Desktop or any other) via stdio. It does NOT require the Curator
+HTTP server to be running. From v2.5.2+, it is a full read+write surface
+to the wiki — the same code path the in-app Compile and Health tabs use.
+
+```
+Claude Desktop launches
+      │
+      ▼
+spawn(node, [mcp/server.js, --domains-path <abs>])
+      │
+      ▼
+mcp/server.js
+      ├─ createStorageAdapter({ domainsPath })   storage/local.js
+      ├─ registerTools(server, storage)          tools/index.js
+      └─ StdioServerTransport.connect()
+
+Tool call (any of 17 tools):
+      │
+      ▼
+tools/index.js — CallToolRequestSchema handler
+      ├─ Look up tool by name → invoke handler(args, storage)
+      ├─ Stringify result → enforceSizeLimit (400 KB cap; trims heavy arrays)
+      └─ Return { content: [{ type: 'text', text }] }
+
+Read tools (v2.3.0+, 10 tools)
+      └─ Walk markdown via storage.listWikiFiles / readFile
+         Cached per-process graph (mcp/graph.js, 10-min TTL)
+
+Write tools (v2.5.2+, 7 tools)
+      ├─ resolveDomainArg(args, storage, getDefaultDomain)
+      │     Explicit domain → user's defaultDomain → error
+      │     Validated via isValidDomain + storage.listDomains()
+      ├─ Per-tool guards (caps, slug regex, REFUSED_FILES, preview gate)
+      │
+      └─ compile_to_wiki:
+         │   importsFromBrain: writePage, syncSummaryEntities, appendLog
+         │   ├─ Deterministic summary slug = slugify(title)+date+sha4(corpus)
+         │   ├─ existsSync(summaryFullPath) → refused (idempotency)
+         │   ├─ Per-page 50 KB cap, per-call 10-page cap
+         │   ├─ writePage for summary + each additional_page
+         │   ├─ syncSummaryEntities (entity backlinks)
+         │   ├─ mergeIntoIndex (programmatic — no LLM call)
+         │   ├─ appendLog
+         │   └─ storage.appendToWriteAudit (machine-private)
+         │
+         scan_wiki_health, fix_wiki_issue, scan_semantic_duplicates:
+         │   importsFromBrain: scanWiki, fixIssue, AUTO_FIXABLE,
+         │     previewSemanticDuplicateMerge, scanSemanticDuplicates
+         │   ├─ Persistent dismissals (loadDismissed) filter scan results
+         │   ├─ semanticDupe REQUIRES preview:true on first call
+         │   │     Per-domain in-memory token Set; a successful preview
+         │   │     enables the next preview:false call, then is consumed.
+         │   └─ fixIssue handlers all gated by resolveInsideWiki (v2.5.2+)
+         │     Defense-in-depth path-traversal check on every issue field
+         │     so an LLM-crafted issue cannot rm() outside the wiki folder.
+         │
+         dismiss_wiki_issue / undismiss_wiki_issue / get_health_dismissed:
+             importsFromBrain: addDismissal, removeDismissal, listDismissed
+             Same JSONL file shared with the in-app Health tab.
+
+Audit log (v2.5.2+, write tools only):
+      domains/<d>/.mcp-write-log.jsonl
+      Sibling to wiki/ — gitignored via */.mcp-write-log.jsonl rule.
+      Local only by design: write history is private to the machine that
+      produced it; you don't want it spilling to GitHub.
+
+Default domain (v2.5.2+):
+      .curator-config.json → defaultDomain
+      Set/cleared via /api/config/default-domain (Settings tab dropdown).
+      MCP write tools fall back to it when domain is omitted.
+```
+
+The MCP and the Curator app are **equally-capable clients** to the same
+wiki data. The Curator app provides the install + wizard + manual UI;
+the MCP provides conversational read+write from any LLM client. Same
+write pipeline (writePage, syncSummaryEntities, fixIssue), same
+dismissal store (.health-dismissed.jsonl), same idempotency guards.
 
 ---
 

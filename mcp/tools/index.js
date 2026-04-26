@@ -17,17 +17,35 @@ import { getGraphOverviewDefinition, getGraphOverviewHandler } from './overview.
 import { getTagsDefinition,        getTagsHandler }        from './tags.js';
 import { getBacklinksDefinition,   getBacklinksHandler }   from './backlinks.js';
 
+// Write tools (v2.5.2+) — turn the MCP into a full read+write client.
+import { compileToWikiDefinition,            compileToWikiHandler }            from './compile.js';
+import { scanWikiHealthDefinition,           scanWikiHealthHandler }           from './health.js';
+import { fixWikiIssueDefinition,             fixWikiIssueHandler }             from './health.js';
+import { scanSemanticDuplicatesDefinition,   scanSemanticDuplicatesHandler }   from './health.js';
+import { getHealthDismissedDefinition,       getHealthDismissedHandler }       from './dismissed.js';
+import { dismissWikiIssueDefinition,         dismissWikiIssueHandler }         from './dismissed.js';
+import { undismissWikiIssueDefinition,       undismissWikiIssueHandler }       from './dismissed.js';
+
 export const tools = [
-  { definition: listDomainsDefinition,     handler: listDomainsHandler },
-  { definition: getIndexDefinition,        handler: getIndexHandler },
+  // ── Read tools (v2.3.0+) ────────────────────────────────────────────────────
+  { definition: listDomainsDefinition,      handler: listDomainsHandler },
+  { definition: getIndexDefinition,         handler: getIndexHandler },
   { definition: getGraphOverviewDefinition, handler: getGraphOverviewHandler },
-  { definition: getTagsDefinition,         handler: getTagsHandler },
-  { definition: searchWikiDefinition,      handler: searchWikiHandler },
-  { definition: searchCrossDefinition,     handler: searchCrossHandler },
-  { definition: getNodeDefinition,         handler: getNodeHandler },
-  { definition: getConnectedDefinition,    handler: getConnectedHandler },
-  { definition: getBacklinksDefinition,    handler: getBacklinksHandler },
-  { definition: getSummaryDefinition,      handler: getSummaryHandler },
+  { definition: getTagsDefinition,          handler: getTagsHandler },
+  { definition: searchWikiDefinition,       handler: searchWikiHandler },
+  { definition: searchCrossDefinition,      handler: searchCrossHandler },
+  { definition: getNodeDefinition,          handler: getNodeHandler },
+  { definition: getConnectedDefinition,     handler: getConnectedHandler },
+  { definition: getBacklinksDefinition,     handler: getBacklinksHandler },
+  { definition: getSummaryDefinition,       handler: getSummaryHandler },
+  // ── Write tools (v2.5.2+) ───────────────────────────────────────────────────
+  { definition: compileToWikiDefinition,          handler: compileToWikiHandler },
+  { definition: scanWikiHealthDefinition,         handler: scanWikiHealthHandler },
+  { definition: fixWikiIssueDefinition,           handler: fixWikiIssueHandler },
+  { definition: scanSemanticDuplicatesDefinition, handler: scanSemanticDuplicatesHandler },
+  { definition: getHealthDismissedDefinition,     handler: getHealthDismissedHandler },
+  { definition: dismissWikiIssueDefinition,       handler: dismissWikiIssueHandler },
+  { definition: undismissWikiIssueDefinition,     handler: undismissWikiIssueHandler },
 ];
 
 // Response size cap. 1 MB of JSON is ~250 000 tokens — alone it would saturate
@@ -56,6 +74,10 @@ function enforceSizeLimit(toolName, result) {
     'edges', 'nodes', 'results', 'tags',
     'backlinks', 'outgoing_links', 'connected',
     'outgoing_from_start', 'backlinks_to_start',
+    // v2.5.2+ — health scan result fields can grow unbounded on large
+    // domains (the user's articles wiki currently has 645 broken links).
+    'brokenLinks', 'orphans', 'folderPrefixLinks',
+    'crossFolderDupes', 'hyphenVariants', 'missingBacklinks', 'pairs',
   ];
   const trimmed = { ...result };
   const trimmedFields = [];

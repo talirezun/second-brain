@@ -679,6 +679,24 @@
         <div id="settings-keys-status" class="status hidden"></div>
       </div>
 
+      <!-- MCP write defaults (v2.5.2+) -->
+      <div class="settings-section">
+        <h3>Default domain for MCP writes</h3>
+        <p class="hint">
+          When Claude Desktop (or any other MCP client) calls <code>compile_to_wiki</code>,
+          <code>scan_wiki_health</code>, or other write tools and the user says
+          "my wiki" without specifying a domain, this default is used. If unset,
+          Claude must always be told which domain to write to.
+        </p>
+        <div class="form-group inline">
+          <label for="settings-default-domain">Default domain</label>
+          <select id="settings-default-domain">
+            <option value="">— none (always require explicit domain) —</option>
+          </select>
+          <span id="settings-default-domain-status" class="status-inline hidden"></span>
+        </div>
+      </div>
+
       <!-- My Curator (MCP) -->
       <div class="settings-section mcp-section">
         <h3>My Curator — Private MCP Bridge</h3>

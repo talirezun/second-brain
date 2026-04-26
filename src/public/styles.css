@@ -2675,3 +2675,22 @@ input::placeholder, textarea::placeholder { color: var(--text-muted); }
   padding: 10px 14px;
   font-size: 13px;
 }
+
+/* ── Settings tab inline status (v2.5.2+) ── */
+.status-inline {
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+.status-inline.ok {
+  color: var(--success);
+  background: var(--success-dim);
+  border: 1px solid rgba(166,227,161,0.25);
+}
+.status-inline.error {
+  color: #f38ba8;
+  background: rgba(243,139,168,0.10);
+  border: 1px solid rgba(243,139,168,0.3);
+}

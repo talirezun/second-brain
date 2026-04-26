@@ -96,10 +96,18 @@ function slugTag(t) {
 const CANONICAL = new Set(['entities', 'concepts', 'summaries']);
 
 function normalizePath(relativePath) {
-  // Root-level files that aren't index/log → concepts/
-  if (!relativePath.includes('/') &&
-      relativePath !== 'index.md' &&
-      relativePath !== 'log.md') {
+  // Special-case the two app-managed root files — they are NOT pages and
+  // must never be redirected into entities/ or concepts/. Without this guard
+  // the second branch below treats their basename as an unknown folder and
+  // returns 'entities/' (no filename), which the basename-guard in writePage
+  // then rejects. Latent bug pre-v2.5.2 — fixed when MCP write tools landed
+  // because the in-app pipeline used writeIndex() directly and silently lost
+  // the LLM's index updates without anyone noticing.
+  if (relativePath === 'index.md' || relativePath === 'log.md') {
+    return relativePath;
+  }
+  // Root-level files (no slash) → concepts/
+  if (!relativePath.includes('/')) {
     return 'concepts/' + relativePath;
   }
   // If the first path segment is not one of the three canonical folders → entities/

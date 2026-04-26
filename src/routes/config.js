@@ -4,7 +4,8 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { getConfig, setDomainsDir, getApiKeys, setApiKeys, clearApiKey } from '../brain/config.js';
+import { getConfig, setDomainsDir, getApiKeys, setApiKeys, clearApiKey, getDefaultDomain, setDefaultDomain } from '../brain/config.js';
+import { listDomains } from '../brain/files.js';
 import { getProviderInfo, getFallbackStatus } from '../brain/llm.js';
 
 const execAsync = promisify(exec);
@@ -37,7 +38,45 @@ const router = Router();
 
 /** GET /api/config — returns current app configuration */
 router.get('/', (_req, res) => {
-  res.json(getConfig());
+  res.json({ ...getConfig(), defaultDomain: getDefaultDomain() });
+});
+
+/**
+ * GET /api/config/default-domain — returns { defaultDomain, domains[] }.
+ * Used by the Settings UI to render the dropdown of available domains.
+ */
+router.get('/default-domain', async (_req, res) => {
+  try {
+    const domains = await listDomains();
+    res.json({ defaultDomain: getDefaultDomain(), domains });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /api/config/default-domain — set or clear the default domain.
+ * Body: { defaultDomain: <slug> | null | "" }
+ * The default domain is the wiki MCP write tools (compile_to_wiki, etc.) use
+ * when the user says "my wiki" without specifying which one.
+ */
+router.post('/default-domain', async (req, res) => {
+  try {
+    const requested = (req.body && typeof req.body.defaultDomain === 'string')
+      ? req.body.defaultDomain.trim()
+      : null;
+    if (requested) {
+      // Validate that it's a real domain — refuse silently-broken state
+      const domains = await listDomains();
+      if (!domains.includes(requested)) {
+        return res.status(400).json({ error: `Unknown domain: ${requested}` });
+      }
+    }
+    setDefaultDomain(requested || null);
+    res.json({ ok: true, defaultDomain: getDefaultDomain() });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 /** POST /api/config/domains-path — set a new domains folder path */

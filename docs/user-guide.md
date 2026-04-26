@@ -651,21 +651,19 @@ Use **Obsidian** when you want to:
 - Browse and edit individual wiki pages by hand
 - Explore "what is connected to this page?" using the local graph
 
-### Option C — My Curator MCP (frontier-model research)
+### Option C — My Curator MCP (frontier-model research, plus writes from v2.5.2+)
 
-Use **My Curator** when you want a frontier model — Claude Opus, Sonnet, or any MCP-compatible AI client — to do **deep research** over your wiki, treating it as a structured graph rather than a folder of files.
+Use **My Curator** when you want a frontier model — Claude Opus, Sonnet, or any MCP-compatible AI client — to **research** your wiki AND, since v2.5.2, **save findings back into it** without leaving the conversation.
 
-This is the most powerful access path. You install a tiny local MCP bridge (one-time, under 2 minutes from the **Settings** tab), and from then on Claude Desktop (or VS Code with an MCP-aware coding agent, or LM Studio with a local model) can:
+You install a tiny local MCP bridge (one-time, under 2 minutes from the **Settings** tab), and from then on Claude Desktop (or VS Code with an MCP-aware coding agent, or LM Studio with a local model) can:
 
-- Run topology overviews — *"Show me the most central hubs in my AI domain"*
-- Trace bidirectional links — *"Every source that mentions OpenAI"*
-- Find tag-driven clusters — *"All pages tagged `ai-safety`, then synthesise"*
-- Search across every domain at once
-- Reason about your knowledge as a graph (10 dedicated tools, including 3 graph-native ones)
+- **Research as a graph** — topology overviews, bidirectional link tracing, tag-driven clusters, cross-domain search (10 read tools, 3 graph-native).
+- **Write to your wiki** (v2.5.2+) — say *"save what we discussed to my second brain"* and Claude calls `compile_to_wiki` to commit the conversation as a summary page plus any new entity/concept pages. Same merge pipeline as the in-app Compile button.
+- **Heal your wiki** (v2.5.2+) — say *"check my wiki for problems"* and Claude scans, auto-fixes the safe ones, asks before destructive merges, and respects your persistent dismissals.
 
-Everything stays local — the MCP server is read-only and only sees your wiki folder.
+Everything stays local — the MCP server only sees your wiki folder, and writes go through the same safety pipeline (path-traversal guards, hard caps, idempotency, audit log) the app uses.
 
-> 📖 **Full setup guide:** [docs/mcp-user-guide.md](mcp-user-guide.md) — wizard-style 2-minute install, prompt patterns, troubleshooting.
+> 📖 **Full setup guide:** [docs/mcp-user-guide.md](mcp-user-guide.md) — wizard-style 2-minute install, prompt patterns, write-tool walkthroughs with sample dialogues, troubleshooting.
 
 ### How the three combine
 
@@ -676,7 +674,7 @@ Everything stays local — the MCP server is read-only and only sees your wiki f
                        │       Claude Desktop / VS Code / LM Studio
                        │       (Frontier model — Opus, Sonnet, local)
                        │              │
-                       │              │ via My Curator MCP (read-only)
+                       │              │ via My Curator MCP (read+write)
                        ▼              ▼
               domains/ folder ◄──────────────┐
                        │                     │
@@ -842,6 +840,14 @@ The active provider switches automatically based on which keys are configured (G
 ### Version and updates
 
 The Settings tab displays the current app version. Click **Check for Updates** to compare your version against the latest release on GitHub. If an update is available, click **Update Now** — the app pulls the latest code, reinstalls dependencies, rebuilds the Dock app, and restarts automatically. The browser reloads on its own.
+
+### Default domain for MCP writes (v2.5.2+)
+
+When you talk to Claude Desktop via My Curator MCP and say *"save this to my wiki"* without naming a domain, Claude needs to know which one to use. The **Default domain** dropdown in Settings sets that fallback.
+
+Pick a domain from the dropdown (or leave it as *"none"*). Claude's write tools will use it whenever you don't specify; if it's unset, Claude must explicitly ask you which domain to write to.
+
+> Multi-domain users: leaving this unset is the safer default — every MCP write requires you to confirm the domain. Single-domain users can set the default for smoother conversation flow.
 
 ### App info
 
