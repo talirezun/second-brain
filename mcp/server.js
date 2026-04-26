@@ -27,9 +27,16 @@ const domainsPath = domainsPathIdx !== -1 ? args[domainsPathIdx + 1] : null;
 
 const storage = createStorageAdapter({ domainsPath });
 
+// `title` is the human-readable display name added in MCP spec 2025-06-18.
+// We lead it with the brain glyph in case the host (Claude Desktop) derives
+// the avatar's first character from `title` instead of `name` — a free-cost
+// experiment. If the host doesn't honour it for the icon, the title still
+// renders nicer than the bare slug. The MCP protocol has no icon/image
+// field, so a real icon override is not currently possible.
 const server = new Server(
   {
     name: 'my-curator',
+    title: '🧠 My Curator',
     version: '1.0.0',
   },
   {
