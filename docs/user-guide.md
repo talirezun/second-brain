@@ -434,63 +434,17 @@ This is intentional — a second LLM run on identical input produces slightly di
 
 ## 10. Manage your domains
 
-The **Domains** tab is your control panel for organising your The Curator. Instead of manually creating folders in Finder, you can create, rename, and delete domains entirely from within the app.
+A domain is a focused knowledge silo — a dedicated wiki for one topic area. Each domain gets its own AI schema, wiki pages, chat conversations, and Obsidian graph cluster. The three built-in domains are **AI / Tech**, **Business / Finance**, and **Personal Growth**; you can create as many more as you like.
 
-### What is a domain?
+The **Domains** tab is the control panel: each card shows the folder path, wiki page count, conversation count, and last-ingested date. Buttons cover the three lifecycle actions:
 
-A domain is a focused knowledge silo — a dedicated wiki for one topic area. Each domain gets its own AI schema, wiki pages, chat conversations, and Obsidian graph cluster. The three built-in domains are **AI / Tech**, **Business / Finance**, and **Personal Growth**, but you can create as many as you like.
+- **New Domain** — pick a name, scope, and template (Tech / AI · Business · Personal Growth · Generic). The folder slug is generated and shown as a live preview.
+- **Rename** (pencil icon) — folder is renamed on disk; wiki pages, conversations, and Obsidian links are preserved.
+- **Delete** (trash icon) — confirmation shows exact page and conversation counts before commit. Deletion is permanent — no undo.
 
-### Viewing your domains
+Changes are reflected in dropdowns and Obsidian instantly — no restart needed. If sync is configured, run **Sync Up** soon after a rename or delete so your other computers stay consistent.
 
-Click the **Domains** tab to see all your domains as cards. Each card shows:
-
-- The domain name and its folder path (`domains/ai-tech/`)
-- How many wiki pages it contains
-- How many chat conversations it has
-- When the last source was ingested
-
-### Creating a new domain
-
-1. Click **New Domain**
-2. Type a display name — for example, `Health & Fitness`
-   - The folder name is generated automatically (e.g. `domains/health-and-fitness/`) and shown as a live preview below the input
-3. Optionally add a scope description — 1–2 sentences about what belongs in this domain
-4. Choose a **template** — this determines how the AI structures your wiki:
-
-| Template | Best for | Entity types | Concept style |
-|----------|----------|-------------|---------------|
-| ⚙️ Tech / AI | Software, research, tools | person, tool, company, dataset | How It Works / Applications |
-| 📈 Business / Finance | Startups, investing, strategy | person, company, fund, institution | Why It Matters / Examples |
-| 🌱 Personal Growth | Books, habits, mental models | person, book, framework | Why It Matters / How to Apply It |
-| 📁 Generic | Any other topic | person, item, organization | Overview / Examples |
-
-5. Click **Create Domain**
-
-The domain appears immediately in all dropdowns (Ingest, Chat, Wiki) and in Obsidian's file explorer — no restart required.
-
-### Renaming a domain
-
-1. Click the **pencil icon** on any domain card
-2. Type the new display name — the new folder path updates in the live preview
-3. Click **Rename**
-
-The folder is renamed on disk. All wiki pages, conversations, and chat history are preserved. Obsidian reflects the change immediately.
-
-> **If sync is configured:** renaming a domain appears to GitHub as a delete + add. Click **Sync Up** soon after renaming so your other computers stay consistent.
-
-### Deleting a domain
-
-1. Click the **trash icon** on any domain card
-2. Read the confirmation panel — it shows exactly how many wiki pages and conversations will be deleted
-3. Click **Yes, delete permanently** to confirm
-
-The folder is removed from disk and disappears from all dropdowns. Obsidian reflects the change immediately.
-
-> ⚠️ **Deletion is permanent.** There is no undo. If you use sync, the domain will also be removed from GitHub on the next Sync Up.
-
-### Obsidian and domain management
-
-Because The Curator writes directly to the `domains/` folder that Obsidian watches, all domain changes are reflected in Obsidian instantly — no refresh or export needed. A new domain becomes a new folder in Obsidian's file explorer. A renamed or deleted domain updates the graph accordingly.
+> 📖 **Going deeper?** The full reference — schema anatomy, manual setup, custom templates for History / Health / Legal / etc., and (importantly) **how domains relate to each other** (siloed by default, accidental Obsidian edges, the four-level model) — lives in **[docs/domains.md](domains.md)**.
 
 ---
 
@@ -1136,8 +1090,7 @@ and on macOS also run `bash scripts/build-app.sh`. Then restart the server.
 | 🔌 [My Curator MCP Guide](mcp-user-guide.md) | Connect the wiki to Claude Desktop / VS Code / LM Studio for frontier-model research |
 | 🧹 [AI Wiki Health Guide](ai-health.md) | Phase 1 / 2 / 3 details: broken-link rescue, orphan rescue, semantic duplicate detection — what data leaves your machine and what each call costs |
 | 🔁 [Sync Guide](sync.md) | The full GitHub sync workflow — including team-shared brains and conflict recovery |
-| 📁 [Adding Domains](adding-domains.md) | Create domains via the UI or by hand |
-| 🎨 [Domain Schemas](domain-schemas.md) | Customise how the AI structures knowledge per domain |
+| 📁 [Domains](domains.md) | The full reference — managing domains, the CLAUDE.md schema, how domains relate to each other (siloed by default), custom templates for specialised topics |
 | 🔄 [Model Lifecycle](model-lifecycle.md) | What happens when a provider retires a model — fallback chain explained |
 | 🍎 [Mac App Setup](mac-app.md) | Detailed Mac Dock launcher instructions |
 | 🛠 [API Reference](api-reference.md) | REST API endpoints (for developers) |

@@ -36,16 +36,26 @@ For students, researchers, entrepreneurs, and lifelong learners: this is the dif
 
 ## All documents
 
-| Document | Who it's for | What's inside |
-|----------|-------------|---------------|
-| [user-guide.md](user-guide.md) | Everyone | Step-by-step setup, chat, Obsidian, sync, daily workflow, troubleshooting |
-| [use-cases.md](use-cases.md) | Everyone | Detailed workflows for every user profile |
-| [sync.md](sync.md) | Everyone | GitHub sync setup, daily workflow, troubleshooting |
-| [mac-app.md](mac-app.md) | Mac users | How to create a double-click Dock app so you never need the terminal |
-| [domain-schemas.md](domain-schemas.md) | Users who want custom domains | How the AI schemas work, templates, examples |
-| [adding-domains.md](adding-domains.md) | Users who want custom domains | Step-by-step guide to creating a new domain |
-| [api-reference.md](api-reference.md) | Developers | Full REST API documentation |
-| [architecture.md](architecture.md) | Developers | System design, data flow, module reference |
+**For users**
+
+| Document | What's inside |
+|----------|---------------|
+| [user-guide.md](user-guide.md) | The master guide — setup, ingest, chat, Obsidian, sync, daily workflow, troubleshooting |
+| [use-cases.md](use-cases.md) | Detailed workflows for every user profile |
+| [mcp-user-guide.md](mcp-user-guide.md) | My Curator MCP — connect your wiki to Claude Desktop / VS Code / LM Studio for frontier-model research and write-back |
+| [ai-health.md](ai-health.md) | AI-assisted Wiki Health — broken-link rescue, orphan rescue, semantic-duplicate detection, persistent dismissals |
+| [sync.md](sync.md) | GitHub sync setup, daily workflow, troubleshooting |
+| [domains.md](domains.md) | Domains end-to-end — managing them, the CLAUDE.md schema, siloing model, custom templates |
+| [mac-app.md](mac-app.md) | How to create a double-click Dock app on macOS so you never need the terminal |
+
+**For developers**
+
+| Document | What's inside |
+|----------|---------------|
+| [architecture.md](architecture.md) | System design, data flow, module reference |
+| [api-reference.md](api-reference.md) | Full REST API documentation |
+| [model-lifecycle.md](model-lifecycle.md) | Provider/model fallback policy and what happens when a model is retired |
+| [audits/](audits/) | Historical audit reports per release (snapshots of the codebase quality at each version) |
 
 ---
 

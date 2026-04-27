@@ -363,6 +363,8 @@ The **Domains tab** is a full GUI for creating, renaming, and deleting domains �
 
 > If GitHub sync is configured, a rename or delete shows a reminder to Sync Up so all your computers stay consistent.
 
+> 📖 **Full reference:** [docs/domains.md](docs/domains.md) — the CLAUDE.md schema, how domains relate to each other (siloed by default), and custom templates for specialised topics like history, health, or legal.
+
 ---
 
 ## Sync across computers
@@ -465,8 +467,7 @@ the-curator/
 
 | | |
 |-|-|
-| [Adding Domains](docs/adding-domains.md) | Create domains via UI or manually |
-| [Domain Schemas](docs/domain-schemas.md) | Customise how the AI structures knowledge |
+| [Domains](docs/domains.md) | Full reference — managing domains, the CLAUDE.md schema, siloing model, custom templates |
 | [Model Lifecycle](docs/model-lifecycle.md) | Provider/model fallback policy, retiring deprecated models |
 | [API Reference](docs/api-reference.md) | REST API documentation |
 | [Architecture](docs/architecture.md) | System design for developers |
