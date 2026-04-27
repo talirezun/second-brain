@@ -294,6 +294,7 @@ The vault root should point to `domains/<domain>/wiki/` (or a parent folder cove
 | `v2.3.9`  | Wiki Health "Fix" for missing backlinks now actually writes. Bug: clicking Fix returned `{ok:true, fixed:1}` but the flagged file was unchanged. Two root causes: (a) `injectSummaryBacklinks` only did hyphen-normalised resolution after the exact-entities check, so when both `concepts/email.md` and `concepts/e-mail.md` existed, `[[email]]` fuzzy-matched `e-mail.md` first (alphabetical `Array.find`) and the backlink went to the wrong file; (b) `fixMissingBacklink` was re-running the whole bulk-resolve machinery instead of using the scan's already-resolved `issue.entity`. Fixes: resolution order in `injectSummaryBacklinks` is now `entities/exact → concepts/exact → hyphen-normalised (entities then concepts)` — matching the scan's own logic; added `injectSingleBacklink(path, slug, title)` that trusts the caller-provided path; `fixMissingBacklink` now uses it with `issue.entity`. Verified end-to-end on the real articles domain: scan → Fix → rescan returns 0 missing. |
 | `v2.4.0`  | Model-lifecycle safety net. Phase 0 of the AI Wiki Health roadmap. When a provider retires the pinned default model, every call would otherwise 404. Fix: `llm.js` now wraps `callProvider()` in a chain — primary → `FALLBACK_CHAINS[provider]` — triggered only on model-not-found errors (429/503 still go through the existing retry path). Module-level `_activeFallback` tracks which fallback is in use and is exposed via `getFallbackStatus()`. `/api/config/api-keys` response grows a `fallback` field; Settings UI renders an amber "Using fallback model — run Check for Updates" banner when populated. Verified end-to-end with `LLM_MODEL=gemini-nonexistent` override: chat, ingest, MCP, health, sync all still work; fallback logged + surfaced; clears automatically when primary returns. Full user-facing guide: `docs/model-lifecycle.md`. |
 | `v2.4.1`  | Anthropic default switched from `claude-sonnet-4-6` to **`claude-haiku-4-5`** — Anthropic's low-cost tier, matching the cost profile of Gemini's `gemini-2.5-flash-lite`. Users who want higher quality can opt in via `LLM_MODEL=claude-sonnet-4-5` in `.env`. Anthropic fallback chain reordered: Haiku variants first (same cost tier), then escalates to Sonnet only if the entire Haiku family is gone: `claude-3-5-haiku-latest → claude-3-5-haiku-20241022 → claude-sonnet-4-5 → claude-3-7-sonnet-latest → claude-3-5-sonnet-latest`. |
+| `v2.5.7`  | **My Curator Claude skill — packaged playbook for the MCP.** Real-world MCP usage proved that detailed prompt-engineering produces dramatically better results: ground wikilinks before composing, use `broken_link_policy: 'refuse'` on fresh domains, three-tier Health flow, etc. Asking users to type that into every conversation is unsustainable. v2.5.7 packages the playbook into a downloadable Claude skill — `claude-skills/my-curator/SKILL.md` (~270 lines, 9 sections covering domain awareness, reading workflow, writing workflow with the v2.5.5 grounding playbook, Health maintenance with three-tier model, full tool reference, quality rules) plus `claude-skills/my-curator/examples.md` (4 worked sample dialogues — deep-research, fresh-domain compile, compound-into-existing, maintenance cleanup). Frontmatter `description` (within the 1,536-char cap) front-loads natural-language triggers covering both READ and WRITE intents. `allowed-tools: mcp__my-curator__*` pre-approves all 17 MCP tools. Install paths: `~/.claude/skills/my-curator/` for Claude Code (skills are first-class); upload to "Project knowledge" in any Claude Desktop project for the same effect. Documented in `docs/mcp-user-guide.md` (new section), `docs/user-guide.md` §13 (pointer), root `README.md` (callout). Format follows the [Agent Skills](https://agentskills.io) open standard so it works across MCP-aware tools, not just Claude. |
 | `v2.5.6`  | **Documentation consolidation.** Two domain-related files (`adding-domains.md` + `domain-schemas.md`, ~480 lines combined) merged into one canonical `docs/domains.md` (~440 lines) covering: what a domain is, managing them via the UI + manual setup, the CLAUDE.md schema anatomy + iteration patterns, **how domains relate to each other** (siloed-by-default with the four-level model: in-domain full graph → Curator-tools no cross-domain links → MCP read-only cross-domain reasoning via `search_cross_domain` → Obsidian's accidental edges), and custom templates for History / Health / Legal. Three audit files (`audit-2026-04-14.md`, `audit-2026-04-20.md`, `audit-2026-04-21.md`) moved into `docs/audits/` subdir to clean the docs root. User-guide §10 shrunk from 60 lines to 12 (summary + link to `domains.md`), §21 Further Reading collapses the two domain rows into one. Root `README.md` and `docs/README.md` link tables updated; `docs/README.md` table also fixed (was missing 3 docs — mcp-user-guide, ai-health, model-lifecycle). All 8 cross-references across the repo updated. CLAUDE.md v2.3.1 history entry's `audit-2026-04-20.md` link path corrected. No information loss — every paragraph from the merged-from files lives on in `domains.md` reorganised. |
 | `v2.5.5`  | **MCP `compile_to_wiki` link grounding.** Fixes a real-world quality problem: when Claude composes wiki content via `compile_to_wiki`, it has no visibility into which slugs already exist in the target domain, so it invents `[[wikilinks]]` that don't resolve. User reported 84 broken links after just 3 compiles into a fresh `Projects` domain. **Three-prong fix in `mcp/tools/compile.js`:** (1) Tool description rewritten to instruct Claude to call `get_index` BEFORE composing and to ground every `[[wikilink]]` in either an existing page or one being created in this same `additional_pages`. (2) Pre-write resolution pass — `buildSlugInventory()` reads entities/concepts/summaries dirs once + unions with paths in this call; `tryResolveLink()` mirrors writePage's Pass A/B/C (title-prefix strip, hyphen-normalised match, prefix-tolerant lookup); `resolveLinksInContent()` walks every `[[X]]` and routes to one of {kept, normalized, broken}. (3) New `broken_link_policy` enum input — `'keep'` (default; write as-is + report), `'strip'` (drop brackets so prose still reads naturally), `'refuse'` (abort the whole compile if any link is broken; returns `valid_slugs_sample` for fast Claude retry). Response gains a `links` field with `{total, resolved, normalized, broken: [{in, link}], broken_count, policy}` so Claude sees the broken-link list immediately and can decide whether to retry. Audit log records the same stats. Wrong-folder prefixes (`[[summaries/foo]]` pointing at an entity/concept) get auto-corrected on `'kept'` resolution so they don't survive as broken links downstream. ReDoS-safe regex; Map-based dedup; bounded inputs (max 11 pages × 50 KB) keep the pre-pass under 5 ms even on 5K-slug domains. |
 | `v2.5.4`  | **MCP serverInfo title.** Set the optional `title: '🧠 My Curator'` field on the MCP server's `serverInfo` payload (added in MCP spec 2025-06-18). The protocol has **no icon/image field** — a real custom icon for the server is not currently possible — but if Claude Desktop derives its default avatar's first character from `title` instead of `name`, this gives us the brain glyph; if it doesn't, the title still renders as a friendlier display name than the bare `my-curator` slug. SDK 1.29's `BaseMetadataSchema` already accepts the field. Single-line server.js change; no other code touched. |
@@ -409,7 +410,127 @@ bash scripts/build-app.sh
 - **MCP stdout discipline (v2.5.3+)** — `src/brain/files.js`, `src/brain/ingest.js`, `src/brain/llm.js` are imported by the MCP child process. The MCP protocol reserves **stdout** for JSON-RPC frames; any `console.log` in a shared module poisons the stream and surfaces in Claude Desktop as `Unexpected token … is not valid JSON`. Rule: ALL diagnostics in shared brain modules use `console.error` (stderr). Defensive comments at the entry point of each module make this explicit so future contributors don't reintroduce the bug. Verified by a stdout-purity probe (`/tmp/mcp-stdout-purity.mjs`-style) that asserts every line on stdout parses as JSON.
 - **MCP `compile_to_wiki` link grounding (v2.5.5+)** — `mcp/tools/compile.js` runs a pre-write resolution pass over every `[[wikilink]]` in the inputs and resolves against the union of (existing slugs on disk + slugs being created in this call). Mirrors `writePage` Pass A/B/C exactly so writePage's own pass runs as a no-op on already-resolved content. The `broken_link_policy` parameter (`keep`/`strip`/`refuse`) gives users + Claude a strict mode for fresh domains where a single broken link is worth aborting the whole compile to fix at the source. The `links` response field is the actionable signal — Claude sees broken links immediately and can decide whether to retry with corrections. Without this v2.5.5 grounding, fresh domains reliably accumulated 20+ broken links per compile.
 - **Domains are siloed by default (v2.5.6+ documented; behaviour is implicit since v2.0)** — `compile_to_wiki` writes to one domain per call, ingest's slug inventory is per-domain, link grounding (v2.5.5+) only resolves against the current domain. Cross-domain reasoning happens at the MCP-read layer (`search_cross_domain`) — a Claude conversation can synthesise across domains without persistent cross-domain links being created on disk. Obsidian, when its vault root covers multiple domains, may surface accidental edges where slugs collide across domains; Health is per-domain so those show as broken in the source domain even though Obsidian shows them connected. Documented in full at [`docs/domains.md` § 4](docs/domains.md#4-how-domains-relate-to-each-other). Intentional cross-domain linking (e.g. `[[business:openai]]` syntax) is not currently supported — would require parser/scanner work in `health.js`, `compile.js`, and the MCP tools.
-- **Version:** 2.5.6
+- **My Curator Claude skill is the canonical playbook (v2.5.7+)** — `claude-skills/my-curator/` ships the same prompt-engineering rules that, used inconsistently, produce broken links / duplicate pages / cross-domain confusion. Standard install (drop in `~/.claude/skills/`) makes every Claude conversation that uses the my-curator MCP automatically follow them. The skill is the SECOND canonical source-of-truth for MCP behaviour rules (the FIRST is the tool descriptions in `mcp/tools/*.js` — read by Claude during `tools/list`). When the rules change, both must be updated. The skill body is intentionally a duplicate of the discipline already encoded in tool descriptions — but the descriptions are 1-paragraph triggers; the skill is the full playbook with examples. Skill format follows the Agent Skills open standard so it works in Claude Code, Claude Desktop projects, and any other MCP-aware host that supports the standard.
+- **Version:** 2.5.7
+
+## Roadmap — Chat UI Modes 3 & 4 (planned, not yet implemented)
+
+> This section is the **persistent design context** for a future session that
+> will implement Modes 3 (Dictate) and 4 (Curate) of the Chat tab. It captures
+> what we've decided so the implementing session can start coding without
+> re-deriving the architecture. Update this section as decisions firm up.
+
+### The four-mode model
+
+The Chat tab is evolving from a single-purpose Q&A surface into a four-mode
+authoring environment that mirrors the natural lifecycle of working with a
+second brain:
+
+| Mode | Status | What it does | Direction |
+|------|--------|--------------|-----------|
+| 1. **Discover** | ✅ shipped (v1.0) | Multi-turn Q&A against the wiki — answers cite specific pages. | read |
+| 2. **Compile** | ✅ shipped (v2.5.0) | After a Discover conversation, click "Compile to Wiki" to turn it into a permanent summary + new entity/concept pages. | read → write |
+| 3. **Dictate** | 🔮 planned | Stream-of-thought capture. User types or speaks raw thoughts; the chat UI structures them and writes to the wiki immediately without requiring a multi-turn conversation. | write-first |
+| 4. **Curate** | 🔮 planned | Review-and-refine an existing wiki page or batch of pages in the chat UI. Conversational editorial dialogue (different from Health, which is rule-based). | rewrite |
+
+The progression reads coherently: **Discover (read) → Compile (write a summary
+of a thought process) → Dictate (capture raw thought directly) → Curate (refine
+what's already in the wiki).**
+
+### Mode 3 — Dictate
+
+**Use case.** *"I just had an idea I want to capture quickly. I don't want a
+conversation, I just want to dump what I'm thinking and have it land in the
+wiki properly structured."*
+
+Compile (Mode 2) requires a multi-turn conversation first. Dictate is for the
+single-shot case — paste a paragraph, click Save, done.
+
+**Proposed UI.**
+- Mode-switcher in the chat-tab header (segmented control: `Discover · Compile · Dictate · Curate`).
+- In Dictate mode, the chat input becomes a "Dictate" box with a **Save to wiki** button instead of Send.
+- Optional **target page hint** (entity / concept / summary auto-detected from content, user can override).
+- After save: the existing v2.5.0 change-record panel renders the result.
+
+**Backend reuse.**
+- `compileConversation()` is too multi-turn-shaped — Dictate gets its own thin wrapper:
+  `dictateNote(domain, { text, kind?, hint? })` → builds a one-shot LLM prompt that asks for *one* page (entity / concept / summary) with proper structure, then runs through `writePage` + `syncSummaryEntities` + index merge — same chokepoint.
+- Lives in `src/brain/dictate.js` (new), parallels `src/brain/compile.js`.
+- Route: `POST /api/dictate/note` (SSE-streamed, mirrors compile route).
+- File-existence idempotency guard like compile uses.
+- v2.5.5 link grounding inherited automatically (same pre-write resolution path used by `compile_to_wiki`).
+
+**Open design questions.**
+1. Voice input — should the input box accept speech-to-text via Web Speech API, or stay text-only? The user mentioned "dictate" literally; voice is the headline UX win.
+2. Auto-detection of page type (entity vs concept vs summary) — is the LLM reliable enough to pick automatically, or always show a chooser?
+3. Should Dictate write directly, or always show a preview / confirm step first? Compile has dry-run; Dictate probably doesn't need one because the input is the user's own raw text — they wrote it, they can re-read it.
+
+### Mode 4 — Curate
+
+**Use case.** *"I'm looking at this entity page and it's a mess. Let me chat
+with Claude to clean it up — restructure sections, merge with a related page,
+suggest what's missing — without leaving the chat tab."*
+
+Health is rule-based. Curate is editorial. Different action, different surface.
+
+**Proposed UI.**
+- Mode 4 surfaces a **page picker** alongside the message thread: pick an entity, concept, or summary; its content loads into a side panel.
+- Dialogue with Claude is grounded in that page (and optionally its connected pages — pulled via the existing `get_connected_nodes` MCP-style logic but inline in the app).
+- Suggested actions Claude can offer:
+  - "Restructure this page into Summary / Key Facts / Related"
+  - "Pull bullets from these three related pages and consolidate them here"
+  - "Suggest five concept pages this entity should link to"
+  - "Rewrite the Definition section to be clearer"
+- Apply button on each suggestion → routes through `writePage` (additive merge handles non-destructive updates) or `fixIssue` for structural ones.
+
+**Backend reuse.**
+- Probably no new tools required — composes existing primitives: `readWikiPage`, `writePage`, the chat pipeline, and (if AI-suggested edits target other pages) `injectRelatedLink` from `files.js`.
+- New module if needed: `src/brain/curate.js` — but might just live inside the chat route as additional context-injection logic.
+- Route: extend `POST /api/chat/:domain` with an optional `curateContext: { pagePath }` field, OR a separate `POST /api/curate/:domain/:pagePath`. Decision pending.
+
+**Open design questions.**
+1. Should Curate mode lock the user into editing **one page at a time**, or support multi-page sessions (e.g. merging two entities)? The risk with multi-page is destructive edits — merge has the v2.4.5 preview-gate pattern that we'd need to mirror.
+2. Diff visualisation — should every Claude-suggested edit show a before/after diff before the user clicks Apply? Probably yes for prose changes; bullet additions can apply silently.
+3. Cross-domain Curate — refuse (consistent with the v2.5.6 siloing principle), or special-case for users who want to refactor across domains? Default: refuse.
+4. AI Health overlap — at what point does "Curate suggested merging these two pages" become "use the v2.4.5 semantic-dupe scan instead"? Probably the line is: Curate is for one-page authoring, semantic-dupe is for cross-domain detection. Document the boundary.
+
+### Files that would change (rough estimate)
+
+```
+NEW:
+  src/brain/dictate.js                — single-shot note capture
+  src/brain/curate.js (maybe)         — only if logic outgrows chat route
+  src/routes/dictate.js               — POST /api/dictate/note (SSE)
+  docs/chat-modes.md (maybe)          — single-page deep-dive on the four modes
+
+MODIFIED:
+  src/public/index.html               — mode-switcher segmented control + page-picker for Curate
+  src/public/app.js                   — mode state machine + per-mode UI logic
+  src/public/styles.css               — mode-switcher styles
+  src/server.js                       — register dictate route
+  src/routes/chat.js                  — optional curate-context support
+  docs/user-guide.md §9               — describe all four modes
+  docs/mcp-user-guide.md              — note that compile_to_wiki is the MCP equivalent of Mode 2
+  CLAUDE.md                           — version history entry, design decisions
+```
+
+### Reusable primitives already in place
+
+- v2.5.0 change-record shape (used by ingest, compile, MCP writes) — Dictate + Curate inherit.
+- v2.5.5 link grounding (`buildSlugInventory`, `tryResolveLink`) — Dictate's writes pass through it for free; Curate's edits should too.
+- v2.5.1 dismissal store — irrelevant to Modes 3/4 directly, but Curate could surface "you previously dismissed this issue, want to un-dismiss?" prompts.
+- v2.5.2 default-domain config — Dictate should respect it (just like MCP `compile_to_wiki` does).
+
+### Pre-implementation checklist
+
+Before the implementing session starts coding:
+1. Confirm whether voice (Web Speech API) is in scope for Dictate v1, or text-only.
+2. Decide page-type auto-detection vs explicit chooser for Dictate.
+3. Decide single-page vs multi-page scope for Curate v1.
+4. Decide per-suggestion diff vs silent-apply for Curate prose edits.
+5. Mode-switcher UI: segmented control vs tab-row vs sidebar — small visual decision.
+
+---
 
 ## Known benign GitHub behaviours
 

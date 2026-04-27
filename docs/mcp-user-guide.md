@@ -94,6 +94,83 @@ A frontier model can always get the full picture — it just has to ask in piece
 
 ---
 
+## The My Curator Claude skill — best results out of the box (v2.5.7+)
+
+The MCP exposes 17 tools. Used naively, Claude works — but used *well*, Claude grounds every wikilink in your existing slugs, refuses speculative writes on fresh domains, three-tier-tracks Health fixes, and treats domains as siloed. Doing that consistently means typing detailed instructions into every conversation.
+
+The **My Curator skill** packages that playbook into a single markdown file you install once. After install, every Claude conversation that touches the my-curator MCP automatically follows the rules — no detailed prompting needed.
+
+> 📥 **Download:** [`claude-skills/my-curator/SKILL.md`](../claude-skills/my-curator/SKILL.md) and [`claude-skills/my-curator/examples.md`](../claude-skills/my-curator/examples.md) — both files from the GitHub repository.
+
+### What the skill enforces
+
+- **Reading** — uses `get_graph_overview` for orientation, `search_wiki` for keyword queries, `get_node` + `get_backlinks` for tracing, `get_connected_nodes` for neighborhood traversal, `search_cross_domain` for cross-domain synthesis.
+- **Writing** — calls `get_index` BEFORE composing every summary. Grounds every `[[wikilink]]` in either an existing slug or one being created in the same call. Uses `broken_link_policy: 'refuse'` on fresh / mostly-empty domains. Inspects the response's `links` field after every write.
+- **Maintenance** — three-tier model: auto-fix safe types, confirm review-only types, always-preview destructive (`semanticDupe`) merges. Persists `dismiss_wiki_issue` decisions across machines.
+- **Quality rules** — no invented slugs, no duplicate pages, no folder prefixes in entity/concept wikilinks, no cross-domain links, no idempotency-violating re-compiles.
+
+### Install — Claude Code (recommended path)
+
+If you use Claude Code, skills are first-class:
+
+```bash
+mkdir -p ~/.claude/skills/my-curator
+curl -L https://raw.githubusercontent.com/talirezun/the-curator/main/claude-skills/my-curator/SKILL.md \
+  -o ~/.claude/skills/my-curator/SKILL.md
+curl -L https://raw.githubusercontent.com/talirezun/the-curator/main/claude-skills/my-curator/examples.md \
+  -o ~/.claude/skills/my-curator/examples.md
+```
+
+The skill activates automatically on the trigger phrases described in its frontmatter (`description` field). Verify by asking Claude in a new session:
+
+> *What skills are available?*
+
+You should see `my-curator` in the list. Edits to the file take effect mid-session — no restart needed.
+
+### Install — Claude Desktop
+
+Claude Desktop doesn't have first-class "skills" yet, but you can use the same content via the **Project knowledge** mechanism in any Claude Desktop project:
+
+1. In Claude Desktop, open the project where you do most of your second-brain work (or create one — *e.g.* `My Second Brain`).
+2. Open **Project knowledge**.
+3. Upload both files from `claude-skills/my-curator/` — `SKILL.md` and `examples.md`.
+
+Claude reads project-knowledge files automatically as context for every conversation in that project. The behaviour matches having the skill loaded.
+
+> Alternatively, copy the entire content of `SKILL.md` (minus the frontmatter) into the project's **Custom instructions** field. Same effect, no separate file upload.
+
+### Trigger phrases
+
+The skill activates on natural language — you don't need to invoke it explicitly. Phrases that reliably trigger it:
+
+| You say | Skill activates because… |
+|---|---|
+| "What does my wiki know about X?" | matches "READ requests" trigger |
+| "Save this to my second brain" / "Add to my Curator" | matches "WRITE requests" trigger |
+| "Check my wiki for problems" / "Find broken links" | matches "maintenance" trigger |
+| "Put this in my `<name>` domain" | named-domain phrase |
+| "Compile our findings" / "Store these notes" | write-intent phrase |
+| "Deep research my second brain on X" | combined research-then-synthesise |
+
+If you ever want to bypass the skill (rare — usually you don't), explicitly tell Claude *"don't use the my-curator playbook for this one"*.
+
+### Verifying it works
+
+After installing, run this prompt in a fresh conversation:
+
+> *Save a one-paragraph note about Anthropic to my `articles` second brain.*
+
+The skill should drive Claude to:
+1. Call `list_domains` to confirm `articles` exists.
+2. Call `get_index(domain="articles")` to inventory existing slugs.
+3. Compose with grounded `[[wikilinks]]`.
+4. Call `compile_to_wiki` with appropriate `broken_link_policy`.
+5. Read back the `links` field and report results.
+
+If you see those steps in the conversation, the skill is loaded and working.
+
+---
+
 ## Research prompts to try
 
 Once connected, these prompts unlock what the graph layer is actually for:

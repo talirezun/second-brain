@@ -323,6 +323,8 @@ My Curator inverts that: ingest builds a **persistent, graph-shaped knowledge st
 This is what makes the difference between "I have a folder of notes" and "I have a queryable, compounding extension of my own thinking that any frontier model can reason against on demand."
 
 > 📖 **Setup is under 2 minutes** from the **Settings** tab inside the app — see **[docs/mcp-user-guide.md](docs/mcp-user-guide.md)** for the wizard, prompt patterns, and the privacy/security model.
+>
+> 💡 **The My Curator Claude skill (v2.5.7+):** drop **[claude-skills/my-curator/SKILL.md](claude-skills/my-curator/SKILL.md)** into Claude Code's `~/.claude/skills/` — or upload it to any Claude Desktop project's knowledge files — and every conversation that touches the my-curator MCP automatically follows the playbook: ground every wikilink, refuse speculative writes on fresh domains, three-tier-track Health fixes, respect domain siloing. No more typing detailed prompts every time. Install instructions in the [MCP guide](docs/mcp-user-guide.md#the-my-curator-claude-skill--best-results-out-of-the-box-v257).
 
 ---
 

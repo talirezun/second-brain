@@ -1,0 +1,233 @@
+# My Curator — sample dialogues
+
+Worked end-to-end examples showing how the playbook in [SKILL.md](SKILL.md) plays out. Four scenarios, covering deep research, fresh-domain compile (the strictest mode), compounding into an established domain, and maintenance.
+
+---
+
+## Example 1 — Deep research (read-only)
+
+The user wants a synthesis that touches multiple domains. No writes.
+
+> **User:** *"Across my `articles` and `business` domains, find every page that touches AI agents in enterprise software, group them by source, and identify the three biggest open questions."*
+
+**Step 1 — Cross-domain query.**
+
+```
+search_cross_domain(query="AI agents enterprise software")
+```
+
+Returns ranked matches per domain. You see clusters in both `articles` (research papers, LLM deployment patterns) and `business` (case studies on enterprise pilots).
+
+**Step 2 — Topology check on the larger domain.**
+
+```
+get_graph_overview(domain="articles")
+```
+
+Confirms `[[ai-agent-orchestration]]` and `[[agentic-workflows]]` are central hubs in `articles`. You decide those plus the top business cluster are worth pulling.
+
+**Step 3 — Targeted retrieval.**
+
+```
+get_node(domain="articles", slug="ai-agent-orchestration")
+get_node(domain="articles", slug="agentic-workflows")
+get_backlinks(domain="articles", slug="ai-agent-orchestration")
+get_node(domain="business", slug="enterprise-llm-pilots")
+```
+
+**Step 4 — Synthesise in the conversation.** Cite specific pages by slug. Identify the open questions from gaps you noticed during traversal (e.g. "no page yet on cost-control patterns at scale").
+
+**Step 5 — Offer next steps.** *"If you'd like, I can compile this synthesis as a permanent summary. Which domain — `articles` or a new `research-notes` domain?"*
+
+**Key moves**
+- `search_cross_domain` for the initial sweep — read-only, no persistent cross-domain links created.
+- `get_graph_overview` to orient before drilling.
+- Targeted `get_node` and `get_backlinks` rather than enumerating everything.
+- Synthesis cites slugs the user can cross-check.
+
+---
+
+## Example 2 — Fresh-domain compile (strict mode)
+
+The user has been researching a new project and wants the conclusions saved into a fresh, mostly-empty domain.
+
+> **User:** *"Based on our discussion of the Lumina Pro project, generate a detailed summary and save it to my second brain in the `projects` domain. Be careful with structure and avoid broken links."*
+
+**Step 1 — Confirm the domain exists.**
+
+```
+list_domains()
+```
+
+Returns `["articles", "business", "projects", "research"]`. `projects` is named — proceed.
+
+**Step 2 — Inventory the existing wiki.**
+
+```
+get_index(domain="projects")
+```
+
+Returns ~6 pages — fresh domain. Note them: `entities/lumina-ai.md`, `concepts/agentic-coding.md`, etc.
+
+**Step 3 — Compose with grounded links.** As you draft the summary, every `[[wikilink]]` must reference (a) one of the 6 existing slugs, or (b) a slug you'll create in `additional_pages`.
+
+You decide the summary will introduce three new concepts (`[[multi-agent-orchestration]]`, `[[ai-tool-routing]]`, `[[enterprise-deployment-patterns]]`) and reference one new entity (`[[lumina-pro]]`). They go in `additional_pages`. Other concepts you mention are written as plain prose without brackets.
+
+**Step 4 — Strict-mode call.** Fresh domain → use `'refuse'`:
+
+```
+compile_to_wiki({
+  domain: "projects",
+  title: "Lumina Pro — Project Research Summary",
+  summary_content: "## Key Takeaways\n- ...\n## Concepts Introduced or Referenced\n- [[multi-agent-orchestration]] — ...\n- [[lumina-ai]] — already exists, references the umbrella project\n## Entities Mentioned\n- [[lumina-pro]] — ...",
+  additional_pages: [
+    { path: "entities/lumina-pro.md", content: "..." },
+    { path: "concepts/multi-agent-orchestration.md", content: "..." },
+    { path: "concepts/ai-tool-routing.md", content: "..." },
+    { path: "concepts/enterprise-deployment-patterns.md", content: "..." },
+  ],
+  broken_link_policy: "refuse",
+})
+```
+
+**Step 5 — Inspect the response.**
+
+If `ok: true` — done. Show the change report to the user.
+
+If `ok: false` with `error: "N broken wikilinks detected..."` — read the `broken` array and `valid_slugs_sample`. Two paths:
+
+- **The broken slugs SHOULD have been new pages** → add them to `additional_pages` and retry.
+- **The broken slugs are real typos** (you wrote `[[OpenAI]]` instead of `[[openai]]`) → fix the wikilinks in `summary_content` and retry.
+
+The retry loop typically converges in 1–2 calls and produces a wiki with **zero broken links**.
+
+> **You (after success):** *"Saved to your `projects` domain — created the Lumina Pro summary, plus 4 new concept/entity pages. Updated 2 existing pages (`[[lumina-ai]]` got a backlink, the index was refreshed). All 14 wikilinks resolved cleanly."*
+
+**Key moves**
+- Strict `'refuse'` mode on a fresh domain prevents broken-link inflation.
+- Every wikilink grounded against either the index or `additional_pages`.
+- The retry loop is fast because the response includes `valid_slugs_sample`.
+
+---
+
+## Example 3 — Compound into an established domain
+
+The user wants to add findings to a domain that already has hundreds of pages. The risk here isn't broken links — it's accidentally creating a duplicate of something that exists.
+
+> **User:** *"Add a summary of our discussion about RAG vs fine-tuning to my `articles` second brain."*
+
+**Step 1 — Domain confirmed in the request.**
+
+**Step 2 — Inventory.**
+
+```
+get_index(domain="articles")
+```
+
+Returns 2000+ rows. You scan for relevant slugs — you already see `[[rag]]`, `[[fine-tuning]]`, `[[retrieval-augmented-generation]]`, `[[llm-customization]]`, etc.
+
+**Step 3 — Disambiguate variant slugs.** You spot `[[rag]]` AND `[[retrieval-augmented-generation]]` in the index. They're probably semantic duplicates the user will eventually merge — but for now, pick the one that has more content. Quick `search_wiki(domain="articles", query="rag")` confirms `[[rag]]` is the established hub. Use that one.
+
+**Step 4 — Compose with the existing slugs.** No new pages this time — every concept you mention already has a page. So `additional_pages` is empty; the summary just references existing slugs:
+
+```
+compile_to_wiki({
+  domain: "articles",
+  title: "RAG vs Fine-Tuning Discussion 2026-04-27",
+  summary_content: "## Key Takeaways\n...\n## Concepts Introduced or Referenced\n- [[rag]]\n- [[fine-tuning]]\n- [[llm-customization]]\n...",
+  // no additional_pages — every link references existing slugs
+  broken_link_policy: "keep",  // default; populated domain
+})
+```
+
+**Step 5 — Verify the response.**
+
+`links: { total: 8, resolved: 7, normalized: 1, broken_count: 0 }` — clean. The `normalized: 1` means one slug variant got auto-fixed (e.g. you wrote `[[Rag]]`, it became `[[rag]]`). No broken links.
+
+The change panel shows: 1 new page (the summary), 8 updated pages (each referenced entity/concept got a backlink to the new summary), 1 updated index.
+
+> **You:** *"Compiled into `articles`. New summary created; 8 existing pages picked up backlinks. No broken links, no duplicates introduced. Want me to read the summary back?"*
+
+**Key moves**
+- `get_index` first to spot variant slugs (e.g. `[[rag]]` vs `[[retrieval-augmented-generation]]`).
+- Use `search_wiki` for confidence on which variant is canonical.
+- Empty `additional_pages` — no new pages because everything already exists.
+- `'keep'` policy is fine on populated domains; the response confirms zero broken.
+
+---
+
+## Example 4 — Maintenance / cleanup
+
+The user wants to clean up a domain that has accumulated cruft.
+
+> **User:** *"Clean up my `articles` second brain. Auto-fix what's safe and ask me about the rest."*
+
+**Step 1 — Scan.**
+
+```
+scan_wiki_health(domain="articles")
+```
+
+Returns counts:
+- 12 `folderPrefixLinks` (auto-fixable)
+- 8 `hyphenVariants` (auto-fixable)
+- 3 `crossFolderDupes` (auto-fixable)
+- 5 `missingBacklinks` (auto-fixable)
+- 14 `brokenLinks` with `suggestedTarget` (auto-fixable)
+- 23 `brokenLinks` without target (review-only)
+- 47 `orphans` (review-only)
+
+**Step 2 — Auto-fix the safe ones.** Loop over the auto-fixable categories:
+
+```
+for issue in (folderPrefixLinks + hyphenVariants + crossFolderDupes + missingBacklinks + brokenLinks-with-target):
+    fix_wiki_issue(domain="articles", type=issue.type, issue=issue)
+```
+
+Track successes. Report to the user: *"Fixed 42 issues automatically across 38 files."*
+
+**Step 3 — Review-only items: ask the user.**
+
+> *"60 review-only issues remain: 23 broken links without good auto-fix targets, and 47 orphans. Want to walk through them, batch-dismiss obvious ones, or use AI suggestions where available?"*
+
+The user replies. For broken links without targets, you can also try:
+
+```
+ai-suggest path  // (existing in-app feature; equivalent here is offering to call list_domains/search to find a likely target manually)
+```
+
+For orphans, you can offer the v2.4.4 Phase 2 AI suggestion flow if available — but here that's an in-app feature, not exposed via MCP. Tell the user honestly: *"For orphan rescue suggestions, the in-app Health tab has an ✨ Ask AI button per orphan. From here, I can dismiss the ones you tell me to skip, or note them for you to review later."*
+
+**Step 4 — Process user decisions.** For each:
+- *"fix it"* → `fix_wiki_issue`
+- *"dismiss it"* → `dismiss_wiki_issue` (syncs across machines + in-app Health tab)
+- *"leave for later"* → no action, will resurface on next scan
+
+**Step 5 — Optional: semantic duplicates.**
+
+> *"I noticed in the index `[[rag]]` and `[[retrieval-augmented-generation]]` likely describe the same concept. Want to run a semantic-duplicate scan? It costs ~$0.005–$0.03 per scan; I can show you the estimate first."*
+
+Only run `scan_semantic_duplicates` after explicit user approval. Use `estimate_only: true` first to show the cost.
+
+For each pair the scan returns: call `fix_wiki_issue` with `type='semanticDupe'`, `preview: true` first → show the diff plan to the user → only on confirmation call again with `preview: false`.
+
+**Key moves**
+- Auto-fix the unambiguous categories without asking.
+- Confirm with the user before destructive or judgement-call fixes.
+- Use `dismiss_wiki_issue` for "leave alone" — it persists across scans + machines.
+- `semantic-duplicate` is opt-in, paid, and **always** preview-then-confirm.
+
+---
+
+## Quick decision tree
+
+When the user makes a request, ask:
+
+```
+"What does my wiki say about X?"          → §4 reading workflow (Example 1)
+"Save this to my <fresh> domain"          → §5 writing workflow, refuse mode (Example 2)
+"Save this to my <established> domain"    → §5 writing workflow, keep mode (Example 3)
+"Check / clean up / find problems in my wiki" → §6 maintenance workflow (Example 4)
+```
+
+If the request mixes patterns (e.g. *"Research X and save the conclusions"*), do them in order — research first, then ask the user to confirm before the write phase.
