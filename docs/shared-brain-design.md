@@ -252,11 +252,16 @@ This is the *one* MCP code change required for Shared Brain MVP. No multi-vault 
 
 ## 4. Phase 2 Implementation Plan
 
-**Branch:** `feature/shared-brain` (long-lived, on this repository). Develop here; do NOT touch `main` until Phase 6.
+**Branching strategy (refined 2026-05-14):** Phase 2 work is committed on the active worktree branch and **held locally between milestones** (2A → 2E). One combined push lands at the end of Phase 2 — when push/pull/synthesis works end-to-end — paired with a single version bump. This avoids triggering an "update available" prompt for every internal milestone (the auto-updater checks commit SHA, not just version, so even invisible-to-user commits would fire the prompt). The feature flag (`sharedBrainEnabled`, default `false`) is the in-code isolation: even after merge, existing users see zero behaviour change until they opt in.
 
-**Feature flag:** `.curator-config.json` gains `sharedBrain.enabled: boolean` (default `false`). Routes register but return 404 when flag is off; UI section renders a CTA "Try Shared Brain (beta)" instead of the full wizard. Circuit breaker if a v3.0.0 ships with a critical bug.
+The rhythm in practice:
+1. **Within a phase** — commits accumulate on the worktree branch, each tested locally on this machine. Battle-test scripts run after each milestone.
+2. **End of a phase** — fast-forward local `main` to the worktree, bump `package.json` (e.g. `v2.6.0` → `v2.7.0` at end of Phase 2), commit the version bump, push to `origin/main` as one update event.
+3. **Existing users** — see a clean version bump in the Settings tab with a meaningful changelog, not commit-SHA-only nag prompts.
 
-**Release channel:** `.curator-config.json` gains `releaseChannel: "stable" | "beta"` (default `"stable"`). Auto-updater honours it. A user who hits a Shared Brain bug can switch to `stable` and the next update pulls them back onto a v2.6.x bugfix branch — true rollback path.
+**Feature flag:** `.curator-config.json` gains `sharedBrain.enabled: boolean` (default `false`). Routes register but return 404 when flag is off; UI section renders a CTA "Try Shared Brain (beta)" instead of the full wizard. Circuit breaker if a critical bug ships — a v3.x.x hotfix can globally force the flag off. Existing users updating to a Shared Brain milestone with the flag off see ZERO behaviour change.
+
+**Release channel (deferred to Phase 6):** `.curator-config.json` gains `releaseChannel: "stable" | "beta"` (default `"stable"`) — but only when there's an actual divergence between channels to honour. Until v3.0.0 GA, the feature flag does the same job. Implement when needed, not before.
 
 **Files to create (in dependency order, all new — no existing-file modifications except where flagged):**
 

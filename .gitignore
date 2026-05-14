@@ -27,6 +27,9 @@ Second Brain.app/
 .sync-config.json
 .curator-config.json
 
+# ── Shared Brain feature (local only — contains tokens, never commit) ─────────
+.sharedbrain-config.json
+
 # ── Domains folder (personal wiki data — lives outside the app repo) ──────────
 # The wiki is managed separately (via the Sync tab / a private GitHub repo).
 # Clone this repo to get the app; your wiki folder is pointed to by DOMAINS_PATH.

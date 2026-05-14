@@ -189,6 +189,25 @@ export function setDefaultDomain(slug) {
   return getDefaultDomain();
 }
 
+// ── Shared Brain feature flag (v3.0.0+) ─────────────────────────────────────
+// When false (default), Shared Brain routes return 404 and the UI hides the
+// section. Circuit-breaker: if a Shared Brain bug ships, a hotfix can flip
+// the flag globally without rolling back any code. See docs/shared-brain-design.md.
+
+/** Returns true if the Shared Brain feature is enabled for this install. */
+export function getSharedBrainEnabled() {
+  const cfg = readRaw();
+  return cfg.sharedBrainEnabled === true;
+}
+
+/** Enables or disables the Shared Brain feature. */
+export function setSharedBrainEnabled(enabled) {
+  const cfg = readRaw();
+  cfg.sharedBrainEnabled = !!enabled;
+  writeRaw(cfg);
+  return getSharedBrainEnabled();
+}
+
 /**
  * Returns the effective API key for a provider.
  * Priority: .curator-config.json → process.env → null
