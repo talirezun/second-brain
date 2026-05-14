@@ -4,7 +4,7 @@
 **Status:** Phase 1 complete (Open Questions resolved, ready for Phase 2 implementation)
 **Original spec:** `FEATURE-shared-brain.md` (Google Drive, author Dr. Tali Režun, 2026-05-13 v2)
 **Resolutions agreed:** 2026-05-14, this conversation
-**Roadmap stage:** Phase 0 ✅ (v2.6.0 Sync UX) → **Phase 1 ✅** (this doc) → Phase 2 ⏳ → Phase 3 ⏳ → Phase 4 ⏳ → Phase 5 ⏳ → Phase 6 ⏳
+**Roadmap stage:** Phase 0 ✅ (v2.6.0 Sync UX) → Phase 1 ✅ (decisions) → **Phase 2 ✅** (v2.7.0 infrastructure — 5 milestones 2A-2E, 335 test assertions green) → Phase 3 ⏳ (GitHub adapter) → Phase 4 ⏳ (routes + UI + MCP guard) → Phase 5 ⏳ (battle sweep + user docs) → Phase 6 ⏳ (v3.0.0 GA)
 
 This document is the engineering source-of-truth for the Shared Brain feature. The original concept spec (`FEATURE-shared-brain.md`) is the input; this document is the binding output of Phase 1 — the architectural decisions Phase 2 implementation must follow.
 
