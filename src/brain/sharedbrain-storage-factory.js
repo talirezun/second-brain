@@ -4,10 +4,10 @@
  * Builds the right adapter for a given connection's storage_type.
  *
  * Currently supported:
- *   - "local"        → LocalFolderStorageAdapter (Phase 2A — battle-testing)
+ *   - "local"   → LocalFolderStorageAdapter   (Phase 2A — battle-testing on disk)
+ *   - "github"  → GitHubStorageAdapter        (Phase 3 — REST API, fine-grained PAT)
  *
  * Coming next:
- *   - "github"       → GitHubStorageAdapter (Phase 3)
  *   - "cloudflare-r2" → CloudflareR2Adapter (Phase 3.1)
  *
  * The brain layer (push/pull/synthesis) only ever calls
@@ -17,6 +17,7 @@
  */
 
 import { LocalFolderStorageAdapter } from './sharedbrain-local-adapter.js';
+import { GitHubStorageAdapter } from './sharedbrain-github-adapter.js';
 
 export function createStorageAdapter(connection) {
   if (!connection || typeof connection !== 'object') {
@@ -30,9 +31,12 @@ export function createStorageAdapter(connection) {
       });
 
     case 'github':
-      throw new Error(
-        'SharedBrain storage_type "github": GitHubStorageAdapter is not yet implemented (Phase 3).'
-      );
+      return new GitHubStorageAdapter({
+        owner: connection.github_repo_owner,
+        repo: connection.github_repo_name,
+        pat: connection.github_pat,
+        branch: connection.github_branch || 'main',
+      });
 
     case 'cloudflare-r2':
       throw new Error(
@@ -42,7 +46,7 @@ export function createStorageAdapter(connection) {
     default:
       throw new Error(
         `SharedBrain unknown storage_type: "${connection.storage_type}". ` +
-        `Supported in this version: "local". Coming soon: "github", "cloudflare-r2".`
+        `Supported in this version: "local", "github". Coming soon: "cloudflare-r2".`
       );
   }
 }

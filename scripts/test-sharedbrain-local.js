@@ -348,12 +348,31 @@ assert(
   'factory returns LocalFolderStorageAdapter for storage_type=local'
 );
 
+// Phase 3 (v2.8.0+) — github is wired. Empty config must still reject due
+// to missing owner/repo/pat. A well-formed config must produce an adapter.
 try {
   createStorageAdapter({ storage_type: 'github' });
-  fail('factory should refuse github (Phase 3)');
+  fail('factory should refuse empty github config');
 } catch (err) {
-  if (/not yet implemented/i.test(err.message)) ok('factory rejects github with helpful Phase 3 message');
-  else fail('factory github error message', err);
+  if (/owner is required|repo is required|pat is required/i.test(err.message))
+    ok('factory rejects empty github config with validation error');
+  else fail('factory github empty-config error message', err);
+}
+
+try {
+  const gh = createStorageAdapter({
+    storage_type: 'github',
+    github_repo_owner: 'octocat',
+    github_repo_name:  'hello-world',
+    github_pat:        'github_pat_thisistwentycharsplus_xx',
+    github_branch:     'main',
+  });
+  assert(
+    gh && gh.constructor && gh.constructor.name === 'GitHubStorageAdapter',
+    'factory returns GitHubStorageAdapter for storage_type=github (well-formed config)'
+  );
+} catch (err) {
+  fail('factory should accept well-formed github config', err);
 }
 
 try {
