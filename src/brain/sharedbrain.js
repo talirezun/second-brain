@@ -33,7 +33,7 @@
  *     in Phase 4+; stdout reserved for MCP JSON-RPC stream).
  */
 
-import { readFile, readdir, stat } from 'fs/promises';
+import { readFile, readdir, stat, mkdir, writeFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import { exec } from 'child_process';
 import { promisify } from 'util';
@@ -43,6 +43,7 @@ import { getDomainsDir } from './config.js';
 import { createStorageAdapter } from './sharedbrain-storage-factory.js';
 import { generateDeltaSummary } from './sharedbrain-delta.js';
 import { patchSharedBrain } from './sharedbrain-config.js';
+import { writePage, syncSummaryEntities, appendLog } from './files.js';
 
 const execAsync = promisify(exec);
 
@@ -369,3 +370,326 @@ export async function pushDomain(connection, domainSlug, opts = {}) {
     submission_id: pushedSubmissionId,
   };
 }
+
+// ── pullCollective ─────────────────────────────────────────────────────────
+
+/**
+ * Resolves `relative` against `base` and refuses if the result escapes `base`.
+ * Used to guard every write path during pull, including paths that came from
+ * remote shared-brain storage. Matches the chokepoint semantics used in
+ * sharedbrain-local-adapter and mcp/storage/local.js.
+ */
+function resolveInsideBase(base, relative) {
+  if (relative === null || relative === undefined) return null;
+  if (typeof relative !== 'string') return null;
+  if (path.isAbsolute(relative)) return null;
+  const resolved = path.resolve(base, relative);
+  const baseResolved = path.resolve(base);
+  if (resolved !== baseResolved && !resolved.startsWith(baseResolved + path.sep)) {
+    return null;
+  }
+  return resolved;
+}
+
+/**
+ * Ensure the local shared-brain mirror domain exists on disk.
+ *
+ * Creates the standard Curator domain layout (entities/, concepts/, summaries/,
+ * conversations/, raw/, index.md, log.md) with a special CLAUDE.md that:
+ *   - Carries YAML frontmatter `readonly: true` (Decision 7) — used by
+ *     Phase 4 MCP write tools to refuse direct writes to this domain.
+ *   - States clearly in the body that this is a synced shared-brain mirror
+ *     and must not be ingested into manually.
+ *
+ * Idempotent: if CLAUDE.md already exists, returns without modification.
+ *
+ * @param {string} localDomain     e.g. "shared-cohort"
+ * @param {object} connection
+ * @param {string} domainsDir      absolute path to domains/ folder
+ */
+export async function ensureSharedDomainExists(localDomain, connection, domainsDir) {
+  // Slug safety
+  if (typeof localDomain !== 'string' ||
+      !localDomain ||
+      localDomain.includes('..') ||
+      localDomain.includes('/') ||
+      localDomain.includes('\\') ||
+      localDomain.startsWith('.')) {
+    throw new Error(`ensureSharedDomainExists: invalid local domain slug "${localDomain}"`);
+  }
+
+  const base = path.join(domainsDir, localDomain);
+  const claudeMdPath = path.join(base, 'CLAUDE.md');
+  if (existsSync(claudeMdPath)) {
+    return; // already initialised
+  }
+
+  await mkdir(path.join(base, 'wiki', 'entities'),  { recursive: true });
+  await mkdir(path.join(base, 'wiki', 'concepts'),  { recursive: true });
+  await mkdir(path.join(base, 'wiki', 'summaries'), { recursive: true });
+  await mkdir(path.join(base, 'conversations'),     { recursive: true });
+  await mkdir(path.join(base, 'raw'),               { recursive: true });
+
+  const today = new Date().toISOString().slice(0, 10);
+  const labelText = (connection.label || localDomain).replace(/\r?\n/g, ' ');
+
+  // CLAUDE.md with readonly frontmatter (Decision 7). MCP write tools in
+  // Phase 4 will read this marker and refuse to write to this domain
+  // directly. Contributions must originate from the contributor's personal
+  // opted-in domain (e.g. connection.local_domains[0]) → DeltaSummary push →
+  // synthesis → pull.
+  const claudeMd = [
+    '---',
+    'readonly: true',
+    'source: shared-brain',
+    `shared_brain_slug: ${connection.shared_brain_slug || 'unknown'}`,
+    `shared_domain: ${connection.shared_domain || 'unknown'}`,
+    '---',
+    '',
+    `# Shared Brain Mirror: ${labelText}`,
+    '',
+    'This domain is the local read-only mirror of a Shared Brain. It is updated by',
+    'the **Pull updates** button in the Sync tab — never by manual ingestion.',
+    '',
+    '## How to contribute',
+    '',
+    'To add knowledge to this Shared Brain, edit pages in your **personal opted-in',
+    `domain** (configured under this connection: \`${(connection.local_domains || []).join(', ') || '(none yet)'}\`). Then click`,
+    '**Push contributions** in the Sync tab. After the next synthesis, your',
+    'contributions will appear here on the next Pull.',
+    '',
+    'Direct edits to pages in this domain will be **overwritten** on the next pull.',
+    '',
+    '## What lives here',
+    '',
+    '- `entities/` — named things shared across the collective.',
+    '- `concepts/` — ideas and frameworks accumulated from all contributors.',
+    '- `summaries/` — per-source summaries with cross-contributor provenance.',
+    '- `index.md`  — catalog of all pages.',
+    '- `log.md`    — chronological pull history.',
+    '',
+    `_Created: ${today}._`,
+    '',
+  ].join('\n');
+
+  await writeFile(claudeMdPath, claudeMd, 'utf8');
+
+  await writeFile(
+    path.join(base, 'wiki', 'index.md'),
+    `# Wiki Index — ${labelText} (Shared Brain Mirror)\nLast updated: ${today}\n\n| Page | Type | Summary |\n|------|------|---------|`,
+    'utf8'
+  );
+  await writeFile(
+    path.join(base, 'wiki', 'log.md'),
+    `# Pull Log — ${labelText} (Shared Brain Mirror)\n`,
+    'utf8'
+  );
+}
+
+/**
+ * Pull the full collective wiki snapshot for a connection's shared domain
+ * into a local read-only mirror.
+ *
+ * Flow:
+ *   1. Validate connection.
+ *   2. Compute local mirror domain slug (e.g. "shared-cohort").
+ *   3. Ensure the local mirror exists (creates with readonly frontmatter).
+ *   4. List all pages in collective/<shared_domain>/wiki/ via adapter.
+ *   5. For each page:
+ *        - resolveInsideBase() guard against path-traversal in remote paths.
+ *        - writePage(localDomain, path, content)  ← reuses existing pipeline:
+ *          merge, dedup, frontmatter, link normalisation, backlink injection.
+ *   6. For each summary page written: syncSummaryEntities() to ensure
+ *      cross-page backlinks are wired.
+ *   7. appendLog() with pull stats.
+ *   8. patchSharedBrain() to update last_pull_at.
+ *
+ * @param {object} connection
+ * @param {object} [opts]
+ * @param {Function} [opts.onProgress]  (stage, message, meta?) => void
+ * @param {string}   [opts.domainsDir]  Override domains root (test injection).
+ *                                      When set, temporarily overrides
+ *                                      process.env.DOMAINS_PATH for the
+ *                                      duration of this call so writePage()
+ *                                      and friends see the override.
+ * @param {Function} [opts.patchFn]     Test injection — overrides patchSharedBrain.
+ * @param {Function} [opts.now]         Test injection — returns Date.
+ * @returns {Promise<{ ok, created, updated, skipped, local_domain, error? }>}
+ */
+export async function pullCollective(connection, opts = {}) {
+  const onProgress = opts.onProgress || (() => {});
+  const patchFn    = opts.patchFn    || patchSharedBrain;
+  const nowFn      = opts.now        || (() => new Date());
+
+  // ── 1. Validate connection ─────────────────────────────────────────────
+  if (!connection || typeof connection !== 'object') {
+    return { ok: false, error: 'pullCollective: connection object is required' };
+  }
+  if (!connection.enabled) {
+    return { ok: false, error: 'pullCollective: connection is disabled' };
+  }
+  if (typeof connection.shared_brain_slug !== 'string' || !connection.shared_brain_slug) {
+    return { ok: false, error: 'pullCollective: connection.shared_brain_slug is required' };
+  }
+  if (typeof connection.shared_domain !== 'string' || !connection.shared_domain) {
+    return { ok: false, error: 'pullCollective: connection.shared_domain is required' };
+  }
+
+  // ── 2. Compute local mirror slug ───────────────────────────────────────
+  const localDomain = `shared-${connection.shared_brain_slug}`;
+
+  // ── 3. Temporarily override DOMAINS_PATH if test wants it ──────────────
+  // writePage / syncSummaryEntities / appendLog all read getDomainsDir()
+  // internally. To support per-fellow test isolation without rewriting those
+  // functions, we set the env var around the duration of this call.
+  // .curator-config.json still wins over the env var (see config.js priority),
+  // so this override is a no-op in production where the user has a config file.
+  const prevEnv = process.env.DOMAINS_PATH;
+  if (opts.domainsDir) {
+    process.env.DOMAINS_PATH = opts.domainsDir;
+  }
+
+  try {
+    const domainsDir = opts.domainsDir || getDomainsDir();
+
+    // ── 4. Ensure mirror domain exists ──────────────────────────────────
+    await ensureSharedDomainExists(localDomain, connection, domainsDir);
+
+    // ── 5. Read all collective pages ────────────────────────────────────
+    let adapter;
+    try {
+      adapter = createStorageAdapter(connection);
+    } catch (err) {
+      return { ok: false, error: `pullCollective: storage adapter init failed: ${err.message}` };
+    }
+
+    onProgress('info', 'Fetching collective wiki page list...');
+    let pagePaths;
+    try {
+      pagePaths = await adapter.listPages(connection.shared_domain);
+    } catch (err) {
+      return { ok: false, error: `pullCollective: listPages failed: ${err.message}` };
+    }
+
+    if (!Array.isArray(pagePaths) || pagePaths.length === 0) {
+      onProgress('info', 'Collective brain is empty — nothing to pull.');
+      const pulledAt = nowFn().toISOString();
+      patchFn(connection.id, { last_pull_at: pulledAt });
+      return { ok: true, created: 0, updated: 0, skipped: 0, local_domain: localDomain };
+    }
+
+    onProgress('info', `Pulling ${pagePaths.length} page${pagePaths.length !== 1 ? 's' : ''}...`);
+
+    // ── 6. Write each page locally ──────────────────────────────────────
+    const wikiBase = path.join(domainsDir, localDomain, 'wiki');
+    let created = 0;
+    let updated = 0;
+    let unchanged = 0;
+    let skipped = 0;
+    const writtenSummaryPaths = [];
+    const writtenPaths = [];
+
+    for (let i = 0; i < pagePaths.length; i++) {
+      const remotePath = pagePaths[i];
+      onProgress('progress', `${remotePath} (${i + 1}/${pagePaths.length})`, {
+        current: i + 1, total: pagePaths.length,
+      });
+
+      // ── 6a. Security guard ──────────────────────────────────────────
+      // A malicious shared brain could include a page path like
+      // "../../etc/passwd" or "../other-domain/wiki/x.md" to escape.
+      const safePath = resolveInsideBase(wikiBase, remotePath);
+      if (!safePath) {
+        console.error(`[pullCollective] SECURITY: refused path "${remotePath}" from shared brain (would escape wiki/)`);
+        onProgress('warn', `Skipped suspicious path: ${remotePath}`);
+        skipped++;
+        continue;
+      }
+
+      // ── 6b. Read content ────────────────────────────────────────────
+      let content;
+      try {
+        content = await adapter.readPage(connection.shared_domain, remotePath);
+      } catch (err) {
+        console.error(`[pullCollective] readPage failed for "${remotePath}": ${err.message}`);
+        skipped++;
+        continue;
+      }
+      if (content === null || content === undefined) {
+        skipped++;
+        continue;
+      }
+
+      // ── 6c. Run through the existing writePage pipeline ─────────────
+      // This is where v2.5.5 link grounding, Pass A/B/C link normalisation,
+      // frontmatter injection, merge logic, and backlink injection all run.
+      // The returned result.status is authoritative ("created"|"updated"|
+      // "unchanged") — far more accurate than our own existsSync check
+      // because writePage may redirect the path via cross-folder dedup.
+      let result;
+      try {
+        result = await writePage(localDomain, remotePath, content);
+      } catch (err) {
+        console.error(`[pullCollective] writePage failed for "${remotePath}": ${err.message}`);
+        skipped++;
+        continue;
+      }
+      if (!result) {
+        // writePage returned null (invalid path / no filename)
+        skipped++;
+        continue;
+      }
+
+      if (result.status === 'created') created++;
+      else if (result.status === 'updated') updated++;
+      else if (result.status === 'unchanged') unchanged++;
+      else skipped++;
+
+      writtenPaths.push(result.canonPath);
+      if (result.canonPath.startsWith('summaries/')) {
+        writtenSummaryPaths.push(result.canonPath);
+      }
+    }
+
+    // ── 7. syncSummaryEntities for any summary pages ───────────────────
+    for (const summaryPath of writtenSummaryPaths) {
+      try {
+        await syncSummaryEntities(localDomain, summaryPath, writtenPaths);
+      } catch (err) {
+        console.error(`[pullCollective] syncSummaryEntities failed for "${summaryPath}": ${err.message}`);
+      }
+    }
+
+    // ── 8. appendLog ─────────────────────────────────────────────────────
+    const today = nowFn().toISOString().slice(0, 10);
+    const logMsg = `[${today}] Shared Brain pull from "${connection.label}": ${created} new, ${updated} updated, ${unchanged} unchanged${skipped > 0 ? `, ${skipped} skipped` : ''}.`;
+    try { await appendLog(localDomain, logMsg); }
+    catch (err) { console.error(`[pullCollective] appendLog failed: ${err.message}`); }
+
+    // ── 9. Update connection state ───────────────────────────────────────
+    const pulledAt = nowFn().toISOString();
+    patchFn(connection.id, { last_pull_at: pulledAt });
+
+    const summary = `Pull complete: ${created} new, ${updated} updated, ${unchanged} unchanged${skipped > 0 ? `, ${skipped} skipped` : ''}. Local domain: ${localDomain}`;
+    onProgress('done', summary, { created, updated, unchanged, skipped, local_domain: localDomain });
+
+    return {
+      ok: true,
+      created,
+      updated,
+      unchanged,
+      skipped,
+      local_domain: localDomain,
+    };
+
+  } finally {
+    // Restore env regardless of success
+    if (opts.domainsDir) {
+      if (prevEnv === undefined) delete process.env.DOMAINS_PATH;
+      else process.env.DOMAINS_PATH = prevEnv;
+    }
+  }
+}
+
+// Exposed for testing only
+export const __testing = { resolveInsideBase };
