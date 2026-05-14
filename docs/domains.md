@@ -55,13 +55,13 @@ The domain appears immediately in every dropdown (Ingest, Chat, Wiki) and in Obs
 
 Click the **pencil icon** on a domain card, type the new display name, and click **Rename**. All wiki pages, conversations, and chat history are preserved. Obsidian reflects the change instantly.
 
-> **If sync is configured:** renaming appears to GitHub as a delete + add. Click **Sync Up** soon after renaming so your other computers stay consistent.
+> **If sync is configured:** renaming appears to GitHub as a delete + add. Click **Sync now** soon after renaming so your other computers stay consistent.
 
 ### Deleting a domain
 
 Click the **trash icon** on a domain card. The confirmation panel shows exactly how many wiki pages and conversations will be removed. Click **Yes, delete permanently** to commit.
 
-> ⚠️ **Deletion is permanent — there is no undo.** If sync is configured, the domain is removed from GitHub on the next Sync Up.
+> ⚠️ **Deletion is permanent — there is no undo.** If sync is configured, the domain is removed from GitHub on the next **Sync now**.
 
 ### Manual setup (advanced)
 

@@ -13,7 +13,7 @@ The core insight, from researcher Andrej Karpathy and educator Nick Spisak: **on
 - **Ingest** any PDF, article, or note — the AI reads it and automatically writes interlinked wiki pages: summaries, entity pages (people, tools, companies), and concept pages (ideas, frameworks, techniques)
 - **Chat** with your knowledge base in a full multi-turn conversation — ask follow-up questions, connect ideas across sources, and get cited answers from your own wiki. Conversations are saved and survive server restarts
 - **Explore** your knowledge visually as an interactive graph in Obsidian — see how ideas, people, and tools connect across everything you've read
-- **Sync** your entire wiki and chat history across computers using a free private GitHub repository — one 3-minute setup, then two buttons (Sync Up / Sync Down) for daily use
+- **Sync** your entire wiki and chat history across computers using a free private GitHub repository — one 3-minute setup, then a single **Sync now** button (with optional Push-only / Pull-only advanced controls) for daily use
 - **Build** a personal library that gets smarter over time — the more you add, the richer the connections
 
 ### Why it matters

@@ -440,9 +440,6 @@ input::placeholder, textarea::placeholder { color: var(--text-muted); }
 /* Pill-shaped CTA buttons (Obsidian "Animate" style) */
 .btn.pill { border-radius: 100px; display: inline-flex; align-items: center; }
 
-/* Ensure action buttons (.sync-action-btn) also flex */
-.sync-action-btn { display: flex; align-items: center; justify-content: center; }
-
 /* ── Status messages ── */
 .status {
   margin-top: 16px;
@@ -822,31 +819,60 @@ input::placeholder, textarea::placeholder { color: var(--text-muted); }
 .sync-repo-link:hover { text-decoration: underline; text-underline-offset: 2px; }
 .sync-status-meta { display: flex; gap: 16px; font-size: 12px; color: var(--text-muted); flex-wrap: wrap; }
 .sync-changes-label { color: var(--accent-2); }
-.sync-action-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
-.sync-action-card {
-  background: var(--surface); border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg); padding: 20px;
-  display: flex; flex-direction: column; gap: 8px;
-  transition: border-color 0.15s;
+.sync-block-title {
+  font-size: 14px; font-weight: 600; color: var(--text);
+  margin: 0 0 4px; letter-spacing: -0.2px;
 }
-.sync-action-card:hover { border-color: var(--border); }
-.sync-action-header { display: flex; align-items: center; gap: 8px; }
-.sync-action-arrow { font-size: 18px; font-weight: 700; color: var(--accent-2); }
-.sync-action-title { font-size: 14px; font-weight: 600; color: var(--text); }
-.sync-action-desc { font-size: 12px; color: var(--text-muted); line-height: 1.55; flex: 1; }
-.sync-action-btn { margin-top: 8px; width: 100%; border-radius: 100px; padding: 10px 18px; }
-.sync-full-row {
-  display: flex; align-items: center; gap: 14px; margin-bottom: 16px;
+.sync-block-hint {
+  font-size: 12px; color: var(--text-muted); line-height: 1.55;
+  margin: 0 0 16px;
 }
-.sync-full-btn { flex-shrink: 0; padding: 10px 24px; }
-.sync-full-hint { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
-.sync-tip {
-  font-size: 12px; color: var(--text-muted);
-  background: var(--accent-dim); border: 1px solid rgba(124,90,245,0.2);
-  border-radius: var(--radius); padding: 12px 14px; line-height: 1.6; margin-bottom: 24px;
+.sync-primary-row {
+  display: flex; align-items: center; gap: 16px; margin-bottom: 16px;
+  flex-wrap: wrap;
 }
-.sync-tip strong { color: var(--text-2); }
-.sync-tip em { color: var(--accent-2); font-style: normal; font-weight: 500; }
+.sync-primary-btn {
+  flex-shrink: 0; padding: 12px 28px; font-size: 14px; font-weight: 600;
+}
+.sync-primary-hint { font-size: 12px; color: var(--text-muted); line-height: 1.55; flex: 1; min-width: 220px; }
+.sync-advanced {
+  margin-top: 18px; margin-bottom: 20px;
+  border: 1px solid var(--border-subtle); border-radius: var(--radius);
+  background: var(--surface);
+}
+.sync-advanced[open] { background: var(--bg-alt); }
+.sync-advanced-summary {
+  cursor: pointer; padding: 10px 14px; font-size: 12px; font-weight: 500;
+  color: var(--text-muted); list-style: none; user-select: none;
+  display: flex; align-items: center; gap: 8px;
+}
+.sync-advanced-summary::-webkit-details-marker { display: none; }
+.sync-advanced-summary::before {
+  content: '▸'; font-size: 10px; color: var(--text-faint);
+  transition: transform 0.15s;
+}
+.sync-advanced[open] .sync-advanced-summary::before { transform: rotate(90deg); }
+.sync-advanced-summary:hover { color: var(--text-2); }
+.sync-advanced-body {
+  padding: 0 14px 14px; border-top: 1px solid var(--border-subtle);
+  margin-top: 4px;
+}
+.sync-advanced-buttons {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  margin-top: 14px;
+}
+.sync-advanced-btn {
+  border-radius: 100px; padding: 8px 16px; font-size: 12px;
+  display: flex; align-items: center; justify-content: center;
+}
+.sync-advanced-notes {
+  margin: 14px 0 0; padding: 0 0 0 4px;
+  font-size: 12px; color: var(--text-muted); line-height: 1.6;
+  list-style: none;
+}
+.sync-advanced-notes li { margin-bottom: 6px; }
+.sync-advanced-notes li:last-child { margin-bottom: 0; }
+.sync-advanced-notes strong { color: var(--text-2); font-weight: 600; }
 .sync-danger-zone {
   display: flex; align-items: center; gap: 14px;
   padding-top: 20px; border-top: 1px solid var(--border-subtle);

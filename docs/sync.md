@@ -111,33 +111,38 @@ After the wizard completes, all your wiki pages and conversations will appear on
 
 ## Daily workflow
 
-Once sync is set up, the habit is simple:
+Once sync is set up, the habit is simple — one button, both directions:
 
-**After working:** click **Sync Up**
+**Click **Sync now** at the start and end of every work session.**
 
-**Before starting on another machine:** click **Sync Down**
+That's it. It pulls remote changes from GitHub first, then pushes your local changes — so both machines reconcile in one click.
 
-That's it.
+### Sync now (pull + push, the everyday button)
 
-### Sync Up (commit + push)
+The **Sync now** button is what you use 95% of the time. It pulls anything new from GitHub, then pushes anything new from this machine. You don't have to remember which computer is "ahead" — the button handles both directions.
 
-The **Sync Up** button packages all changes to your wiki, conversations, and schemas into a commit and pushes it to GitHub. Do this when you're done working on a machine.
+### Advanced — one-way operations
 
-### Sync Down (pull)
+The Sync tab has a collapsible **Advanced** section containing two one-way buttons. Use these only when you're certain about direction:
 
-The **Sync Down** button downloads changes from GitHub and applies them to your local knowledge. Do this before starting work on a different computer than you last used.
+- **Push only** — uploads your local changes to GitHub without pulling first. Use when you're sure no other machine has new changes.
+- **Pull only** — downloads remote changes to this computer without pushing yours. Use when you're sure this computer has nothing new to share.
+
+For everyday use, prefer **Sync now**.
+
+> **Note for users updating from v2.5.x:** the previous Sync tab had three coequal buttons labelled *Sync Up*, *Sync Down*, and *Sync*. In v2.6.0 these are renamed and reorganised: *Sync* is now **Sync now** (the primary action), and *Sync Up* / *Sync Down* are now **Push only** / **Pull only** inside the collapsible Advanced section. The underlying behaviour is unchanged.
 
 ---
 
 ## What if you forget to sync?
 
-If you forget to Sync Up on one machine and then do new work on another machine, you'll have changes in two places. The app handles this gracefully:
+If you forget to **Sync now** on one machine and then do new work on another machine, you'll have changes in two places. The app handles this gracefully:
 
-- When you click **Sync Down**, the app automatically commits any uncommitted local changes first, then pulls from GitHub using a rebase strategy
+- When you click **Sync now**, the app automatically commits any uncommitted local changes first, then pulls from GitHub using a rebase strategy, then pushes
 - In most cases, this works automatically — the changes from both machines are merged cleanly
 - In rare cases where two machines edited the exact same wiki page in conflicting ways, git will flag a conflict. If this happens, see the [Troubleshooting](#troubleshooting) section below
 
-The best way to avoid conflicts entirely is to always Sync Up before switching machines. But if you forget occasionally, it usually resolves itself.
+The best way to avoid conflicts entirely is to **Sync now** at the start and end of every session. But if you forget occasionally, it usually resolves itself.
 
 ---
 
@@ -165,12 +170,11 @@ The app can't reach GitHub. Check your internet connection. If you're on a unive
 
 ### "Push rejected" or "non-fast-forward update"
 
-Someone pushed new changes to GitHub (from another computer) that you haven't pulled yet. Fix it in two steps:
+Someone pushed new changes to GitHub (from another computer) that you haven't pulled yet. The fix is just one click:
 
-1. Click **Sync Down** first to pull the latest changes
-2. Then click **Sync Up** to push your local changes
+- Click **Sync now** — it pulls remote changes first, then pushes yours.
 
-Always pull before you push if you've been working on multiple machines.
+(If you previously used *Push only* and got this error, that's why. **Sync now** handles both directions and avoids the problem entirely.)
 
 ### Merge conflict
 
@@ -183,7 +187,7 @@ This is uncommon but can happen. To fix it:
 4. Edit the file to keep the version you want, removing the conflict markers
 5. Run the command shown to complete the merge
 
-If this feels complicated, the easiest recovery is to decide which machine has the "correct" version, and overwrite the other machine by doing a fresh Sync Down after discarding local changes.
+If this feels complicated, the easiest recovery is to decide which machine has the "correct" version, and overwrite the other machine by using **Pull only** (in the Advanced section) after discarding local changes.
 
 ---
 

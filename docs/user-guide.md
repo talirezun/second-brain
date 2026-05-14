@@ -442,7 +442,7 @@ The **Domains** tab is the control panel: each card shows the folder path, wiki 
 - **Rename** (pencil icon) — folder is renamed on disk; wiki pages, conversations, and Obsidian links are preserved.
 - **Delete** (trash icon) — confirmation shows exact page and conversation counts before commit. Deletion is permanent — no undo.
 
-Changes are reflected in dropdowns and Obsidian instantly — no restart needed. If sync is configured, run **Sync Up** soon after a rename or delete so your other computers stay consistent.
+Changes are reflected in dropdowns and Obsidian instantly — no restart needed. If sync is configured, run **Sync now** soon after a rename or delete so your other computers stay consistent.
 
 > 📖 **Going deeper?** The full reference — schema anatomy, manual setup, custom templates for History / Health / Legal / etc., and (importantly) **how domains relate to each other** (siloed by default, accidental Obsidian edges, the four-level model) — lives in **[docs/domains.md](domains.md)**.
 
@@ -727,22 +727,25 @@ The wizard connects to GitHub, creates the initial snapshot, and confirms when d
 
 ### Daily workflow
 
-**Golden rule:** always Sync Up on the machine you just worked on, Sync Down before you start on a different machine.
+**Golden rule (v2.6.0+):** click **Sync now** at the start and end of each work session. It pulls anything new from GitHub, then pushes anything new from this machine — both directions, one button. You don't have to remember which computer is "ahead".
 
 ```
-Computer A (worked here)    →  click Sync Up  →  GitHub
-                                                      ↓
-Computer B (starting here)  ←  click Sync Down ←  GitHub
+Computer A (just worked here)
+   ↓ click Sync now  (pulls remote first, then pushes local)
+GitHub
+   ↑ click Sync now  (pulls remote first, then pushes local)
+Computer B (about to start here)
 ```
 
-**What the buttons do:**
+**The primary button:**
 
 | Button | What happens |
 |--------|-------------|
-| **↑ Sync Up** | Saves all your local changes as a snapshot and sends them to GitHub |
-| **↓ Sync Down** | Downloads the latest snapshot from GitHub to this computer |
+| **↻ Sync now** | Pulls remote changes from GitHub, then pushes your local changes. Safest for everyday use — handles both directions automatically. |
 
-After Sync Down, domain stats and the Wiki tab update automatically. Switch to the Chat tab to see newly arrived conversations.
+After **Sync now**, domain stats and the Wiki tab update automatically. Switch to the Chat tab to see newly arrived conversations.
+
+**Advanced — one-way operations.** The Sync tab has a collapsible **Advanced** section containing **Push only** and **Pull only** buttons. Use these only when you know exactly what you need: *Push only* uploads your local changes without pulling first; *Pull only* downloads remote changes without pushing yours. For everyday use, prefer **Sync now**.
 
 ### Setting up a second (or third) computer
 
@@ -761,9 +764,9 @@ The wizard downloads all your wiki pages and conversations from GitHub. Done.
 
 If you worked on Computer A without syncing, then worked on Computer B without syncing first, the app handles it gracefully:
 
-- When you click **Sync Down** on either machine, it automatically saves your local changes first before pulling from GitHub
+- **Sync now** on either machine pulls remote changes first, then pushes local — so the two machines reconcile in one click
 - In most cases this resolves itself cleanly
-- In rare cases (same page edited on two machines), you may see a conflict message — the fix is always: go to the machine where you last synced, Sync Up from there, then Sync Down on the other
+- In rare cases (same page edited on two machines), you may see a conflict message — the fix is always: go to the machine where you last worked, click **Sync now** there, then click **Sync now** on the other
 
 ### Disconnecting
 
@@ -958,7 +961,7 @@ The Curator is **free software**. The only thing that costs money is the AI prov
 |---|---|
 | **Ingest** — by far the biggest consumer | **Wiki tab** (browse) |
 | **Chat tab** — every message + reply | **Domain management** (create / rename / delete) |
-| **Wiki Health — ✨ Ask AI on broken links** (Phase 1) | **GitHub Sync** (Sync Up / Sync Down) |
+| **Wiki Health — ✨ Ask AI on broken links** (Phase 1) | **GitHub Sync** (Sync now / Push only / Pull only) |
 | **Wiki Health — ✨ Ask AI on orphan pages** (Phase 2) | **Wiki Health structural scan** + deterministic fixes (folder-prefix, hyphen variants, cross-folder dedup, missing backlinks) |
 | **Wiki Health — Semantic duplicate scan** (Phase 3, opt-in & cost-gated) | **Settings**, **API key management**, **updates** |
 | | **My Curator MCP server** (local bridge — free; the *frontier model* you connect to it bills you separately on its own plan) |

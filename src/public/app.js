@@ -801,12 +801,12 @@ function renderSyncConfigured(status) {
   }
 }
 
-// ── Sync Up ───────────────────────────────────────────────────────────────────
+// ── Push only ─────────────────────────────────────────────────────────────────
 document.getElementById('sync-push-btn').addEventListener('click', async () => {
   const btn = document.getElementById('sync-push-btn');
   const statusEl = document.getElementById('sync-op-status');
   btn.disabled = true;
-  showStatus(statusEl, 'loading', 'Syncing up — pushing your changes to GitHub…');
+  showStatus(statusEl, 'loading', 'Pushing your local changes to GitHub…');
 
   try {
     const res = await fetch('/api/sync/push', { method: 'POST' });
@@ -832,12 +832,12 @@ document.getElementById('sync-push-btn').addEventListener('click', async () => {
   }
 });
 
-// ── Sync Down ─────────────────────────────────────────────────────────────────
+// ── Pull only ─────────────────────────────────────────────────────────────────
 document.getElementById('sync-pull-btn').addEventListener('click', async () => {
   const btn = document.getElementById('sync-pull-btn');
   const statusEl = document.getElementById('sync-op-status');
   btn.disabled = true;
-  showStatus(statusEl, 'loading', 'Syncing down — pulling latest changes from GitHub…');
+  showStatus(statusEl, 'loading', 'Pulling latest changes from GitHub…');
 
   try {
     const res = await fetch('/api/sync/pull', { method: 'POST' });
@@ -863,7 +863,7 @@ document.getElementById('sync-pull-btn').addEventListener('click', async () => {
   }
 });
 
-// ── Bidirectional Sync ────────────────────────────────────────────────────────
+// ── Sync now (bidirectional) ──────────────────────────────────────────────────
 document.getElementById('sync-both-btn').addEventListener('click', async () => {
   const btn = document.getElementById('sync-both-btn');
   const statusEl = document.getElementById('sync-op-status');

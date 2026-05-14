@@ -49,7 +49,7 @@ Built on the [Karpathy llm-wiki](https://gist.github.com/karpathy/442a6bf5559148
          ↓
 4. Open Obsidian → explore the auto-colored visual knowledge graph
          ↓
-5. Sync Up → your knowledge is on GitHub, available everywhere
+5. Sync now → your knowledge is on GitHub, available everywhere
 ```
 
 Everything is stored as plain markdown files on your computer. No subscriptions, no database,
@@ -96,7 +96,7 @@ This is the shift from a file cabinet to a neural network.
   After every compile (and every ingest) you see exactly which pages were created and which
   were updated, with byte counts and per-section bullet deltas.
 - Visual knowledge graph via [Obsidian](https://obsidian.md) (free app, reads the same files)
-- **GitHub sync** — one-time 3-minute setup, then Sync Up / Sync Down across any number of computers
+- **GitHub sync** — one-time 3-minute setup, then a single **Sync now** button (with optional Push-only / Pull-only advanced controls) across any number of computers
 - **Domain management** — create, rename, and delete domains from the UI; four AI-tuned templates
   auto-generate the right schema
 - **Settings tab** — manage API keys, view version info, and check for updates from within the app
@@ -255,7 +255,7 @@ The Curator itself is **free, open-source software**. The only paid component is
 | **Wiki tab** (browse pages) | Pure file rendering. No LLM call. |
 | **Domain management** (create / rename / delete) | Filesystem operations only. |
 | **Settings**, **API keys**, **updates** | Local. No LLM call. |
-| **GitHub Sync** (Sync Up / Sync Down) | A `git push` / `git pull` over HTTPS to your own private repo. |
+| **GitHub Sync** (Sync now / Push only / Pull only) | A `git push` / `git pull` over HTTPS to your own private repo. |
 | **Wiki Health — structural scan & deterministic fixes** (broken-link auto-fix, folder-prefix, hyphen variants, cross-folder dedup, missing backlinks) | Algorithmic — runs entirely on your machine. |
 | **My Curator MCP server** (locally, on this machine) | The bridge itself is free. The frontier model you connect *to* it (Claude Desktop, etc.) bills you on its own plan, not through your Curator API key. |
 
@@ -363,7 +363,7 @@ The **Domains tab** is a full GUI for creating, renaming, and deleting domains �
 
 **Delete** — click the trash icon. The confirmation panel shows exact page and conversation counts before you commit.
 
-> If GitHub sync is configured, a rename or delete shows a reminder to Sync Up so all your computers stay consistent.
+> If GitHub sync is configured, a rename or delete shows a reminder to **Sync now** so all your computers stay consistent.
 
 > 📖 **Full reference:** [docs/domains.md](docs/domains.md) — the CLAUDE.md schema, how domains relate to each other (siloed by default), and custom templates for specialised topics like history, health, or legal.
 
@@ -379,8 +379,8 @@ The **Sync tab** connects The Curator to a private GitHub repository so your wik
 3. Open the Sync tab → follow the 3-step wizard
 
 **Daily use:**
-- Click **Sync Up** after working on any computer
-- Click **Sync Down** before starting on a different computer
+- Click **Sync now** at the start and end of every work session — it pulls remote changes first, then pushes yours. One button, both directions.
+- Need a one-way operation? Open the **Advanced** disclosure in the Sync tab for **Push only** and **Pull only** buttons.
 
 What syncs: wiki pages, chat history, domain schemas.
 What stays local: source files, API keys, app code.
