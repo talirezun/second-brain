@@ -50,6 +50,10 @@ See [CONTRIBUTING.md](../CONTRIBUTING.md) for detailed guidelines.
   By Dr. Tali Režun  
   *How My Curator MCP turns your second brain into a frontier AI research partner — a private, local bridge between the knowledge you have built and the reasoning models that can finally read it as a graph, not a folder.*
 
+- **[The Agent Memory Problem — And Why Your Second Brain Might Be the Answer](./articles/the-agent-memory-problem.md)**  
+  By Dr. Tali Režun  
+  *How the race to solve AI agent memory led me back to markdown files, knowledge graphs, and the quiet power of a second brain.*
+
 ### Case Studies
 
 *(Coming soon)*
@@ -85,6 +89,14 @@ If you're referencing articles from this research series, please cite them as fo
   year = {2026},
   month = {April},
   url = {https://github.com/talirezun/the-curator/blob/main/research/articles/from-graph-to-intelligence-my-curator-mcp.md}
+}
+
+@article{rezun2026agent-memory,
+  author = {Režun, Tali},
+  title = {The Agent Memory Problem --- And Why Your Second Brain Might Be the Answer},
+  year = {2026},
+  month = {May},
+  url = {https://github.com/talirezun/the-curator/blob/main/research/articles/the-agent-memory-problem.md}
 }
 ```
 
