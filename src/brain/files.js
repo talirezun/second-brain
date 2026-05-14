@@ -40,6 +40,55 @@ export async function listDomains() {
   return real;
 }
 
+/**
+ * Returns true if the domain's CLAUDE.md declares `readonly: true` in its
+ * YAML frontmatter. Used by Phase 4 MCP write tools (and the in-app Compile
+ * + Health write paths) to refuse direct writes to Shared Brain mirror
+ * domains (Decision 7 — docs/shared-brain-design.md).
+ *
+ * Returns false for:
+ *   - personal domains (no readonly flag)
+ *   - missing CLAUDE.md
+ *   - empty / unparseable frontmatter
+ *   - frontmatter where readonly is not strictly === true
+ *
+ * Deliberately conservative: any uncertainty defaults to "writable" so we
+ * never block a legitimate write because of a parse glitch. Combined with
+ * the readonly write being enforced by the MCP tools, this means a user
+ * with a corrupted CLAUDE.md still has functional writes — at worst, the
+ * readonly intent is temporarily lost until they fix the file.
+ *
+ * Tiny regex-based frontmatter parser — no YAML library dependency. We only
+ * need to check a single boolean field, not parse arbitrary YAML.
+ *
+ * @param {string} domain  domain slug
+ * @returns {Promise<boolean>}
+ */
+export async function isDomainReadonly(domain) {
+  if (typeof domain !== 'string' || !domain) return false;
+  const claudeMdPath = path.join(domainPath(domain), 'CLAUDE.md');
+  let content;
+  try {
+    content = await readFile(claudeMdPath, 'utf8');
+  } catch {
+    return false; // no CLAUDE.md → not a domain we recognise → don't block
+  }
+  // Match opening "---\n", then capture everything up to the closing "\n---\n" or "\n---" at EOF.
+  // Anchored at very start of file (no leading whitespace allowed in YAML frontmatter).
+  const fmMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---(\r?\n|$)/);
+  if (!fmMatch) return false;
+  const fmBody = fmMatch[1];
+  // Look for "readonly: true" — tolerant of indentation, quotes, and case.
+  // Reject any value that's not literal true (so "readonly: false", "readonly: yes",
+  // "readonly: 1", etc. don't accidentally enable readonly mode).
+  const readonlyMatch = fmBody.match(/^[ \t]*readonly[ \t]*:[ \t]*(.+?)[ \t]*(#.*)?$/mi);
+  if (!readonlyMatch) return false;
+  const value = readonlyMatch[1].trim().toLowerCase();
+  // Strip optional quotes
+  const unquoted = value.replace(/^["']|["']$/g, '');
+  return unquoted === 'true';
+}
+
 export async function readSchema(domain) {
   const schemaFile = path.join(getDomainsDir(), domain, 'CLAUDE.md');
   return readFile(schemaFile, 'utf8');

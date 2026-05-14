@@ -33,7 +33,7 @@
  *     in Phase 4+; stdout reserved for MCP JSON-RPC stream).
  */
 
-import { readFile, readdir, stat, mkdir, writeFile } from 'fs/promises';
+import { readFile, readdir, stat, mkdir, writeFile, lstat } from 'fs/promises';
 import { existsSync } from 'fs';
 import { exec } from 'child_process';
 import { promisify } from 'util';
@@ -595,7 +595,7 @@ export async function pullCollective(connection, opts = {}) {
         current: i + 1, total: pagePaths.length,
       });
 
-      // ── 6a. Security guard ──────────────────────────────────────────
+      // ── 6a. Security guard — path traversal ─────────────────────────
       // A malicious shared brain could include a page path like
       // "../../etc/passwd" or "../other-domain/wiki/x.md" to escape.
       const safePath = resolveInsideBase(wikiBase, remotePath);
@@ -604,6 +604,33 @@ export async function pullCollective(connection, opts = {}) {
         onProgress('warn', `Skipped suspicious path: ${remotePath}`);
         skipped++;
         continue;
+      }
+
+      // ── 6a.2 Security guard — symlink defense ───────────────────────
+      // resolveInsideBase rejects ".." but does NOT follow symlinks. So a
+      // pre-existing symlink at safePath (planted by another process or
+      // a hostile user with filesystem access) could redirect writeFile
+      // to a legitimate user file — overwriting e.g. domains/articles/
+      // wiki/entities/anthropic.md from the mirror.
+      //
+      // Use lstat (not stat) to detect the symlink without following it.
+      // If safePath exists and IS a symlink, refuse the write. We can do
+      // this cheaply because the path is guaranteed inside our domain.
+      try {
+        const stats = await lstat(safePath);
+        if (stats.isSymbolicLink()) {
+          console.error(`[pullCollective] SECURITY: refused symlinked path "${remotePath}" — target is a symlink, would follow to an unsafe location`);
+          onProgress('warn', `Skipped symlink: ${remotePath}`);
+          skipped++;
+          continue;
+        }
+      } catch (err) {
+        // ENOENT is fine — file doesn't exist yet, that's the normal "new page" case.
+        if (err.code !== 'ENOENT') {
+          console.error(`[pullCollective] lstat unexpected error for "${remotePath}": ${err.message}`);
+          skipped++;
+          continue;
+        }
       }
 
       // ── 6b. Read content ────────────────────────────────────────────
