@@ -446,11 +446,11 @@ Alice's Mac     Bob's PC       Carlos's laptop
 
 **Use cases:** educational cohorts (each student contributes a `work` domain), enterprise knowledge management (employees opt-in their work domain), research teams (shared `research` domain compounds everyone's reading).
 
-**v3.0.0-beta.1 is opt-in.** Open the Sync tab, scroll to "Shared Brains", click **Enable Shared Brain (beta)**. Then **📨 Join → Join** if you have an invite token, or **⚙️ Set up new Shared Brain** if you're starting one. The 5-step wizard walks through it.
+**v3.0.0-beta.1 is opt-in.** Open the Sync tab, scroll to "Shared Brains", click **Enable Shared Brain (beta)**. Then pick a card: **📨 I have an invite token → Join** if your cohort admin sent you a token, or **⚙ I'm starting a new Shared Brain → Set up** if you're spinning one up for your team. The 5-step wizard (Token → Access → PAT → Domains → Save) walks through it.
 
-Future generations: v3.1 adds Cloudflare R2 as a second storage backend for EU data residency and custom-domain endpoints. v3.2 adds GitHub App mode and SSO for enterprise. See the [roadmap](docs/shared-brain.md#9--roadmap).
+Future generations: v3.1 adds Cloudflare R2 as a second storage backend for EU data residency and custom-domain endpoints. v3.2 adds GitHub App mode and SSO for enterprise. See the [roadmap](docs/shared-brain.md#7--roadmap).
 
-→ **[Shared Brain user guide](docs/shared-brain.md)** · [Admin guide](docs/shared-brain-admin.md) · [Compliance reference (GDPR / IP / EU residency)](docs/shared-brain-compliance.md)
+→ **[Shared Brain User Guide](docs/shared-brain-user-guide.md)** (step-by-step) · [Architecture](docs/shared-brain.md) (concept + decisions) · [Admin Operations](docs/shared-brain-admin.md) · [Compliance reference (GDPR / IP / EU residency)](docs/shared-brain-compliance.md)
 
 ---
 
@@ -486,6 +486,26 @@ The Curator uses precise language for what it does. Understanding these terms he
 | **Hidden Relations** | Intersections between concepts that only become visible in the graph — what search bars can never show you |
 | **Contextual Provenance** | The ability to trace any synthesised idea back to its exact source page |
 | **Network Compounding** | Each new source updates existing pages rather than duplicating — knowledge builds on itself |
+
+### Shared Brain terminology (v3.0.0-beta+)
+
+If you're working with Shared Brain, you'll see these specific terms in the UI, docs, and audit logs. Confusing them — especially **invite token vs PAT** — is the #1 setup mistake.
+
+| Term | Definition | ⚠️ Don't confuse it with… |
+|------|-----------|---------------------------|
+| **Shared Brain** | A collective Curator wiki shared with a cohort, team, or research group. Each contributor's personal Curator stays private; only opted-in domains push to a shared private GitHub repo | Personal Sync, which backs up YOUR full wiki to YOUR own private repo |
+| **Contributor** | Anyone in the cohort who joins and pushes contributions. There are N contributors per cohort | The Admin (just one per cohort) |
+| **Admin** | The one person who creates the GitHub repo, generates the invite token, invites collaborators, and runs synthesis | A contributor — though the admin is also a contributor with their own data |
+| **Invite token** (`sbi_...`) | **Metadata-only** label that tells the wizard which repo to connect to. Contains NO credentials. Safe to share with the whole cohort via Slack or email | A PAT — they are completely different things |
+| **Personal Access Token** (`github_pat_...`) | **Credential** issued by GitHub. Each contributor creates their OWN. Never shared with anyone. Stays on the contributor's machine only | The invite token. Sharing your PAT is a security disaster |
+| **Opted-in domain** | A personal Curator domain that the contributor explicitly chose to push to the Shared Brain. Other personal domains stay private | A `shared-<slug>` mirror domain (which is the pull destination, not the push source) |
+| **Mirror domain** (`shared-<slug>/`) | The local read-only copy of the synthesised collective wiki, pulled to every contributor's machine | An opted-in domain. The Curator app, MCP write tools, and Health fixes refuse direct writes to mirror domains by design |
+| **Delta summary** | The LLM-pre-processed payload that gets pushed to shared storage — `{new_facts, removed_links, ...}` for each changed page. Not a raw markdown file | The wiki page itself — Delta is the structured *change*, not the page |
+| **Synthesis** | The admin-triggered process that merges all contributions into the collective wiki, applies merge rules 1-5 (union facts, resolve contradictions, attribute provenance, rebuild index) | Push (which sends contributions) or Pull (which fetches synthesised pages) |
+| **Provenance** | The auto-appended section on every collective page listing contributor UUIDs (or names, per Decision 6a) | Authorship of a personal opted-in page — that stays purely on the contributor's machine |
+| **Conflict marker** | The `## CONFLICTING SOURCES` block that synthesis inserts when two contributors disagree and the LLM can't unify their facts | A Health-broken-link issue. Conflict markers are specific to Shared Brain synthesis |
+| **Data handling terms** | The admin's IP-mode choice at brain setup: `contributor_retains` (default; educational/cohort) or `organisational` (enterprise IP transfer). **Locked once invites go out** | Privacy controls. This is specifically about *copyright in contributed content*, not about who sees what |
+| **Revocation** (GDPR Article 17) | Admin-triggered operation that permanently deletes a contributor's submissions + their facts from collective pages + appends an audit log entry. Irreversible | Removing a contributor as a GitHub collaborator (which stops future pushes but doesn't erase past contributions) |
 
 ---
 

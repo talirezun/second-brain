@@ -31,7 +31,10 @@ Shared Brain is an **opt-in beta feature** in v3.0.0-beta.1. New installs don't 
 3. Scroll past the Personal Sync section. You'll see a **"Shared Brains"** block with a **"Enable Shared Brain (beta)"** button.
 4. Click it.
 
-The opt-in confirms by replacing the banner with two CTAs: **📨 Join a Shared Brain** and **⚙️ Set up new Shared Brain**.
+The opt-in confirms by replacing the banner with two cards:
+
+- **📨 I have an invite token** — *From my cohort, team, or research group.* — `[Join →]` button
+- **⚙ I'm starting a new Shared Brain** — *Set one up for my cohort or team.* — `[Set up →]` button
 
 You only do this once per computer. The setting is remembered in `.curator-config.json`.
 
@@ -53,7 +56,7 @@ You CANNOT proceed without accepting the GitHub collaborator invitation. The Cur
 
 ### Step-by-step wizard
 
-In the Sync tab → Shared Brains section → click **📨 Join a Shared Brain → Join**. A modal wizard appears with 5 steps.
+In the Sync tab → Shared Brains section → on the **📨 I have an invite token** card → click **Join →**. A modal wizard appears with a 5-step progress bar (Token → Access → PAT → Domains → Save).
 
 #### Step 1 — Token
 
@@ -149,7 +152,7 @@ You can do this before OR after running the admin wizard. Order doesn't matter �
 
 ### Step C — Run the admin wizard
 
-In the Curator → Sync tab → Shared Brains → click **⚙️ Set up new Shared Brain → Set up**. 5-step wizard with progress bar: **Setup → Invite → PAT → Domains → Save**.
+In the Curator → Sync tab → Shared Brains → on the **⚙ I'm starting a new Shared Brain** card → click **Set up →**. The same 5-step wizard appears, but the progress bar labels change to admin mode: **Setup → Invite → PAT → Domains → Save**.
 
 #### Step 1 — Setup
 
@@ -279,7 +282,7 @@ Once a Shared Brain is set up, the `shared-<slug>/` domain appears in your Curat
 - Synthesis only invokes the LLM for **contradiction candidates** detected by the Jaccard heuristic. Each contradiction is ~200 tokens. On a 100-page brain with 5 contradictions, total is well under a minute.
 
 **A contributor asks "where do I send my PAT?"**
-- They don't. Each contributor creates their own PAT and pastes it into their own Curator. Never share PATs. See [`shared-brain.md` §3](shared-brain.md#3--two-primitives--invite-token-vs-pat).
+- They don't. Each contributor creates their own PAT and pastes it into their own Curator. Never share PATs. See [`shared-brain.md` §4](shared-brain.md#4--the-two-primitives--invite-token-vs-pat).
 
 **Conflicting facts in the collective wiki**
 - After synthesis, look for `## CONFLICTING SOURCES` markers in the Wiki tab. Each marker shows the contributors who disagreed (UUIDs or names). To resolve: discuss with the cohort. The contributor whose fact is correct edits their personal opted-in domain, then Push + Run synthesis again. The marker disappears once consensus is reached.
@@ -294,8 +297,8 @@ Once a Shared Brain is set up, the `shared-<slug>/` domain appears in your Curat
 | Action | Where in the Curator app |
 |---|---|
 | Enable Shared Brain (beta) | Sync tab → "Enable Shared Brain (beta)" button |
-| Join a cohort (contributor) | Sync tab → 📨 Join → Join → paste invite token |
-| Start a new cohort (admin) | Sync tab → ⚙️ Set up new Shared Brain → Set up |
+| Join a cohort (contributor) | Sync tab → **📨 I have an invite token** → Join → paste invite token |
+| Start a new cohort (admin) | Sync tab → **⚙ I'm starting a new Shared Brain** → Set up |
 | Push your contributions | Sync tab → connection card → "Push contributions" |
 | Pull collective updates | Sync tab → connection card → "Pull updates" |
 | Run synthesis (admin) | Sync tab → connection card → Advanced → "Run synthesis" |

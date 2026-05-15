@@ -823,8 +823,8 @@ The feature is opt-in beta. To enable: Sync tab → scroll to "Shared Brains" �
 
 | Path | Take this if… |
 |---|---|
-| **📨 Join → Join** | You received an invite token (`sbi_...`) from your cohort admin |
-| **⚙️ Set up new Shared Brain → Set up** | You're starting one for your cohort, team, or research group |
+| **📨 I have an invite token → Join** | You received an invite token (`sbi_...`) from your cohort admin |
+| **⚙ I'm starting a new Shared Brain → Set up** | You're starting one for your cohort, team, or research group |
 
 ### Where to go from here
 

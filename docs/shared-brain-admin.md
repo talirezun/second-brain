@@ -88,7 +88,7 @@ Sync tab → connection card → **Advanced → Run synthesis (admin)**.
 | 20-50 contributors, 100-500 pages | Twice weekly |
 | 50+ contributors or 500+ pages | Daily (still local — no automation yet in v3.0) |
 
-Automation (cron-triggered or background daemon) is a v3.x roadmap item — see [`docs/shared-brain.md` §9](shared-brain.md#9--roadmap).
+Automation (cron-triggered or background daemon) is a v3.x roadmap item — see [`docs/shared-brain.md` §7](shared-brain.md#7--roadmap).
 
 ### Cost estimate
 
@@ -199,7 +199,7 @@ The `admin_token` is the one privileged credential in your Shared Brain. It gate
 
 | Action | Where |
 |---|---|
-| Initial setup | Sync tab → ⚙️ Set up new Shared Brain |
+| Initial setup | Sync tab → **⚙ I'm starting a new Shared Brain** → Set up |
 | Add a contributor mid-cohort | GitHub repo → Settings → Collaborators → Add people |
 | Run synthesis | Sync tab → connection card → Advanced → Run synthesis |
 | Revoke a contributor | `POST /api/sharedbrain/:id/revoke` (UI coming v3.0.0 GA) |
