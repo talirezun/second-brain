@@ -172,3 +172,71 @@ Every use case above shares the same underlying mechanics:
 
 The result is always the same: a private neural network of your knowledge domain that grows
 smarter with every source you add.
+
+---
+
+# Cohort & Team Use Cases (Shared Brain, `v3.0.0-beta+`)
+
+All the use cases above are for **individual** users. Below are use cases where multiple people contribute to a **shared collective wiki** — the Shared Brain feature.
+
+Each contributor keeps their personal Curator private. Only opted-in domains push synthesised contributions to a shared GitHub repo. The collective wiki comes back as a separate read-only `shared-<slug>/` mirror on every contributor's machine.
+
+> For step-by-step setup, see [`docs/shared-brain-user-guide.md`](shared-brain-user-guide.md). For the architecture and security model, see [`docs/shared-brain.md`](shared-brain.md). For compliance, see [`docs/shared-brain-compliance.md`](shared-brain-compliance.md).
+
+## I. Educational Cohorts (Universities, Bootcamps, Programmes)
+
+A professor leads a 20-student ML reading cohort across one semester. Each student ingests 5-10 papers per week into their personal `work-ai` domain. They opt that one domain into the cohort's Shared Brain.
+
+After each Push, every other student's machine eventually shows the synthesised collective wiki via Pull. The professor (acting as admin) runs synthesis weekly. The cohort ends the semester with a 500-page collective wiki that no single student could have built alone — every paper is in the entity graph, every important concept is cross-referenced.
+
+Privacy: each student's other domains (`personal`, `coursework`, `journal`) never leave their machine. Only the one opted-in `work-ai` domain participates.
+
+**Why Shared Brain wins here**: per-fellow provenance means every student gets credit for their contributions; the LLM-mediated synthesis resolves contradictions between students' interpretations; GDPR Article 17 revocation handles students who drop the course.
+
+## J. Research Teams & Lab Groups
+
+A four-person AI safety research team shares a Slack and a Google Doc but their actual reading is scattered across each person's laptop. They set up a Shared Brain. Each researcher opts their `papers` domain into the brain. Throughout the week, each person ingests papers they're reading; nightly Pull brings everyone's notes into everyone else's `shared-safety/` mirror.
+
+Friday morning: someone opens Claude Desktop with the My Curator MCP. Asks Claude: *"Across our shared brain, which mechanistic-interpretability papers contradict each other on the role of induction heads?"* Claude reads the collective wiki, surfaces three direct contradictions with the source papers cited. The team has a focused 30-minute meeting instead of a vague 2-hour one.
+
+**Why Shared Brain wins here**: 4 researchers × 20 papers/week × 50 weeks = 4000 papers/year. No single person could read all of them. The collective wiki + cross-domain MCP search makes the corpus searchable from a single conversation. Synthesis resolves contradictions automatically.
+
+## K. Consulting Firms — Shared Client Intelligence
+
+A boutique strategy consulting firm has 15 partners + senior associates. Each works on multiple client engagements. The firm's most valuable asset is its *accumulated insight*: which approaches worked for similar problems in past clients, which competitive analyses still hold, which industry expert opinions are most reliable.
+
+They set up a `firm-knowledge` Shared Brain. Each consultant opts in a specific `client-insights` domain (sanitised — no specific client names, just patterns and approaches). The collective wiki becomes the firm's institutional memory. New hires onboard by chatting with it. Senior partners use it to spot patterns across engagements.
+
+**IP mode matters**: the firm picks `organisational` data handling terms at brain setup — employment contracts include IP assignment. The consent text at contributor join time reflects this explicitly.
+
+**Why Shared Brain wins here**: institutional knowledge that survives partner departures. New hires productive faster. Cross-engagement pattern recognition. And the `organisational` IP mode is built-in legal clarity.
+
+## L. Enterprise Knowledge Management (Mid-size SaaS / Tech Companies)
+
+A 50-person SaaS company has hundreds of internal Notion pages, Confluence wikis, Slack archives, support tickets, and PRDs. Most of it is fragmented and stale. The new VP of Engineering pilots a Shared Brain.
+
+Engineers opt one `engineering-knowledge` domain into the brain. They ingest their architectural decision records, post-mortems, internal RFCs, customer support escalations. The synthesised collective wiki becomes the engineering team's reasoning layer — *why* did we choose Postgres, *what* did we learn from the 2025-Q3 outage, *which* customer requests recur in support.
+
+New engineers query Claude: *"Why did we pick PostgreSQL over MongoDB for the auth service?"* Claude reads the collective via MCP, returns the answer with a citation to a 2023 ADR. Onboarding time drops from weeks to days.
+
+**Why Shared Brain wins here**: replaces stale wikis with a compounding, queryable knowledge graph. Per-engineer attribution makes it traceable. The `shared-engineering/` mirror is read-only for direct edits — engineers can't accidentally overwrite the collective; changes always originate in their personal opted-in domain and propagate via Push.
+
+## M. Cross-functional Product Teams
+
+A product team (PM + 3 designers + 4 engineers + 1 researcher) is building a new feature over 6 months. They generate enormous artifacts: research notes, user interviews, design rationales, technical specs, prototype evaluations.
+
+They set up a Shared Brain. Each role opts in one focused domain (`product-research`, `design-rationale`, `eng-decisions`, `user-interviews`). The collective wiki becomes the project's shared memory. Six months later, the team's retrospective is informed by an actually queryable corpus, not just whoever happened to keep good notes.
+
+**Why Shared Brain wins here**: the four professional disciplines have different vocabularies. LLM synthesis resolves terminology differences automatically. Provenance preserves who contributed what insight, useful in retrospectives.
+
+## Pattern across Shared Brain use cases
+
+All cohort & team cases share these properties:
+
+1. **Multiple knowledge workers** producing knowledge in parallel, each with their own focus
+2. **Common interest** that benefits from a shared collective view (a domain, a project, a research area)
+3. **Asymmetric contribution** — most contributors only need to push what they're reading; one designated admin runs synthesis periodically
+4. **Privacy boundary** — contributors keep their other work private; only the explicitly opted-in domain participates
+5. **LLM-mediated quality** — synthesis isn't just file merge; it resolves contradictions, unifies formulations, attributes provenance, rebuilds the collective index
+
+If you're a solo user, Personal Sync handles your single-machine-to-single-machine sync. If you're a group, Shared Brain handles many-to-collective. The two features compose: many users can each run Personal Sync (for their own personal brain backup) AND contribute one opted-in domain to a Shared Brain.

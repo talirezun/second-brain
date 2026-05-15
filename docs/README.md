@@ -30,7 +30,7 @@ For students, researchers, entrepreneurs, and lifelong learners: this is the dif
 
 **Want to sync across computers?** Read the [Sync Guide](sync.md) — a 3-minute setup connects your knowledge to a private GitHub repository.
 
-**Want to contribute to a collective wiki with your cohort or team?** Read the [Shared Brain User Guide](shared-brain.md) — `v3.0.0-beta+`, opt-in beta feature. Each contributor keeps a private brain; only opted-in domains push to the shared repo.
+**Want to contribute to a collective wiki with your cohort or team?** Start with the [Shared Brain User Guide](shared-brain-user-guide.md) — step-by-step setup for contributors and admins. `v3.0.0-beta+`, opt-in beta feature. Each contributor keeps a private brain; only opted-in domains push to the shared repo. The [architecture doc](shared-brain.md) covers what's happening under the hood; [admin operations](shared-brain-admin.md) cover ongoing duties; [compliance reference](shared-brain-compliance.md) covers GDPR/IP/EU residency.
 
 **On a Mac?** Read [Mac App Setup](mac-app.md) to turn The Curator into a double-click app in your Dock — no terminal needed.
 
@@ -47,8 +47,9 @@ For students, researchers, entrepreneurs, and lifelong learners: this is the dif
 | [mcp-user-guide.md](mcp-user-guide.md) | My Curator MCP — connect your wiki to Claude Desktop / VS Code / LM Studio for frontier-model research and write-back |
 | [ai-health.md](ai-health.md) | AI-assisted Wiki Health — broken-link rescue, orphan rescue, semantic-duplicate detection, persistent dismissals |
 | [sync.md](sync.md) | Personal Sync — GitHub backup of your full wiki across your own computers |
-| [shared-brain.md](shared-brain.md) | **Shared Brain (v3.0.0-beta+)** — contribute to a collective wiki with a cohort, team, or research group |
-| [shared-brain-admin.md](shared-brain-admin.md) | Shared Brain — admin operations (setup, synthesis, revocation) |
+| [shared-brain-user-guide.md](shared-brain-user-guide.md) | **Shared Brain — User Guide (v3.0.0-beta+)** — step-by-step setup for contributors AND admins, daily workflow, troubleshooting |
+| [shared-brain.md](shared-brain.md) | Shared Brain — concept, architecture, engineering decisions, v3.x+ roadmap |
+| [shared-brain-admin.md](shared-brain-admin.md) | Shared Brain — advanced admin operations (synthesis cadence, revocation, contributor management) |
 | [shared-brain-compliance.md](shared-brain-compliance.md) | Shared Brain — GDPR / IP / data residency reference for orgs evaluating deployment |
 | [domains.md](domains.md) | Domains end-to-end — managing them, the CLAUDE.md schema, siloing model, custom templates |
 | [mac-app.md](mac-app.md) | How to create a double-click Dock app on macOS so you never need the terminal |
@@ -60,7 +61,6 @@ For students, researchers, entrepreneurs, and lifelong learners: this is the dif
 | [architecture.md](architecture.md) | System design, data flow, module reference |
 | [api-reference.md](api-reference.md) | Full REST API documentation |
 | [model-lifecycle.md](model-lifecycle.md) | Provider/model fallback policy and what happens when a model is retired |
-| [shared-brain-design.md](shared-brain-design.md) | Shared Brain — engineering source-of-truth (Phase 1 decisions binding on Phase 2-4 implementation) |
 | [audits/](audits/) | Historical audit reports per release (snapshots of the codebase quality at each version) |
 
 ---

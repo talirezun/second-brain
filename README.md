@@ -15,7 +15,7 @@
   <a href="https://github.com/talirezun/the-curator"><img src="https://img.shields.io/github/stars/talirezun/the-curator?style=social" alt="GitHub Stars"></a>
 </p>
 
-A local, AI-powered knowledge curation system. Drop in a PDF, article, or note — The Curator automatically atomizes it into an interlinked wiki of entities, concepts, and summaries. Chat with your knowledge in a multi-turn AI conversation. Explore everything as a visual knowledge graph in Obsidian. Sync seamlessly across computers via a private GitHub repository.
+A local, AI-powered knowledge curation system. Drop in a PDF, article, or note — The Curator automatically atomizes it into an interlinked wiki of entities, concepts, and summaries. Chat with your knowledge in a multi-turn AI conversation. Explore everything as a visual knowledge graph in Obsidian. Sync seamlessly across your own computers via a private GitHub repository — **or contribute to a collective Shared Brain** with your cohort, team, or research group (v3.0.0-beta+, opt-in).
 
 Built on the [Karpathy llm-wiki](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) concept: instead of one giant notebook where everything gets lost, you maintain **dedicated, compounding wikis per domain** (e.g. AI/Tech, Business, Personal Growth). Each one gets smarter with every source you add.
 
@@ -49,12 +49,17 @@ Built on the [Karpathy llm-wiki](https://gist.github.com/karpathy/442a6bf5559148
          ↓
 4. Open Obsidian → explore the auto-colored visual knowledge graph
          ↓
-5. Sync now → your knowledge is on GitHub, available everywhere
+5. Sync now → your knowledge backs up to your private GitHub repo
+         ↓
+6. (v3.0.0-beta+, optional) Join a Shared Brain → your opted-in
+   domain contributes to a collective wiki shared with your cohort,
+   team, or research group; everyone's reading compounds together
 ```
 
 Everything is stored as plain markdown files on your computer. No subscriptions, no database,
 no cloud accounts — except a Google Gemini or Anthropic Claude API key (Gemini has a free tier
-with strict daily quotas; pay-as-you-go costs roughly **€5/month** for moderate use — see
+with strict daily quotas; pay-as-you-go costs roughly **€5/month** for moderate solo use, or
+**€10–20/month** for an admin running cohort-scale synthesis weekly — see
 [Cost & API keys](docs/user-guide.md#19-api-keys-cost--free-tier) for the full breakdown).
 
 ---
@@ -96,7 +101,8 @@ This is the shift from a file cabinet to a neural network.
   After every compile (and every ingest) you see exactly which pages were created and which
   were updated, with byte counts and per-section bullet deltas.
 - Visual knowledge graph via [Obsidian](https://obsidian.md) (free app, reads the same files)
-- **GitHub sync** — one-time 3-minute setup, then a single **Sync now** button (with optional Push-only / Pull-only advanced controls) across any number of computers
+- **Personal Sync** — one-time 3-minute setup, then a single **Sync now** button (with optional Push-only / Pull-only advanced controls) backs up your full wiki across any number of YOUR own computers via a private GitHub repository
+- **Shared Brain (v3.0.0-beta+, opt-in)** — contribute to a **collective wiki** shared with your cohort, team, or research group. Each contributor keeps a private Curator; only opted-in domains push LLM-synthesised Delta summaries to a shared private GitHub repo; the synthesised collective wiki pulls back as a separate read-only `shared-<slug>/` mirror domain. Two-primitives security model (invite token = metadata only, PAT = per-contributor identity), GDPR Article 17 right-to-erasure built in, two IP modes (`contributor_retains` for cohorts / `organisational` for enterprise). v3.1 will add Cloudflare R2 storage for EU data residency. See [docs/shared-brain-user-guide.md](docs/shared-brain-user-guide.md)
 - **Domain management** — create, rename, and delete domains from the UI; four AI-tuned templates
   auto-generate the right schema
 - **Settings tab** — manage API keys, view version info, and check for updates from within the app
@@ -176,6 +182,29 @@ with the objectivity of a third party.
 
 ---
 
+## For Teams & Organisations: Shared Brain (v3.0.0-beta+)
+
+The use cases above are for individual users. **Shared Brain** extends The Curator with a collective layer where multiple contributors build a shared wiki together — each keeps their personal brain private, while one or more opted-in domains push synthesised contributions to a shared GitHub repo. Synthesis runs locally on the admin's machine using their LLM key; the collective wiki comes back to every contributor's machine as a separate read-only mirror domain.
+
+### Educational Cohorts (Universities, Bootcamps, Programmes)
+A 20-student ML reading cohort each ingests papers into their personal `work-ai` domain and opts that one domain into the cohort Shared Brain. Synthesis runs weekly. The cohort ends the semester with a 500-page collective wiki that no single student could have built alone — every paper is in the entity graph, every concept cross-referenced, every contribution attributed. Privacy: students' other domains never leave their machines.
+
+### Research Teams & Lab Groups
+Four AI-safety researchers each contribute their `papers` domain to a shared brain. Nightly Pull brings everyone's notes into everyone else's `shared-safety/` mirror. Friday meeting: someone asks Claude (via the My Curator MCP) *"Which mechanistic-interpretability papers contradict each other on the role of induction heads?"* — Claude reads the collective, surfaces three contradictions with paper citations. Synthesis resolves disagreements via the Jaccard contradiction heuristic + targeted LLM call.
+
+### Consulting Firms — Institutional Memory
+A boutique strategy firm with 15 consultants contributes a sanitised `client-insights` domain to a `firm-knowledge` Shared Brain (in `organisational` IP mode — employment contracts cover IP assignment). The collective wiki becomes accumulated institutional intelligence that survives partner departures and onboards new hires in days instead of weeks.
+
+### Enterprise Knowledge Management
+A 50-person SaaS company pilots a Shared Brain for the engineering team. Each engineer opts in one `engineering-knowledge` domain with ADRs, post-mortems, and internal RFCs. New engineers query Claude: *"Why did we pick PostgreSQL over MongoDB?"* — Claude reads the collective via MCP, cites the 2023 ADR. Per-engineer attribution preserves who contributed what. `shared-engineering/` is read-only for direct edits, so engineers can't accidentally overwrite the collective.
+
+### Cross-functional Product Teams
+A product team (PM + designers + engineers + researcher) contributes 4 role-specific domains over 6 months. The collective wiki becomes the project's queryable memory. Six months later, the retrospective is informed by an actual searchable corpus, not just whoever happened to keep good notes.
+
+→ More cohort & team patterns in [docs/use-cases.md](docs/use-cases.md). Setup walkthrough in [docs/shared-brain-user-guide.md](docs/shared-brain-user-guide.md). Architecture in [docs/shared-brain.md](docs/shared-brain.md). Compliance in [docs/shared-brain-compliance.md](docs/shared-brain-compliance.md).
+
+---
+
 ## Quick start
 
 ### Option A — One-command installer (Mac, recommended)
@@ -247,6 +276,8 @@ The Curator itself is **free, open-source software**. The only paid component is
 | **Wiki Health — ✨ Ask AI on broken links** (Phase 1) | ✅ Yes | One LLM call per click. ~$0.0001–0.0005 each. |
 | **Wiki Health — ✨ Ask AI on orphan pages** (Phase 2) | ✅ Yes | One LLM call per click. ~$0.0001–0.0005 each. |
 | **Wiki Health — Semantic duplicate scan** (Phase 3) | ✅ Yes — opt-in, cost-gated | A confirm dialog shows the estimate before you run it (typical: $0.003–$0.03 on Gemini Flash Lite). |
+| **Shared Brain — Push contributions** (v3.0.0-beta+, contributor side) | ✅ Yes | Each push runs local LLM pre-processing to generate `DeltaSummary` objects from your changed pages. One LLM call per changed page. Typical: $0.001–0.01 per push on Gemini Flash Lite. |
+| **Shared Brain — Run synthesis** (v3.0.0-beta+, admin side) | ✅ Yes — but contradiction-only | Synthesis only invokes the LLM for **contradiction candidates** flagged by the Jaccard heuristic. Most contributions don't conflict, so most synthesis runs are nearly free. Typical: $0.001–0.05 per synthesis on Gemini Flash Lite, scaling with disagreement rather than corpus size. |
 
 ### What does NOT use any AI / tokens
 
@@ -255,9 +286,11 @@ The Curator itself is **free, open-source software**. The only paid component is
 | **Wiki tab** (browse pages) | Pure file rendering. No LLM call. |
 | **Domain management** (create / rename / delete) | Filesystem operations only. |
 | **Settings**, **API keys**, **updates** | Local. No LLM call. |
-| **GitHub Sync** (Sync now / Push only / Pull only) | A `git push` / `git pull` over HTTPS to your own private repo. |
+| **Personal Sync** (Sync now / Push only / Pull only) | A `git push` / `git pull` over HTTPS to your own private repo. |
 | **Wiki Health — structural scan & deterministic fixes** (broken-link auto-fix, folder-prefix, hyphen variants, cross-folder dedup, missing backlinks) | Algorithmic — runs entirely on your machine. |
 | **My Curator MCP server** (locally, on this machine) | The bridge itself is free. The frontier model you connect *to* it (Claude Desktop, etc.) bills you on its own plan, not through your Curator API key. |
+| **Shared Brain — Pull updates / Disconnect / List connections** | GitHub REST API calls to read pages or list metadata — no LLM involved. |
+| **Shared Brain — Revoke a contributor** (GDPR Article 17) | Storage operations only (delete contributions, scan + delete tainted pages, append audit log). Synthesis re-runs after — that step uses the LLM as above. |
 
 ### Provider pricing
 
@@ -314,11 +347,19 @@ Claude calls `compile_to_wiki`, and the synthesis lands in your wiki as a perman
 
 That is not a chat interface. That is a frontier model doing **deep research over your own intellectual history — and committing the conclusions back into it** — with full citations, no hallucinations beyond your wiki, and no data ever leaving your machine.
 
+### MCP + Shared Brain (v3.0.0-beta+)
+
+When you join a Shared Brain (see [docs/shared-brain-user-guide.md](docs/shared-brain-user-guide.md)), the collective wiki appears on your machine as a `shared-<slug>/` domain. **MCP read tools work fully on it** — Claude can `search_wiki`, `get_node`, `get_index`, `search_cross_domain` across the collective just like any other domain. This is where the cohort/team use cases get powerful: a research team can ask *"across our shared brain, which papers contradict each other on X?"* and Claude reads everyone's combined reading to surface the answer with citations.
+
+**MCP write tools refuse on `shared-*` mirrors** by design — direct writes wouldn't propagate to other contributors and would be overwritten on the next Pull. To contribute, Claude writes to your personal opted-in domain (e.g. `work-ai/`), then you Push from the Sync tab. The skill ([claude-skills/my-curator/SKILL.md](claude-skills/my-curator/SKILL.md) §3.1) teaches Claude this contract so it knows where to compile when you say *"save this to the shared brain."*
+
 ### Why this is first-of-its-kind
 
 Most "AI for personal knowledge" tools are RAG wrappers: they re-derive answers from raw files at query time and forget everything afterwards. Nothing compounds. Nothing traverses.
 
 My Curator inverts that: ingest builds a **persistent, graph-shaped knowledge structure** during writing, and MCP exposes that graph as first-class structured data at read time. The model doesn't pretend to be your second brain — it *uses* your second brain, the way an analyst uses a database. Topology, tags, links, backlinks — all queryable, all cited, all yours.
+
+For teams, Shared Brain extends this further: now the analyst-database is collective — built by every cohort member's reading, queried by everyone's Claude. The first time you ask Opus about your team's combined corpus and it surfaces a contradiction between two papers your colleagues read months apart, you understand why this matters.
 
 This is what makes the difference between "I have a folder of notes" and "I have a queryable, compounding extension of my own thinking that any frontier model can reason against on demand."
 
@@ -486,10 +527,11 @@ the-curator/
 | [My Curator MCP Guide](docs/mcp-user-guide.md) | Connect the wiki to Claude Desktop (or any MCP client) for frontier-model research over your graph |
 | [AI Wiki Health Guide](docs/ai-health.md) | AI-assisted broken-link / orphan / semantic-duplicate cleanup — what each phase does and the privacy tradeoffs |
 | [Sync Guide](docs/sync.md) | Personal Sync — GitHub backup of your full wiki across your own computers |
-| [Shared Brain User Guide](docs/shared-brain.md) | **v3.0.0-beta+** — contribute to a collective wiki with a cohort, team, or research group |
-| [Shared Brain Admin Guide](docs/shared-brain-admin.md) | Admin operations — setup, synthesis, revocation |
-| [Shared Brain Compliance](docs/shared-brain-compliance.md) | GDPR / IP / data residency reference for orgs evaluating deployment |
-| [Use Cases](docs/use-cases.md) | Detailed workflows for every user profile |
+| [Shared Brain — User Guide](docs/shared-brain-user-guide.md) | **v3.0.0-beta+** — step-by-step for contributors AND admins; daily workflow; troubleshooting |
+| [Shared Brain — Architecture](docs/shared-brain.md) | What Shared Brain is, how it works internally, engineering decisions, v3.x+ roadmap |
+| [Shared Brain — Admin Operations](docs/shared-brain-admin.md) | Advanced admin reference: synthesis cadence, revocation, contributor management |
+| [Shared Brain — Compliance](docs/shared-brain-compliance.md) | GDPR / IP / data residency reference for organisations evaluating deployment |
+| [Use Cases](docs/use-cases.md) | Detailed workflows for every user profile, including cohort & team Shared Brain scenarios |
 | [Mac App Setup](docs/mac-app.md) | Double-click Dock launcher for Mac |
 
 **For developers**
@@ -500,7 +542,6 @@ the-curator/
 | [Model Lifecycle](docs/model-lifecycle.md) | Provider/model fallback policy, retiring deprecated models |
 | [API Reference](docs/api-reference.md) | REST API documentation |
 | [Architecture](docs/architecture.md) | System design for developers |
-| [Shared Brain Design](docs/shared-brain-design.md) | Engineering source-of-truth for Shared Brain — Phase 1 decisions binding on Phase 2-4 implementation |
 
 ---
 

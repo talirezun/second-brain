@@ -783,25 +783,59 @@ Your GitHub repository is not changed. You can reconnect at any time using the w
 
 ## 15b. Shared Brain — collective wikis with a cohort or team (`v3.0.0-beta+`)
 
-While **Personal Sync** (above) backs up your entire wiki to your own private GitHub repo, **Shared Brain** is a separate feature that lets a group of people contribute to a **collective wiki** without merging personal data.
+**Shared Brain** is a separate feature from Personal Sync (above). Personal Sync backs up YOUR full wiki to YOUR private repo. Shared Brain lets a **group of people** contribute to a **shared wiki** without merging private data.
 
-Each contributor keeps their personal brain private. Each chooses one or more domains to opt-in. Those domains push contributions (LLM-synthesised Delta summaries, not raw drafts) to a shared GitHub repo. The Curator pulls the synthesised collective wiki back to every contributor's machine as a separate read-only mirror domain.
+### How it differs from Personal Sync at a glance
 
-**Use cases:**
-- Educational cohorts — 20 students each running their own Curator, each contributing a `work` domain
-- Enterprise knowledge management — employees with private notes + one opted-in `work` domain
-- Research teams — small group with a shared `research` domain that compounds everyone's reading
+| | Personal Sync | Shared Brain |
+|---|---|---|
+| People | 1 (just you) | Many (cohort, team) |
+| What's synced | Your full wiki | Only opted-in domains |
+| Repo | Your private repo | Cohort's shared private repo |
+| Direction | Bidirectional | Push (contribute) + Pull (mirror) |
+| Visible in your Curator | Pages are your personal wiki | New `shared-<slug>/` domain (read-only mirror) |
 
-**v3.0.0-beta.1 is opt-in.** In the Sync tab, scroll to the "Shared Brains" section and click **Enable Shared Brain (beta)**. The 5-step wizard handles the rest.
+### When you'd want it
 
-| Path | When to take it |
+- **Educational cohorts** — 20 students each running their own Curator, each contributing a `work-ai` domain. The collective grows with everyone's reading; each student keeps their personal notes private.
+- **Research teams** — small group with a shared `research` domain that compounds everyone's literature reviews.
+- **Enterprise knowledge management** — employees with private notes plus one opted-in `work` domain feeding the company brain.
+
+Solo users don't need this — Personal Sync handles single-user backup. Shared Brain is for **groups**.
+
+### The two-primitives security model (read this before you start)
+
+Two completely different concepts that beginners often confuse. Get this right and the rest is easy:
+
+| | Invite token (`sbi_…`) | Personal Access Token (`github_pat_…`) |
+|---|---|---|
+| Created by | The admin, once at brain setup | **Each contributor, on their own** |
+| Contains | Metadata only — repo, brain name, branch, folder slug | A GitHub credential — the contributor's identity |
+| Shared with | Whole cohort (Slack, email — safe to share) | NOBODY |
+| Grants access? | **No.** It's just a label. | Yes — this IS the GitHub auth |
+| Per cohort | 1 (the admin generates and shares one) | N (one per contributor) |
+
+**The admin NEVER shares their PAT** with anyone. **Each contributor creates their own** PAT and pastes it into their own Curator. The invite token is metadata-only and safe to share via Slack/email.
+
+### Getting started
+
+The feature is opt-in beta. To enable: Sync tab → scroll to "Shared Brains" → click **Enable Shared Brain (beta)**. Then choose your path:
+
+| Path | Take this if… |
 |---|---|
 | **📨 Join → Join** | You received an invite token (`sbi_...`) from your cohort admin |
 | **⚙️ Set up new Shared Brain → Set up** | You're starting one for your cohort, team, or research group |
 
-Full walkthrough — including the two-primitive security model (invite token vs PAT, why each contributor needs their own PAT, NEVER share the admin's), the daily push/pull workflow, what synthesis does, and the v3.x roadmap (Cloudflare R2, GitHub App mode, EU residency) — lives in the dedicated [**Shared Brain User Guide**](shared-brain.md).
+### Where to go from here
 
-Admin-specific operations (setup, periodic synthesis, revocation per GDPR Article 17) are in the [**Admin Operations Guide**](shared-brain-admin.md). Compliance considerations (PII inventory, IP modes, EU residency) in the [**Compliance Reference**](shared-brain-compliance.md).
+The full setup walkthrough, daily workflow, troubleshooting, and admin operations live in dedicated guides — keep them open when you're working with Shared Brain:
+
+| Doc | When to read it |
+|---|---|
+| 📖 **[Shared Brain User Guide](shared-brain-user-guide.md)** | Step-by-step setup for contributors AND admins. Daily push/pull workflow. Troubleshooting. **Start here.** |
+| 🧠 **[Shared Brain Architecture](shared-brain.md)** | What it is conceptually, how it works internally, the engineering decisions, the v3.x roadmap (Cloudflare R2, GitHub App, EU residency). Read this if you want to understand the system, or to compare options. |
+| 🔧 **[Shared Brain — Admin Operations](shared-brain-admin.md)** | Advanced admin reference: periodic synthesis cadence, contributor management, GDPR Article 17 revocation procedure, admin-token security. |
+| ⚖️ **[Shared Brain — Compliance Reference](shared-brain-compliance.md)** | For organisations evaluating deployment: GDPR (PII inventory, right to erasure procedure), IP modes (contributor_retains vs organisational), EU data residency, self-assessment checklist. |
 
 ---
 

@@ -1,7 +1,8 @@
 # Shared Brain — Admin Operations
 
-**For**: the one person per cohort who creates the shared brain, invites contributors, runs synthesis, and handles revocation requests.
-**Companions**: [`docs/shared-brain.md`](shared-brain.md) (user guide) · [`docs/shared-brain-compliance.md`](shared-brain-compliance.md) (GDPR / IP / residency) · [`docs/shared-brain-design.md`](shared-brain-design.md) (engineering decisions)
+**For**: admins who have already set up a Shared Brain and need to run ongoing operations — periodic synthesis, contributor management, revocation, health monitoring. This is the **post-setup** reference.
+**For initial setup**: see [`docs/shared-brain-user-guide.md` §3 — Admin setup](shared-brain-user-guide.md#3--admin-setup-start-a-new-shared-brain).
+**Companions**: [`docs/shared-brain.md`](shared-brain.md) (concept & architecture) · [`docs/shared-brain-compliance.md`](shared-brain-compliance.md) (GDPR / IP / residency) · [`docs/shared-brain-user-guide.md`](shared-brain-user-guide.md) (step-by-step user guide).
 
 ---
 
@@ -9,53 +10,11 @@
 
 Running a Shared Brain is mostly turnkey, but a few duties land on you specifically:
 
-1. **Setup** — create the private GitHub repo, run the admin wizard, share the invite token with your cohort.
-2. **Collaborator invitations** — for each contributor, add them as a GitHub collaborator on the repo (this is what grants them write access; the invite token alone does NOT).
-3. **Periodic synthesis** — typically weekly. Synthesis runs locally on your machine using your LLM API key (same key as ingest). Other contributors don't need to do anything for this.
-4. **Revocation** — when someone leaves the cohort, you revoke them (right to erasure, GDPR Article 17).
+1. **Setup** — create the private GitHub repo, run the admin wizard, share the invite token. → [User Guide §3](shared-brain-user-guide.md#3--admin-setup-start-a-new-shared-brain) walks through this.
+2. **Collaborator invitations** — add each contributor as a GitHub collaborator on the repo.
+3. **Periodic synthesis** — typically weekly. Synthesis runs locally on your machine using your LLM API key (same key as ingest). Other contributors don't need to do anything for this. → [§4 below](#4--running-synthesis-on-a-schedule).
+4. **Revocation** — when someone leaves the cohort, you revoke them (right to erasure, GDPR Article 17). → [§3 below](#3--revoking-a-contributor-article-17).
 5. **Data handling terms** — picked at brain setup and **frozen after invites go out**. See [compliance §3](shared-brain-compliance.md#3--copyright--ip--two-modes).
-
----
-
-## 2 — Initial setup walkthrough
-
-### Step A — Create the GitHub repo
-
-1. Open https://github.com/new.
-2. Repository name — anything descriptive (e.g. `spring-2026-ml-cohort-brain`).
-3. Visibility — **Private**. Always private. Public Shared Brains are not supported and would violate the contribution model.
-4. Tick **Add a README file** so the `main` branch is initialised.
-5. Click **Create repository**. Note the URL — you'll need `<owner>/<name>` for the wizard.
-
-### Step B — Invite contributors as GitHub collaborators
-
-This is the step that GRANTS write access. The Curator's invite token alone doesn't.
-
-1. From the repo page, go to **Settings → Collaborators**.
-2. Click **Add people**. Type each contributor's GitHub username or email. Click **Add**.
-3. GitHub sends each contributor an invitation email. They must click **Accept** before they can create a PAT that works.
-
-You can add contributors before OR after running the admin wizard. Order doesn't matter — they need GitHub access before they can connect, but you can run the wizard and share the invite token any time.
-
-### Step C — Run the admin wizard
-
-1. In the Curator app → Sync tab → Shared Brains → **⚙️ Set up new Shared Brain → Set up**.
-2. Fill in the form on Step 1:
-   - **Repository**: `<owner>/<name>` from Step A
-   - **Brain name**: friendly label your contributors see in their Curator
-   - **Folder inside the repo**: auto-fills from brain name (override if needed)
-   - **Branch**: almost always `main`
-   - **Data handling terms**: pick `contributor_retains` or `organisational`. **Locked after invites go out**.
-3. Step 2 shows the generated invite token (`sbi_…`) and a checklist. Click **Copy** to put it on your clipboard.
-4. Steps 3-5 set up your own contributor identity (PAT, your contributing domains, consent). Same as a regular contributor's flow — see [`docs/shared-brain.md` §5](shared-brain.md#5--joining-a-shared-brain-contributor-flow).
-
-### Step D — Share the invite token
-
-Send the invite token to every contributor via Slack, email, or any other channel. **The token itself contains no credentials**, so it's safe to share via these channels. What contributors do with it:
-
-1. They paste the token in their own Curator wizard's first step.
-2. The token tells the wizard which repo to connect to.
-3. They follow the contributor flow to create their own PAT and consent.
 
 ---
 
@@ -248,5 +207,5 @@ The `admin_token` is the one privileged credential in your Shared Brain. It gate
 | Check synthesis stats | `meta/state/last-synthesis.json` in the repo |
 | Read the audit log | `state/revocations.jsonl` in the repo |
 | Compliance / GDPR ref | [`docs/shared-brain-compliance.md`](shared-brain-compliance.md) |
-| Engineering decisions | [`docs/shared-brain-design.md`](shared-brain-design.md) |
+| Engineering decisions + architecture | [`docs/shared-brain.md`](shared-brain.md) |
 | User-facing guide | [`docs/shared-brain.md`](shared-brain.md) |

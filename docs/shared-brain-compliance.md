@@ -2,7 +2,7 @@
 
 **Audience**: cohort admins, IT, professors, small-business owners evaluating Shared Brain for a real deployment. Plain English, not legal advice — but the operational truth of what the system does with your contributors' data.
 
-**Companion docs**: [`docs/shared-brain.md`](shared-brain.md) (user guide, v3.0.0+) · [`docs/shared-brain-admin.md`](shared-brain-admin.md) (admin operations) · [`docs/shared-brain-design.md`](shared-brain-design.md) (engineering decisions)
+**Companion docs**: [`docs/shared-brain-user-guide.md`](shared-brain-user-guide.md) (step-by-step user guide) · [`docs/shared-brain.md`](shared-brain.md) (concept & architecture, engineering decisions) · [`docs/shared-brain-admin.md`](shared-brain-admin.md) (advanced admin operations)
 
 ---
 

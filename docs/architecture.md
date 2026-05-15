@@ -100,7 +100,7 @@ When the `sharedBrainEnabled` feature flag is on, an additional layer becomes ac
  └────────────┘    └─────────────────┘  └──────────────────┘
 ```
 
-Synthesis (`brain/sharedbrain-synthesis.js`) and revoke (`brain/sharedbrain-revoke.js`) operate against the same adapter interface — backend-agnostic. See [`docs/shared-brain-design.md`](shared-brain-design.md) for engineering decisions and [`docs/shared-brain.md`](shared-brain.md) for the user-facing model.
+Synthesis (`brain/sharedbrain-synthesis.js`) and revoke (`brain/sharedbrain-revoke.js`) operate against the same adapter interface — backend-agnostic. See [`docs/shared-brain.md`](shared-brain.md) for the concept, architecture, and engineering decisions; [`docs/shared-brain-user-guide.md`](shared-brain-user-guide.md) for the step-by-step user-facing flows.
 
 ---
 
