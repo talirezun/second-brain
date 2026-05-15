@@ -53,7 +53,7 @@ flowchart TB
     C3["shared-cohort/"]
   end
 
-  S["Shared storage<br/>(private GitHub repo)<br/>collective/&lt;domain&gt;/wiki/<br/>contributions/&lt;fellow&gt;/<br/>state/, digests/"]
+  S["Shared storage<br/>(private GitHub repo)<br/>collective/{domain}/wiki/<br/>contributions/{fellow}/<br/>state/, digests/"]
 
   A2 -- "push DeltaSummaries" --> S
   B2 -- "push" --> S
@@ -170,7 +170,7 @@ sequenceDiagram
   L->>L: Find changed pages since last_push_at
   L->>LLM: For each page, generate DeltaSummary
   LLM-->>L: {new_facts, removed_links, ...}
-  L->>S: Upload contributions/&lt;fellow&gt;/&lt;sub&gt;.json
+  L->>S: Upload contributions/{fellow}/{sub}.json
   S-->>L: 200 OK with new SHAs
   L->>U: SSE 'done' event with counts
 ```
