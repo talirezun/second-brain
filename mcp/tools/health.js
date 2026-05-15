@@ -32,7 +32,7 @@ import {
   scanSemanticDuplicates,
 } from '../../src/brain/health-ai.js';
 import { getAiHealthSettings, getDefaultDomain } from '../../src/brain/config.js';
-import { resolveDomainArg } from '../util.js';
+import { resolveDomainArg, refuseIfReadonly } from '../util.js';
 
 // ── scan_wiki_health ─────────────────────────────────────────────────────────
 
@@ -169,6 +169,11 @@ export const fixWikiIssueDefinition = {
 export async function fixWikiIssueHandler(args, storage) {
   const domain = await resolveDomainArg(args, storage, getDefaultDomain);
   if (domain.error) return { ok: false, error: domain.error };
+
+  // Decision 7 — refuse writes to Shared Brain mirror domains.
+  const readonlyRefusal = await refuseIfReadonly(domain.value);
+  if (readonlyRefusal) return readonlyRefusal;
+
   const { type, issue } = args || {};
   const preview = !!args?.preview;
 

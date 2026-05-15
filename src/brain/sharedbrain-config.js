@@ -122,6 +122,35 @@ function validateConnection(conn) {
       throw new Error('SharedBrain connection: local_storage_path must be an absolute path');
     }
   }
+  // Defense-in-depth XSS guard: when github storage, the owner/name fields
+  // flow into rendered URLs in the connection card. Validate them with the
+  // same regex GitHub uses for usernames + repo names.
+  if (conn.storage_type === 'github') {
+    if (typeof conn.github_repo_owner !== 'string' ||
+        !/^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/.test(conn.github_repo_owner)) {
+      throw new Error('SharedBrain connection: github_repo_owner must be a valid GitHub login (alphanumeric + hyphen, ≤39 chars)');
+    }
+    if (typeof conn.github_repo_name !== 'string' ||
+        !/^[A-Za-z0-9._-]{1,100}$/.test(conn.github_repo_name)) {
+      throw new Error('SharedBrain connection: github_repo_name must be a valid GitHub repo name');
+    }
+    if (conn.github_branch !== undefined && conn.github_branch !== '' &&
+        (typeof conn.github_branch !== 'string' ||
+         !/^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$/.test(conn.github_branch) ||
+         conn.github_branch.includes('..'))) {
+      throw new Error('SharedBrain connection: github_branch must be a valid git ref name (no .. segments)');
+    }
+    if (typeof conn.github_pat !== 'string' || conn.github_pat.length < 20 || conn.github_pat.length > 400) {
+      throw new Error('SharedBrain connection: github_pat is required (20-400 chars)');
+    }
+    // Defense against the round-trip-of-masked-token bug: if someone POSTs
+    // a connection whose PAT looks like the masked-display form (ends in
+    // the Unicode ellipsis we use for masking), refuse — the caller almost
+    // certainly read it from a masked listing and would clobber the real PAT.
+    if (/…$/.test(conn.github_pat)) {
+      throw new Error('SharedBrain connection: github_pat appears to be a masked display value (ends in …). Pass the full PAT or omit the field to keep the existing one.');
+    }
+  }
   if (!isUuid(conn.fellow_id)) {
     throw new Error('SharedBrain connection: fellow_id must be a UUID');
   }

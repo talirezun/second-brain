@@ -389,6 +389,30 @@ See [docs/sync.md](docs/sync.md) for the full guide.
 
 ---
 
+## Shared Brain — collective wikis (v3.0.0-beta+, opt-in)
+
+The **Shared Brain** lets a cohort, team, or research group contribute to a **collective wiki** without merging personal data. Each contributor keeps their private Curator; only opted-in domains push to a shared private GitHub repo. The LLM-synthesised collective wiki comes back as a separate read-only mirror domain on every contributor's machine.
+
+```
+Alice's Mac     Bob's PC       Carlos's laptop
+  personal/      personal/        personal/        ← stays private
+  work-ai/   →   work-ai/    →    work-ai/         ← opted-in, pushes
+  shared-cohort/ shared-cohort/   shared-cohort/   ← pulled back (read-only)
+        ↓             ↓                ↓
+              shared GitHub repo
+              (admin's private)
+```
+
+**Use cases:** educational cohorts (each student contributes a `work` domain), enterprise knowledge management (employees opt-in their work domain), research teams (shared `research` domain compounds everyone's reading).
+
+**v3.0.0-beta.1 is opt-in.** Open the Sync tab, scroll to "Shared Brains", click **Enable Shared Brain (beta)**. Then **📨 Join → Join** if you have an invite token, or **⚙️ Set up new Shared Brain** if you're starting one. The 5-step wizard walks through it.
+
+Future generations: v3.1 adds Cloudflare R2 as a second storage backend for EU data residency and custom-domain endpoints. v3.2 adds GitHub App mode and SSO for enterprise. See the [roadmap](docs/shared-brain.md#9--roadmap).
+
+→ **[Shared Brain user guide](docs/shared-brain.md)** · [Admin guide](docs/shared-brain-admin.md) · [Compliance reference (GDPR / IP / EU residency)](docs/shared-brain-compliance.md)
+
+---
+
 ## Using Obsidian for the knowledge graph
 
 After ingesting your first document, open Obsidian → **Open folder as vault** → select your **Knowledge Base folder** (shown in the Domains tab → Knowledge Base Location). Click the graph icon to see all your knowledge as an interactive, zoomable network.
@@ -461,7 +485,10 @@ the-curator/
 | [Knowledge Immortality (essay)](research/articles/knowledge-immortality-second-brain.md) | The why — what a second brain is, why markdown matters, what compounding looks like in practice |
 | [My Curator MCP Guide](docs/mcp-user-guide.md) | Connect the wiki to Claude Desktop (or any MCP client) for frontier-model research over your graph |
 | [AI Wiki Health Guide](docs/ai-health.md) | AI-assisted broken-link / orphan / semantic-duplicate cleanup — what each phase does and the privacy tradeoffs |
-| [Sync Guide](docs/sync.md) | GitHub sync — setup, daily workflow, troubleshooting |
+| [Sync Guide](docs/sync.md) | Personal Sync — GitHub backup of your full wiki across your own computers |
+| [Shared Brain User Guide](docs/shared-brain.md) | **v3.0.0-beta+** — contribute to a collective wiki with a cohort, team, or research group |
+| [Shared Brain Admin Guide](docs/shared-brain-admin.md) | Admin operations — setup, synthesis, revocation |
+| [Shared Brain Compliance](docs/shared-brain-compliance.md) | GDPR / IP / data residency reference for orgs evaluating deployment |
 | [Use Cases](docs/use-cases.md) | Detailed workflows for every user profile |
 | [Mac App Setup](docs/mac-app.md) | Double-click Dock launcher for Mac |
 
@@ -473,6 +500,7 @@ the-curator/
 | [Model Lifecycle](docs/model-lifecycle.md) | Provider/model fallback policy, retiring deprecated models |
 | [API Reference](docs/api-reference.md) | REST API documentation |
 | [Architecture](docs/architecture.md) | System design for developers |
+| [Shared Brain Design](docs/shared-brain-design.md) | Engineering source-of-truth for Shared Brain — Phase 1 decisions binding on Phase 2-4 implementation |
 
 ---
 

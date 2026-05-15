@@ -15,7 +15,7 @@ import {
   keyForIssue,
 } from '../../src/brain/health-dismissed.js';
 import { getDefaultDomain } from '../../src/brain/config.js';
-import { resolveDomainArg } from '../util.js';
+import { resolveDomainArg, refuseIfReadonly } from '../util.js';
 
 const DISMISSIBLE_TYPES = new Set([
   'brokenLinks',
@@ -93,6 +93,11 @@ export const dismissWikiIssueDefinition = {
 export async function dismissWikiIssueHandler(args, storage) {
   const domain = await resolveDomainArg(args, storage, getDefaultDomain);
   if (domain.error) return { ok: false, error: domain.error };
+
+  // Decision 7 — refuse writes to Shared Brain mirror domains.
+  const readonlyRefusal = await refuseIfReadonly(domain.value);
+  if (readonlyRefusal) return readonlyRefusal;
+
   const { type, issue } = args || {};
 
   if (!type || typeof type !== 'string') return { ok: false, error: 'type is required' };
@@ -150,6 +155,11 @@ export const undismissWikiIssueDefinition = {
 export async function undismissWikiIssueHandler(args, storage) {
   const domain = await resolveDomainArg(args, storage, getDefaultDomain);
   if (domain.error) return { ok: false, error: domain.error };
+
+  // Decision 7 — refuse writes to Shared Brain mirror domains.
+  const readonlyRefusal = await refuseIfReadonly(domain.value);
+  if (readonlyRefusal) return readonlyRefusal;
+
   const { type, issue } = args || {};
 
   if (!type || typeof type !== 'string') return { ok: false, error: 'type is required' };

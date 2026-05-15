@@ -1,0 +1,489 @@
+/**
+ * Shared Brain — HTTP routes (Phase 4A, v3.0.0-beta+)
+ *
+ * Mounted at /api/sharedbrain in src/server.js. All endpoints honour
+ * the `sharedBrainEnabled` feature flag via the `gate()` middleware —
+ * when the flag is false (the v2.8.0 default for existing users), every
+ * route returns 404 with a clear message. UI hides the section in
+ * parallel based on `GET /api/sharedbrain/feature-flag`.
+ *
+ * Endpoint inventory:
+ *
+ *   GET    /feature-flag           Is Shared Brain enabled on this install?
+ *   POST   /enable-flag            Flip the flag to true (opt-in for beta)
+ *
+ *   GET    /list                   List all connections (tokens masked)
+ *   POST   /save                   Insert / update a connection
+ *   DELETE /:id                    Remove connection from this machine
+ *
+ *   POST   /:id/push               Push contributions (SSE stream)
+ *   POST   /:id/pull               Pull collective updates (SSE stream)
+ *   POST   /:id/synthesize         Run synthesis locally (SSE stream)
+ *   POST   /:id/revoke             Admin-only revoke (Decision 6b)
+ *
+ *   POST   /parse-invite           Decode an invite token to its metadata
+ *   POST   /generate-invite        Encode metadata into an invite token
+ *   POST   /validate-pat           Live PAT validator against a real repo
+ *
+ * Security notes:
+ *   - The full PAT is NEVER returned in any list/get response. We use
+ *     getSharedBrains() (masked) for UI calls and getSharedBrainWithToken()
+ *     only for internal push/pull/synthesize/revoke.
+ *   - validate-pat takes the PAT in the request body, calls GitHub once,
+ *     and never persists the PAT until /save fires with the full record.
+ *   - parse-invite and generate-invite never touch credentials at all.
+ *   - revoke requires the connection's admin_token AND a literal
+ *     "REVOKE-<fellow_id>" confirmation string per Decision 6b.
+ */
+
+import { Router } from 'express';
+import { randomUUID } from 'crypto';
+
+import {
+  getSharedBrainEnabled,
+  setSharedBrainEnabled,
+} from '../brain/config.js';
+
+import {
+  getSharedBrains,
+  getSharedBrainWithToken,
+  saveSharedBrain,
+  removeSharedBrain,
+  patchSharedBrain,
+  newUuid,
+} from '../brain/sharedbrain-config.js';
+
+import { pushDomain, pullCollective } from '../brain/sharedbrain.js';
+import { runLocalSynthesis }          from '../brain/sharedbrain-synthesis.js';
+import { revokeContributor, hashAdminToken } from '../brain/sharedbrain-revoke.js';
+
+const router = Router();
+
+// ── Feature-flag gate ────────────────────────────────────────────────────
+//
+// All routes except feature-flag-read and feature-flag-enable check this
+// gate. When the flag is false, the entire surface is invisible to the
+// browser — 404 prevents probing/feature detection by malicious local code.
+
+function gate(req, res, next) {
+  if (!getSharedBrainEnabled()) {
+    return res.status(404).json({
+      error: 'Shared Brain is not enabled on this install. ' +
+        'POST /api/sharedbrain/enable-flag to opt in (beta).',
+    });
+  }
+  next();
+}
+
+// ── Validators ───────────────────────────────────────────────────────────
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const SLUG_RE = /^[a-z0-9][a-z0-9_-]{0,127}$/i;
+const REPO_RE = /^([A-Za-z0-9][A-Za-z0-9-]{0,38})\/([A-Za-z0-9._-]{1,100})$/;
+
+function isUuid(s) { return typeof s === 'string' && UUID_RE.test(s); }
+function isSlug(s) { return typeof s === 'string' && SLUG_RE.test(s); }
+
+// ── Invite token codec ───────────────────────────────────────────────────
+//
+// Format: sbi_<base64url(JSON)>. The JSON carries metadata only — repo,
+// display name, branch, shared_domain. NO credentials.
+//
+// Versioned via `v` field so future tokens can add fields without breaking
+// older Curator versions. v1 readers tolerate extra fields they don't know.
+
+const INVITE_VERSION = 1;
+const INVITE_PREFIX = 'sbi_';
+
+function base64UrlEncode(buf) {
+  return Buffer.from(buf).toString('base64')
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function base64UrlDecode(str) {
+  const pad = str.length % 4 === 0 ? '' : '='.repeat(4 - (str.length % 4));
+  return Buffer.from(
+    str.replace(/-/g, '+').replace(/_/g, '/') + pad,
+    'base64'
+  ).toString('utf8');
+}
+
+// Decision 6c — admin picks which IP mode applies cohort-wide. Encoded in
+// the invite token so every contributor's wizard sees the matching consent
+// text on their own machine.
+const VALID_DATA_HANDLING_TERMS = ['contributor_retains', 'organisational'];
+
+export function encodeInviteToken(metadata) {
+  if (!metadata || typeof metadata !== 'object') {
+    throw new Error('encodeInviteToken: metadata is required');
+  }
+  const payload = {
+    v: INVITE_VERSION,
+    storage_type: metadata.storage_type || 'github',
+    repo:          metadata.repo,
+    name:          metadata.name,
+    shared_domain: metadata.shared_domain,
+    branch:        metadata.branch || 'main',
+    data_handling_terms: metadata.data_handling_terms || 'contributor_retains',
+  };
+  // Sanity-check required fields BEFORE encoding so a bad invite token
+  // can't be generated in the first place.
+  if (!REPO_RE.test(payload.repo || '')) throw new Error('encodeInviteToken: repo must be "owner/name"');
+  if (typeof payload.name !== 'string' || !payload.name.trim()) throw new Error('encodeInviteToken: name is required');
+  if (!isSlug(payload.shared_domain)) throw new Error('encodeInviteToken: shared_domain must be slug-shaped');
+  if (!VALID_DATA_HANDLING_TERMS.includes(payload.data_handling_terms)) {
+    throw new Error(`encodeInviteToken: data_handling_terms must be one of ${VALID_DATA_HANDLING_TERMS.join(' | ')}`);
+  }
+  return INVITE_PREFIX + base64UrlEncode(JSON.stringify(payload));
+}
+
+export function decodeInviteToken(token) {
+  if (typeof token !== 'string' || !token.startsWith(INVITE_PREFIX)) {
+    throw new Error('Invite token must start with "sbi_"');
+  }
+  const body = token.slice(INVITE_PREFIX.length);
+  if (!/^[A-Za-z0-9_-]+$/.test(body)) {
+    throw new Error('Invite token contains invalid characters');
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(base64UrlDecode(body));
+  } catch {
+    throw new Error('Invite token is malformed (could not decode payload)');
+  }
+  if (!parsed || typeof parsed !== 'object') throw new Error('Invite token payload is not an object');
+  if (typeof parsed.v !== 'number' || parsed.v < 1) throw new Error('Invite token version is missing or invalid');
+  if (parsed.v > INVITE_VERSION) {
+    throw new Error(`Invite token uses version ${parsed.v}; this Curator install supports up to v${INVITE_VERSION}. Update The Curator.`);
+  }
+  if (!REPO_RE.test(parsed.repo || '')) throw new Error('Invite token: repo must be "owner/name"');
+  if (typeof parsed.name !== 'string' || !parsed.name.trim()) throw new Error('Invite token: name is required');
+  if (!isSlug(parsed.shared_domain)) throw new Error('Invite token: shared_domain must be slug-shaped');
+  if (parsed.branch) {
+    // Valid git ref name: alphanumeric start, no consecutive dots, no leading
+    // dot per path component. Belt-and-braces — the GitHub adapter would also
+    // reject malformed refs, but tighter validation upstream protects callers.
+    const okBranch = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$/.test(parsed.branch) && !parsed.branch.includes('..');
+    if (!okBranch) throw new Error('Invite token: branch is invalid (must be a valid git ref, no .. segments)');
+  }
+  if (parsed.storage_type && !['github', 'local', 'cloudflare-r2'].includes(parsed.storage_type)) {
+    throw new Error(`Invite token: unsupported storage_type "${parsed.storage_type}"`);
+  }
+  // Decision 6c — tolerate missing data_handling_terms for backward compat
+  // with v2.8.0 tokens; default to contributor_retains (the safer default).
+  if (parsed.data_handling_terms === undefined) {
+    parsed.data_handling_terms = 'contributor_retains';
+  }
+  if (!VALID_DATA_HANDLING_TERMS.includes(parsed.data_handling_terms)) {
+    throw new Error(`Invite token: unsupported data_handling_terms "${parsed.data_handling_terms}"`);
+  }
+  return parsed;
+}
+
+// ── Feature flag ─────────────────────────────────────────────────────────
+
+router.get('/feature-flag', (_req, res) => {
+  res.json({ enabled: getSharedBrainEnabled() });
+});
+
+router.post('/enable-flag', (_req, res) => {
+  try {
+    const enabled = setSharedBrainEnabled(true);
+    res.json({ enabled });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── List, save, remove ───────────────────────────────────────────────────
+
+router.get('/list', gate, (_req, res) => {
+  try {
+    res.json({ connections: getSharedBrains() });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/save', gate, (req, res) => {
+  try {
+    const conn = req.body && req.body.connection;
+    if (!conn || typeof conn !== 'object') {
+      return res.status(400).json({ error: 'connection object is required in body' });
+    }
+    // Caller may omit id / fellow_id for first save — assign UUIDs.
+    if (!conn.id)        conn.id        = newUuid();
+    if (!conn.fellow_id) conn.fellow_id = newUuid();
+    // Defaults for fields the wizard doesn't surface
+    if (!conn.pending_retry)  conn.pending_retry  = {};
+    if (!conn.permanent_skip) conn.permanent_skip = [];
+    if (conn.enabled === undefined) conn.enabled = true;
+    if (conn.attribute_by_name === undefined) conn.attribute_by_name = false;
+
+    const masked = saveSharedBrain(conn);
+    res.json({ connection: masked });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.delete('/:id', gate, (req, res) => {
+  try {
+    const id = req.params.id;
+    if (!isUuid(id)) return res.status(400).json({ error: 'id must be a UUID' });
+    const removed = removeSharedBrain(id);
+    if (!removed) return res.status(404).json({ error: 'connection not found' });
+    res.json({ removed: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── SSE helpers ──────────────────────────────────────────────────────────
+
+function openSseStream(res) {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+  return (data) => {
+    if (!res.writableEnded) res.write(`data: ${JSON.stringify(data)}\n\n`);
+  };
+}
+
+function loadConnectionOr404(id, res) {
+  if (!isUuid(id)) {
+    res.status(400).json({ error: 'id must be a UUID' });
+    return null;
+  }
+  const conn = getSharedBrainWithToken(id);
+  if (!conn) {
+    res.status(404).json({ error: 'connection not found' });
+    return null;
+  }
+  return conn;
+}
+
+// ── Push / Pull / Synthesize (SSE) ───────────────────────────────────────
+
+router.post('/:id/push', gate, async (req, res) => {
+  const conn = loadConnectionOr404(req.params.id, res);
+  if (!conn) return;
+
+  const localDomain = (req.body && req.body.local_domain) || conn.local_domains?.[0];
+  if (!isSlug(localDomain)) {
+    return res.status(400).json({ error: 'local_domain is required (or set in connection.local_domains[0])' });
+  }
+
+  const emit = openSseStream(res);
+  try {
+    const result = await pushDomain(conn, localDomain, {
+      onProgress: (stage, message, meta) => emit({ type: stage, message, ...meta }),
+    });
+    emit({ type: 'done', result });
+  } catch (err) {
+    console.error('[sharedbrain push]', err.message);
+    emit({ type: 'error', message: err.message });
+  } finally {
+    res.end();
+  }
+});
+
+router.post('/:id/pull', gate, async (req, res) => {
+  const conn = loadConnectionOr404(req.params.id, res);
+  if (!conn) return;
+
+  const emit = openSseStream(res);
+  try {
+    const result = await pullCollective(conn, {
+      onProgress: (stage, message, meta) => emit({ type: stage, message, ...meta }),
+    });
+    emit({ type: 'done', result });
+  } catch (err) {
+    console.error('[sharedbrain pull]', err.message);
+    emit({ type: 'error', message: err.message });
+  } finally {
+    res.end();
+  }
+});
+
+router.post('/:id/synthesize', gate, async (req, res) => {
+  const conn = loadConnectionOr404(req.params.id, res);
+  if (!conn) return;
+
+  const emit = openSseStream(res);
+  try {
+    const result = await runLocalSynthesis(conn, {
+      onProgress: (stage, message, meta) => emit({ type: stage, message, ...meta }),
+    });
+    emit({ type: 'done', result });
+  } catch (err) {
+    console.error('[sharedbrain synthesize]', err.message);
+    emit({ type: 'error', message: err.message });
+  } finally {
+    res.end();
+  }
+});
+
+// ── Revoke (admin-only, Decision 6b) ─────────────────────────────────────
+
+router.post('/:id/revoke', gate, async (req, res) => {
+  const conn = loadConnectionOr404(req.params.id, res);
+  if (!conn) return;
+
+  const { admin_token, fellow_id, confirmation } = req.body || {};
+
+  // The admin_token in the body must match the one stored in the connection.
+  // (Connections used by non-admin contributors won't have an admin_token at
+  // all — only the connection cohort admin has stored theirs.)
+  if (!conn.admin_token || typeof admin_token !== 'string' || admin_token !== conn.admin_token) {
+    return res.status(403).json({ error: 'admin_token is required and must match the connection' });
+  }
+  if (!isUuid(fellow_id)) {
+    return res.status(400).json({ error: 'fellow_id must be a UUID' });
+  }
+  if (confirmation !== `REVOKE-${fellow_id}`) {
+    return res.status(400).json({
+      error: `confirmation must be the literal string "REVOKE-${fellow_id}"`,
+    });
+  }
+
+  // Phase 4F (v3.0.0-beta+) — full Article 17 revocation orchestration.
+  // SSE-streamed because pages-rebuild on a moderate brain can take 30s+.
+  const emit = openSseStream(res);
+  try {
+    const result = await revokeContributor(conn, {
+      fellowId: fellow_id,
+      adminTokenHash: hashAdminToken(admin_token),
+      onProgress: (stage, message, meta) => emit({ type: stage, message, ...meta }),
+    });
+    if (!result.ok) {
+      emit({ type: 'error', message: result.error || 'Revoke failed' });
+    } else {
+      emit({ type: 'done', result });
+    }
+  } catch (err) {
+    console.error('[sharedbrain revoke]', err.message);
+    emit({ type: 'error', message: err.message });
+  } finally {
+    res.end();
+  }
+});
+
+// ── Invite-token utilities (no credentials touched) ──────────────────────
+
+router.post('/parse-invite', gate, (req, res) => {
+  try {
+    const { token } = req.body || {};
+    if (typeof token !== 'string') {
+      return res.status(400).json({ error: 'token (string) is required' });
+    }
+    const metadata = decodeInviteToken(token);
+    res.json({ valid: true, metadata });
+  } catch (err) {
+    res.status(400).json({ valid: false, error: err.message });
+  }
+});
+
+router.post('/generate-invite', gate, (req, res) => {
+  try {
+    const { repo, name, shared_domain, branch, storage_type, data_handling_terms } = req.body || {};
+    const token = encodeInviteToken({ repo, name, shared_domain, branch, storage_type, data_handling_terms });
+    res.json({ token });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// ── Live PAT validation (server-proxy, Decision Q2) ──────────────────────
+//
+// Called by the wizard the moment the user pastes their PAT. The PAT
+// travels from the browser to localhost:3333 only — never out to the
+// network from the browser. The Curator server makes the one GitHub
+// call needed to verify the PAT works on the specified repo with write
+// access, returns a clean verdict, and forgets the PAT (we never persist
+// here — persistence happens on /save after the user finishes the wizard).
+
+router.post('/validate-pat', gate, async (req, res) => {
+  try {
+    const { repo, pat } = req.body || {};
+
+    if (typeof repo !== 'string' || !REPO_RE.test(repo)) {
+      return res.status(400).json({ error: 'repo must be "owner/name"' });
+    }
+    if (typeof pat !== 'string' || pat.length < 20 || pat.length > 400) {
+      return res.status(400).json({ error: 'pat is required (fine-grained PAT, 20-400 chars)' });
+    }
+
+    // Step 1: Authenticate via GET /repos/:owner/:repo
+    const [owner, name] = repo.split('/');
+    const headers = {
+      Accept: 'application/vnd.github+json',
+      Authorization: `Bearer ${pat}`,
+      'User-Agent': 'the-curator-sharedbrain-validator',
+      'X-GitHub-Api-Version': '2022-11-28',
+    };
+    const url = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}`;
+    const r = await fetch(url, { method: 'GET', headers });
+
+    if (r.status === 401 || r.status === 403) {
+      return res.json({
+        valid: false,
+        hasWriteAccess: false,
+        error: 'GitHub rejected the token (401/403). Check that the token is pasted correctly and that the admin has added you as a collaborator on this repo.',
+      });
+    }
+    if (r.status === 404) {
+      return res.json({
+        valid: false,
+        hasWriteAccess: false,
+        error: 'Repository not found, or your token does not have access. Ask the admin to confirm the repo URL and to add you as a collaborator.',
+      });
+    }
+    if (!r.ok) {
+      return res.json({
+        valid: false,
+        hasWriteAccess: false,
+        error: `GitHub returned ${r.status} — try again in a moment.`,
+      });
+    }
+
+    // Step 2: Determine write access. GitHub returns `permissions.push` on
+    // authenticated repo lookups; true means the token has write access.
+    let body;
+    try { body = await r.json(); } catch { body = {}; }
+    const hasWriteAccess = !!(body && body.permissions && body.permissions.push);
+
+    res.json({
+      valid: true,
+      hasWriteAccess,
+      repoFullName: body.full_name || repo,
+      isPrivate: !!body.private,
+      defaultBranch: body.default_branch || 'main',
+      // Helpful diagnostic that does NOT leak the token: tells the user
+      // what their token currently sees on the repo. A non-write token
+      // returns valid:true + hasWriteAccess:false so the wizard can
+      // show the "go fix your token scopes" hint.
+      message: hasWriteAccess
+        ? 'Token is valid and has write access.'
+        : 'Token works but is read-only. Re-create with Contents: Read AND write.',
+    });
+  } catch (err) {
+    // Network errors etc. Never include the PAT in the response.
+    console.error('[sharedbrain validate-pat]', err.message);
+    res.status(500).json({
+      valid: false,
+      error: `Could not reach GitHub: ${err.message}`,
+    });
+  }
+});
+
+export default router;
+
+// Exposed for the battle test only.
+export const __testing = {
+  encodeInviteToken,
+  decodeInviteToken,
+  INVITE_VERSION,
+  INVITE_PREFIX,
+};

@@ -770,7 +770,972 @@ document.querySelector('[data-tab="sync"]').addEventListener('click', () => {
     syncTabInitialised = true;
     initSyncTab();
   }
+  // Shared Brain refreshes on every tab open so connection-card stats
+  // (last push / last pull) stay current after operations elsewhere.
+  initSharedBrainSection();
 });
+
+// ── SHARED BRAINS (v3.0.0-beta+) ──────────────────────────────────────────────
+//
+// All endpoints under /api/sharedbrain/* respect the sharedBrainEnabled flag.
+// Section is hidden entirely when the flag is off; an opt-in CTA appears
+// instead. Flipping the flag is one POST away — UI updates immediately.
+
+const sbChecking = () => document.getElementById('sharedbrain-checking');
+const sbOptin    = () => document.getElementById('sharedbrain-optin');
+const sbSection  = () => document.getElementById('sharedbrain-section');
+const sbEmpty    = () => document.getElementById('sharedbrain-empty');
+const sbList     = () => document.getElementById('sharedbrain-list');
+const sbAddMore  = () => document.getElementById('sharedbrain-add-more');
+
+async function initSharedBrainSection() {
+  const checking = sbChecking();
+  if (!checking) return; // index.html doesn't have the section (older app file?)
+  showEl(checking);
+  hideEl(sbOptin());
+  hideEl(sbSection());
+
+  try {
+    const flagRes = await fetch('/api/sharedbrain/feature-flag');
+    const flag    = await flagRes.json();
+    hideEl(checking);
+
+    if (!flag.enabled) {
+      showEl(sbOptin());
+      return;
+    }
+
+    showEl(sbSection());
+    await refreshSharedBrainList();
+  } catch (err) {
+    hideEl(checking);
+    showEl(sbOptin()); // fall back to opt-in if API errored
+    console.error('[sharedbrain] init failed', err);
+  }
+}
+
+// Opt-in button — flips the feature flag and shows the full section
+function bindSharedBrainOptin() {
+  const btn = document.getElementById('sharedbrain-enable-btn');
+  if (!btn) return;
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    btn.textContent = 'Enabling…';
+    try {
+      const r = await fetch('/api/sharedbrain/enable-flag', { method: 'POST' });
+      const j = await r.json();
+      if (!j.enabled) throw new Error(j.error || 'Could not enable Shared Brain');
+      hideEl(sbOptin());
+      showEl(sbSection());
+      await refreshSharedBrainList();
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = 'Enable Shared Brain (beta)';
+      alert(`Could not enable Shared Brain: ${err.message}`);
+    }
+  });
+}
+
+async function refreshSharedBrainList() {
+  try {
+    const r = await fetch('/api/sharedbrain/list');
+    if (!r.ok) {
+      // 404 = flag flipped off externally; resync state
+      if (r.status === 404) return initSharedBrainSection();
+      throw new Error(`list failed: ${r.status}`);
+    }
+    const j = await r.json();
+    const conns = Array.isArray(j.connections) ? j.connections : [];
+
+    if (conns.length === 0) {
+      showEl(sbEmpty());
+      hideEl(sbList());
+      hideEl(sbAddMore());
+    } else {
+      hideEl(sbEmpty());
+      showEl(sbList());
+      showEl(sbAddMore());
+      renderSharedBrainList(conns);
+    }
+  } catch (err) {
+    console.error('[sharedbrain] refresh failed', err);
+  }
+}
+
+function renderSharedBrainList(connections) {
+  const list = sbList();
+  list.innerHTML = '';
+  for (const c of connections) {
+    list.appendChild(renderSharedBrainCard(c));
+  }
+}
+
+function formatRelativeTime(iso) {
+  if (!iso) return 'never';
+  const then = new Date(iso);
+  if (Number.isNaN(then.getTime())) return 'never';
+  const now = new Date();
+  const diffMs = now - then;
+  const sec = Math.floor(diffMs / 1000);
+  if (sec < 60) return 'just now';
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min} min ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr} hr ago`;
+  const day = Math.floor(hr / 24);
+  if (day < 7) return `${day} day${day !== 1 ? 's' : ''} ago`;
+  return then.toLocaleDateString();
+}
+
+function renderSharedBrainCard(conn) {
+  const card = document.createElement('div');
+  card.className = 'sharedbrain-card';
+  card.dataset.id = conn.id;
+
+  const repoUrl =
+    conn.storage_type === 'github' && conn.github_repo_owner && conn.github_repo_name
+      ? `https://github.com/${conn.github_repo_owner}/${conn.github_repo_name}`
+      : '';
+  const repoLabel =
+    conn.storage_type === 'github'
+      ? `${conn.github_repo_owner}/${conn.github_repo_name}`
+      : conn.storage_type === 'local'
+      ? `local: ${conn.local_storage_path}`
+      : conn.storage_type;
+
+  const localDomains = Array.isArray(conn.local_domains) && conn.local_domains.length
+    ? conn.local_domains.join(', ')
+    : '(none configured)';
+  const fellowShort = (conn.fellow_id || '').slice(0, 8);
+
+  // Card body uses only static HTML — every dynamic value is set via
+  // textContent or DOM property assignment below. This is the chokepoint
+  // that prevents XSS from any field the server might pass back (label,
+  // repo, fellow_display_name, etc.). NEVER interpolate dynamic data into
+  // this template string.
+  card.innerHTML = `
+    <div class="sharedbrain-card-header">
+      <h4 class="sharedbrain-card-title">🧠 <span data-field="label"></span></h4>
+      <span class="sharedbrain-card-repo" data-field="repo"></span>
+    </div>
+    <div class="sharedbrain-card-stats">
+      <span><span class="sharedbrain-card-stat-label">Last pushed:</span> <span data-field="last-pushed"></span></span>
+      <span><span class="sharedbrain-card-stat-label">Last pulled:</span> <span data-field="last-pulled"></span></span>
+      <span><span class="sharedbrain-card-stat-label">Domains:</span> <span data-field="domains"></span></span>
+    </div>
+    <div class="sharedbrain-card-actions">
+      <button class="btn primary" data-action="push">Push contributions</button>
+      <button class="btn" data-action="pull">Pull updates</button>
+    </div>
+    <div class="sharedbrain-card-status" data-field="status"></div>
+    <details class="sharedbrain-card-advanced">
+      <summary>Advanced</summary>
+      <div class="sharedbrain-card-advanced-body">
+        <button class="btn" data-action="synthesize">Run synthesis (admin)</button>
+        <span class="sharedbrain-card-meta-pill" data-field="fellow-id"></span>
+        <button class="btn sync-disconnect-btn" data-action="disconnect">Disconnect</button>
+      </div>
+    </details>
+  `;
+
+  // Populate text-content fields. textContent (and DOM property assignments
+  // like Element.href) escape automatically — much safer than HTML
+  // interpolation. Validation in validateConnection ensures owner/name
+  // are slug-shaped before they ever reach us, but defence in depth.
+  card.querySelector('[data-field="label"]').textContent = conn.label || '(unnamed)';
+  card.querySelector('[data-field="last-pushed"]').textContent = formatRelativeTime(conn.last_push_at);
+  card.querySelector('[data-field="last-pulled"]').textContent = formatRelativeTime(conn.last_pull_at);
+  card.querySelector('[data-field="domains"]').textContent = localDomains;
+  card.querySelector('[data-field="fellow-id"]').textContent = `fellow ${fellowShort}…`;
+
+  // Repo cell — promote the span to an anchor when we have a URL.
+  const repoCell = card.querySelector('[data-field="repo"]');
+  repoCell.textContent = repoLabel;
+  if (repoUrl) {
+    const a = document.createElement('a');
+    a.className = 'sharedbrain-card-repo';
+    a.dataset.field = 'repo';
+    a.href = repoUrl;                  // Element.href setter URL-encodes properly
+    a.target = '_blank';
+    a.rel = 'noopener';
+    a.textContent = repoLabel;
+    repoCell.replaceWith(a);
+  }
+
+  // Hook actions
+  card.querySelectorAll('button[data-action]').forEach(btn => {
+    btn.addEventListener('click', () => onSharedBrainAction(conn.id, btn.dataset.action, card));
+  });
+
+  return card;
+}
+
+async function onSharedBrainAction(connId, action, card) {
+  const statusEl = card.querySelector('[data-field="status"]');
+  const buttons  = card.querySelectorAll('button[data-action]');
+
+  function setStatus(msg, isError = false) {
+    statusEl.textContent = msg;
+    statusEl.classList.toggle('error', isError);
+    statusEl.classList.add('active');
+  }
+
+  if (action === 'disconnect') {
+    if (!confirm('Disconnect this Shared Brain? This removes it from THIS computer only — the shared repo and other contributors are not affected.')) return;
+    try {
+      const r = await fetch(`/api/sharedbrain/${connId}`, { method: 'DELETE' });
+      if (!r.ok) {
+        const j = await r.json().catch(() => ({}));
+        throw new Error(j.error || `disconnect failed: ${r.status}`);
+      }
+      await refreshSharedBrainList();
+    } catch (err) {
+      alert(`Could not disconnect: ${err.message}`);
+    }
+    return;
+  }
+
+  if (!['push', 'pull', 'synthesize'].includes(action)) return;
+
+  // Disable buttons while the SSE stream runs
+  buttons.forEach(b => { b.disabled = true; });
+  setStatus(`Starting ${action}…`);
+
+  try {
+    const r = await fetch(`/api/sharedbrain/${connId}/${action}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+
+    if (!r.ok) {
+      const j = await r.json().catch(() => ({}));
+      throw new Error(j.error || `${action} returned ${r.status}`);
+    }
+
+    // Parse SSE stream
+    const reader = r.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let lastMessage = '';
+    let hadError = false;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const events = buffer.split('\n\n');
+      buffer = events.pop();
+      for (const event of events) {
+        if (!event.startsWith('data:')) continue;
+        try {
+          const payload = JSON.parse(event.slice(5).trim());
+          if (payload.type === 'error') {
+            hadError = true;
+            setStatus(`Error: ${payload.message}`, true);
+          } else if (payload.type === 'done') {
+            const summary = payload.result && payload.result.message
+              ? payload.result.message
+              : `${action} completed.`;
+            setStatus(summary);
+          } else if (payload.message) {
+            lastMessage = payload.message;
+            setStatus(lastMessage);
+          }
+        } catch { /* malformed SSE frame — ignore */ }
+      }
+    }
+
+    if (!hadError) {
+      // Refresh the list so updated last_push_at/last_pull_at appears.
+      await refreshSharedBrainList();
+    }
+  } catch (err) {
+    setStatus(`Error: ${err.message}`, true);
+  } finally {
+    buttons.forEach(b => { b.disabled = false; });
+  }
+}
+
+// ── Shared Brain Wizard — Phase 4D (contributor path) ──────────────────────
+
+const sbWizard = {
+  state: {
+    mode: 'join', // 'join' or 'create' — 'create' lands in Phase 4E
+    inviteMetadata: null,    // {repo, name, branch, shared_domain, ...}
+    pat: '',
+    patValidation: null,      // {valid, hasWriteAccess, isPrivate, defaultBranch, message}
+    selectedDomains: new Set(),
+    displayName: '',
+    attributeByName: false,
+    consent: false,
+    currentStep: 1,
+    saveInProgress: false,
+    slugManuallyEdited: false,    // admin path: auto-derive slug until user overrides
+    generatedInviteToken: null,   // admin path: token shown on Step 2
+  },
+  reset() {
+    this.state = {
+      mode: 'join',
+      inviteMetadata: null,
+      pat: '',
+      patValidation: null,
+      selectedDomains: new Set(),
+      displayName: '',
+      attributeByName: false,
+      consent: false,
+      currentStep: 1,
+      saveInProgress: false,
+      slugManuallyEdited: false,
+      generatedInviteToken: null,
+    };
+  },
+};
+
+function openSharedBrainWizard(mode) {
+  sbWizard.reset();
+  sbWizard.state.mode = mode || 'join';
+
+  // Wizard title varies by mode
+  const titleEl = document.getElementById('sb-wizard-title');
+  const subtitleEl = document.getElementById('sb-wizard-subtitle');
+  if (titleEl) {
+    titleEl.textContent = sbWizard.state.mode === 'create'
+      ? 'Set up a new Shared Brain'
+      : 'Join a Shared Brain';
+  }
+  if (subtitleEl) {
+    subtitleEl.textContent = sbWizard.state.mode === 'create'
+      ? 'Create one for your cohort, team, or research group.'
+      : "Connect to your cohort's collective wiki.";
+  }
+
+  // Clear contributor-path inputs
+  const inviteInput = document.getElementById('sb-invite-token');
+  if (inviteInput) inviteInput.value = '';
+  const patInput = document.getElementById('sb-pat-input');
+  if (patInput) { patInput.value = ''; patInput.type = 'password'; }
+  const previewEl = document.getElementById('sb-invite-preview');
+  if (previewEl) previewEl.classList.add('hidden');
+  const patValidationEl = document.getElementById('sb-pat-validation');
+  if (patValidationEl) {
+    patValidationEl.classList.add('hidden');
+    patValidationEl.className = 'sb-pat-validation hidden';
+    patValidationEl.textContent = '';
+  }
+  const consentEl = document.getElementById('sb-consent');
+  if (consentEl) consentEl.checked = false;
+  const nameEl = document.getElementById('sb-display-name');
+  if (nameEl) nameEl.value = '';
+  const attrEl = document.getElementById('sb-attribute-name');
+  if (attrEl) attrEl.checked = false;
+
+  // Clear admin-path inputs
+  for (const id of ['sb-admin-repo', 'sb-admin-name', 'sb-admin-shared-domain']) {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  }
+  const branchEl = document.getElementById('sb-admin-branch');
+  if (branchEl) branchEl.value = 'main';
+  const dhtDefault = document.querySelector('input[name="sb-admin-dht"][value="contributor_retains"]');
+  if (dhtDefault) dhtDefault.checked = true;
+  const adminTokenDisplay = document.getElementById('sb-admin-invite-token');
+  if (adminTokenDisplay) adminTokenDisplay.textContent = 'sbi_…';
+
+  // Reset disabled-button state
+  document.getElementById('sb-step1-next').disabled = true;
+  document.getElementById('sb-step3-next').disabled = true;
+  document.getElementById('sb-step5-save').disabled = true;
+  for (const stepId of ['sb-step1-status', 'sb-step5-status', 'sb-admin-step1-status']) {
+    const el = document.getElementById(stepId);
+    if (el) { el.classList.add('hidden'); el.textContent = ''; }
+  }
+
+  sbWizardGoToStep(1);
+  document.getElementById('sharedbrain-wizard').classList.remove('hidden');
+}
+
+function closeSharedBrainWizard() {
+  document.getElementById('sharedbrain-wizard').classList.add('hidden');
+}
+
+// Step IDs by mode. Admin path replaces contributor steps 1 & 2 with its
+// own setup + invite-display panels; steps 3-5 are shared between modes.
+const SB_STEP_PANELS = {
+  join: ['sb-step-1', 'sb-step-2', 'sb-step-3', 'sb-step-4', 'sb-step-5'],
+  create: ['sb-admin-step-1', 'sb-admin-step-2', 'sb-step-3', 'sb-step-4', 'sb-step-5'],
+};
+
+const SB_STEP_LABELS = {
+  join:   ['Token', 'Access', 'PAT', 'Domains', 'Save'],
+  create: ['Setup', 'Invite', 'PAT', 'Domains', 'Save'],
+};
+
+function sbWizardGoToStep(n) {
+  sbWizard.state.currentStep = n;
+  const mode = sbWizard.state.mode || 'join';
+  const panelIds = SB_STEP_PANELS[mode] || SB_STEP_PANELS.join;
+  // Hide every wizard panel (both modes), then show only the active one.
+  const allPanelIds = new Set([...SB_STEP_PANELS.join, ...SB_STEP_PANELS.create]);
+  for (const id of allPanelIds) {
+    const panel = document.getElementById(id);
+    if (panel) panel.classList.add('hidden');
+  }
+  const activeId = panelIds[n - 1];
+  const active = activeId ? document.getElementById(activeId) : null;
+  if (active) active.classList.remove('hidden');
+
+  // Update progress indicator labels + active/done states
+  const labels = SB_STEP_LABELS[mode] || SB_STEP_LABELS.join;
+  const steps = document.querySelectorAll('.sb-progress .ob-step');
+  steps.forEach(el => {
+    const num = Number(el.dataset.step);
+    el.classList.toggle('active', num === n);
+    el.classList.toggle('done', num < n);
+    const labelEl = el.querySelector(`[data-label="step${num}"]`);
+    if (labelEl && labels[num - 1]) labelEl.textContent = labels[num - 1];
+  });
+}
+
+// ── Step 1: invite token paste + decode ────────────────────────────────────
+
+function bindSharedBrainWizardStep1() {
+  const input  = document.getElementById('sb-invite-token');
+  const preview = document.getElementById('sb-invite-preview');
+  const nextBtn = document.getElementById('sb-step1-next');
+  const statusEl = document.getElementById('sb-step1-status');
+  if (!input) return;
+
+  let debounce = null;
+  input.addEventListener('input', () => {
+    clearTimeout(debounce);
+    nextBtn.disabled = true;
+    statusEl.classList.add('hidden');
+    preview.classList.add('hidden');
+    const token = input.value.trim();
+    if (!token) return;
+    debounce = setTimeout(async () => {
+      try {
+        const r = await fetch('/api/sharedbrain/parse-invite', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token }),
+        });
+        const j = await r.json();
+        if (!j.valid) {
+          statusEl.textContent = j.error || 'Invite token is invalid.';
+          statusEl.className = 'status error';
+          statusEl.classList.remove('hidden');
+          return;
+        }
+        sbWizard.state.inviteMetadata = j.metadata;
+        preview.querySelector('[data-field="name"]').textContent = j.metadata.name;
+        preview.querySelector('[data-field="repo"]').textContent = j.metadata.repo;
+        preview.querySelector('[data-field="branch"]').textContent = j.metadata.branch || 'main';
+        preview.querySelector('[data-field="shared_domain"]').textContent = j.metadata.shared_domain;
+        preview.classList.remove('hidden');
+        nextBtn.disabled = false;
+      } catch (err) {
+        statusEl.textContent = `Could not parse token: ${err.message}`;
+        statusEl.className = 'status error';
+        statusEl.classList.remove('hidden');
+      }
+    }, 280);
+  });
+
+  nextBtn.addEventListener('click', () => sbWizardGoToStep(2));
+}
+
+// ── Step 2: confirm GitHub access ──────────────────────────────────────────
+
+function bindSharedBrainWizardStep2() {
+  const next  = document.getElementById('sb-step2-next');
+  if (!next) return;
+  next.addEventListener('click', () => {
+    // Populate the repo link on entry
+    const meta = sbWizard.state.inviteMetadata;
+    const link = document.getElementById('sb-repo-link');
+    if (link && meta) link.href = `https://github.com/${meta.repo}`;
+    sbWizardGoToStep(3);
+
+    // Also prep the PAT-create deep link with the right token name
+    const patLink = document.getElementById('sb-pat-create-link');
+    if (patLink && meta) {
+      const name = `Curator Shared Brain - ${meta.name}`.slice(0, 60);
+      patLink.href = `https://github.com/settings/personal-access-tokens/new?name=${encodeURIComponent(name)}`;
+    }
+  });
+}
+
+// Update sb-repo-link href when step 2 becomes visible, even if user backs in
+function refreshStep2Links() {
+  const meta = sbWizard.state.inviteMetadata;
+  if (!meta) return;
+  const repoLink = document.getElementById('sb-repo-link');
+  if (repoLink) repoLink.href = `https://github.com/${meta.repo}`;
+  const patLink = document.getElementById('sb-pat-create-link');
+  if (patLink) {
+    const name = `Curator Shared Brain - ${meta.name}`.slice(0, 60);
+    patLink.href = `https://github.com/settings/personal-access-tokens/new?name=${encodeURIComponent(name)}`;
+  }
+}
+
+// ── Step 3: PAT paste + live validation ────────────────────────────────────
+
+function bindSharedBrainWizardStep3() {
+  const input  = document.getElementById('sb-pat-input');
+  const validation = document.getElementById('sb-pat-validation');
+  const nextBtn = document.getElementById('sb-step3-next');
+  if (!input) return;
+
+  function setValidation(state, message) {
+    validation.className = `sb-pat-validation ${state}`;
+    validation.textContent = message;
+    validation.classList.remove('hidden');
+  }
+
+  let debounce = null;
+  input.addEventListener('input', () => {
+    clearTimeout(debounce);
+    nextBtn.disabled = true;
+    const pat = input.value.trim();
+
+    if (!pat) {
+      validation.classList.add('hidden');
+      return;
+    }
+    if (pat.length < 20) {
+      setValidation('checking', 'Token looks too short — keep pasting.');
+      return;
+    }
+
+    debounce = setTimeout(async () => {
+      const meta = sbWizard.state.inviteMetadata;
+      if (!meta) {
+        setValidation('err', 'Lost the invite metadata — go back to step 1.');
+        return;
+      }
+      setValidation('checking', 'Checking your token against GitHub…');
+      try {
+        const r = await fetch('/api/sharedbrain/validate-pat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ repo: meta.repo, pat }),
+        });
+        const j = await r.json();
+        sbWizard.state.patValidation = j;
+        sbWizard.state.pat = pat;
+
+        if (!j.valid) {
+          setValidation('err', j.error || 'Token rejected by GitHub.');
+          return;
+        }
+        if (!j.hasWriteAccess) {
+          setValidation('warn',
+            '⚠️ Token works but is read-only. Re-create with Contents: Read AND write, then re-paste.');
+          return;
+        }
+        setValidation('ok',
+          `✓ Token verified. Authenticated against ${j.repoFullName || meta.repo}.`);
+        nextBtn.disabled = false;
+      } catch (err) {
+        setValidation('err', `Could not reach the Curator server: ${err.message}`);
+      }
+    }, 400);
+  });
+
+  nextBtn.addEventListener('click', () => {
+    sbWizardGoToStep(4);
+    populateSharedBrainDomains();
+  });
+}
+
+// ── Step 4: pick personal domains + display name ───────────────────────────
+
+async function populateSharedBrainDomains() {
+  const container = document.getElementById('sb-domain-checkboxes');
+  if (!container) return;
+  container.innerHTML = '<p class="hint">Loading domains…</p>';
+
+  try {
+    const r = await fetch('/api/domains');
+    const j = await r.json();
+    const domains = Array.isArray(j) ? j : (j.domains || []);
+    // Filter out shared-* mirror domains — never contribute from a mirror
+    const eligible = domains.filter(d => {
+      const name = typeof d === 'string' ? d : d.name;
+      return name && !name.startsWith('shared-');
+    });
+
+    if (eligible.length === 0) {
+      container.innerHTML = '<p class="hint">No personal domains found. <a href="#" onclick="document.querySelector(\'[data-tab=domains]\').click(); return false;">Create one first</a>, then come back.</p>';
+      return;
+    }
+
+    container.innerHTML = '';
+    for (const d of eligible) {
+      const name = typeof d === 'string' ? d : d.name;
+      const label = document.createElement('label');
+      label.className = 'sb-checkbox-label';
+      label.innerHTML = `
+        <input type="checkbox" value="" />
+        <span></span>
+      `;
+      const cb = label.querySelector('input');
+      cb.value = name;
+      label.querySelector('span').textContent = name;
+      cb.addEventListener('change', () => {
+        if (cb.checked) sbWizard.state.selectedDomains.add(name);
+        else            sbWizard.state.selectedDomains.delete(name);
+      });
+      container.appendChild(label);
+    }
+  } catch (err) {
+    container.textContent = '';
+    const p = document.createElement('p');
+    p.className = 'status error';
+    p.textContent = `Could not load domains: ${err.message}`;
+    container.appendChild(p);
+  }
+}
+
+function bindSharedBrainWizardStep4() {
+  const nameEl = document.getElementById('sb-display-name');
+  const attrEl = document.getElementById('sb-attribute-name');
+  const next   = document.getElementById('sb-step4-next');
+  if (!next) return;
+
+  if (nameEl) nameEl.addEventListener('input', () => {
+    sbWizard.state.displayName = nameEl.value.trim();
+  });
+  if (attrEl) attrEl.addEventListener('change', () => {
+    sbWizard.state.attributeByName = attrEl.checked;
+  });
+
+  next.addEventListener('click', () => {
+    // Validate at least one domain selected
+    if (sbWizard.state.selectedDomains.size === 0) {
+      alert('Please select at least one personal domain to contribute. (You can change this later.)');
+      return;
+    }
+    if (!sbWizard.state.displayName) {
+      // Default display name = "Fellow <short fellow_id>" — we don't have a fellow_id yet
+      // (server assigns it on save). Use a generic placeholder.
+      sbWizard.state.displayName = 'Anonymous Fellow';
+    }
+    refreshConsentTextForMode();
+    populateSharedBrainReview();
+    sbWizardGoToStep(5);
+  });
+}
+
+// ── Step 5: review + consent + save ────────────────────────────────────────
+
+function populateSharedBrainReview() {
+  const meta = sbWizard.state.inviteMetadata;
+  const box  = document.querySelector('.sb-review-box');
+  if (!box || !meta) return;
+  box.querySelector('[data-field="name"]').textContent = meta.name;
+  box.querySelector('[data-field="repo"]').textContent = meta.repo;
+  box.querySelector('[data-field="domains"]').textContent =
+    [...sbWizard.state.selectedDomains].join(', ') || '(none)';
+  box.querySelector('[data-field="display-name"]').textContent = sbWizard.state.displayName;
+  box.querySelector('[data-field="attribution"]').textContent =
+    sbWizard.state.attributeByName
+      ? 'show name (admin must also enable cohort-side)'
+      : 'anonymous UUID (default)';
+}
+
+function bindSharedBrainWizardStep5() {
+  const consent = document.getElementById('sb-consent');
+  const save    = document.getElementById('sb-step5-save');
+  const status  = document.getElementById('sb-step5-status');
+  if (!consent || !save) return;
+
+  consent.addEventListener('change', () => {
+    sbWizard.state.consent = consent.checked;
+    save.disabled = !consent.checked || sbWizard.state.saveInProgress;
+  });
+
+  save.addEventListener('click', async () => {
+    if (!sbWizard.state.consent) return;
+    sbWizard.state.saveInProgress = true;
+    save.disabled = true;
+    save.textContent = 'Saving…';
+    status.classList.add('hidden');
+
+    const meta = sbWizard.state.inviteMetadata;
+    // Generate a slug derived from the brain name for the local mirror.
+    const brainSlug = meta.name.toLowerCase()
+      .replace(/[^a-z0-9-]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 40) || 'cohort';
+
+    const connection = {
+      label: meta.name,
+      storage_type: meta.storage_type || 'github',
+      github_repo_owner: meta.repo.split('/')[0],
+      github_repo_name:  meta.repo.split('/')[1],
+      github_pat:        sbWizard.state.pat,
+      github_branch:     meta.branch || 'main',
+      fellow_display_name: sbWizard.state.displayName,
+      shared_domain:       meta.shared_domain,
+      shared_brain_slug:   brainSlug,
+      local_domains:       [...sbWizard.state.selectedDomains],
+      attribute_by_name:   sbWizard.state.attributeByName,
+      enabled: true,
+    };
+
+    try {
+      const r = await fetch('/api/sharedbrain/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ connection }),
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || 'Save failed');
+
+      closeSharedBrainWizard();
+      await refreshSharedBrainList();
+    } catch (err) {
+      status.textContent = `Could not save: ${err.message}`;
+      status.className = 'status error';
+      status.classList.remove('hidden');
+      save.textContent = 'Save & Connect';
+      sbWizard.state.saveInProgress = false;
+      save.disabled = false;
+    }
+  });
+}
+
+// ── Wizard chrome (close, back buttons, password toggles) ──────────────────
+
+function bindSharedBrainWizardChrome() {
+  const closeBtn = document.getElementById('sb-wizard-close');
+  if (closeBtn) closeBtn.addEventListener('click', closeSharedBrainWizard);
+
+  // Back / Cancel buttons inside each panel
+  document.querySelectorAll('#sharedbrain-wizard .ob-actions .btn[data-action]').forEach(btn => {
+    const action = btn.dataset.action;
+    btn.addEventListener('click', () => {
+      if (action === 'close') {
+        closeSharedBrainWizard();
+      } else if (action === 'back') {
+        const n = sbWizard.state.currentStep;
+        if (n > 1) {
+          sbWizardGoToStep(n - 1);
+          // Re-prep step-2 links if user goes back there
+          if (n - 1 === 2) refreshStep2Links();
+        }
+      }
+    });
+  });
+
+  // Eye-icon password toggle for PAT field (reuses .toggle-vis from existing app)
+  document.querySelectorAll('#sharedbrain-wizard .toggle-vis').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.target;
+      const input = document.getElementById(id);
+      if (!input) return;
+      input.type = input.type === 'password' ? 'text' : 'password';
+    });
+  });
+}
+
+// ── CTA buttons wired to open the wizard ───────────────────────────────────
+
+function bindSharedBrainCtas() {
+  // Contributor path
+  for (const id of ['sharedbrain-join-btn', 'sharedbrain-join-btn-2']) {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('click', () => openSharedBrainWizard('join'));
+  }
+  // Admin path (Phase 4E)
+  for (const id of ['sharedbrain-create-btn', 'sharedbrain-create-btn-2']) {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('click', () => openSharedBrainWizard('create'));
+  }
+}
+
+// ── Admin Step 1: collect form, generate invite token, advance to Step 2 ──
+
+function slugifyForSharedDomain(text) {
+  return (text || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, '-')   // anything not a slug char → hyphen
+    .replace(/^-+|-+$/g, '')          // trim leading/trailing hyphens
+    .replace(/-{2,}/g, '-')           // collapse runs of hyphens
+    .slice(0, 40);
+}
+
+function bindSharedBrainAdminStep1() {
+  const next = document.getElementById('sb-admin-step1-next');
+  const status = document.getElementById('sb-admin-step1-status');
+  if (!next) return;
+
+  // Auto-derive the "folder inside the repo" slug from the brain name as
+  // the user types — until the user manually edits the slug field, at
+  // which point we respect their override and stop auto-filling.
+  // The "manually edited" state lives on sbWizard.state so it resets on
+  // every openSharedBrainWizard() call (otherwise a previous session's
+  // manual edit would freeze auto-derive forever).
+  const nameEl = document.getElementById('sb-admin-name');
+  const slugEl = document.getElementById('sb-admin-shared-domain');
+
+  if (nameEl && slugEl) {
+    nameEl.addEventListener('input', () => {
+      if (!sbWizard.state.slugManuallyEdited) {
+        slugEl.value = slugifyForSharedDomain(nameEl.value);
+      }
+    });
+    slugEl.addEventListener('input', () => {
+      // If user clears the slug, allow auto-derive to resume on the next name keystroke
+      sbWizard.state.slugManuallyEdited = slugEl.value.length > 0;
+    });
+  }
+
+  next.addEventListener('click', async () => {
+    const repo = document.getElementById('sb-admin-repo').value.trim();
+    const name = document.getElementById('sb-admin-name').value.trim();
+    const sharedDomain = document.getElementById('sb-admin-shared-domain').value.trim();
+    const branch = document.getElementById('sb-admin-branch').value.trim() || 'main';
+    const dht = document.querySelector('input[name="sb-admin-dht"]:checked')?.value || 'contributor_retains';
+
+    status.classList.add('hidden');
+
+    // Client-side validation mirroring the server's checks
+    if (!/^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9._-]{1,100}$/.test(repo)) {
+      status.textContent = 'Repository must be in "owner/name" format (no spaces).';
+      status.className = 'status error';
+      status.classList.remove('hidden');
+      return;
+    }
+    if (!name) {
+      status.textContent = 'Display name is required.';
+      status.className = 'status error';
+      status.classList.remove('hidden');
+      return;
+    }
+    if (!/^[a-z0-9][a-z0-9_-]{0,127}$/i.test(sharedDomain)) {
+      status.textContent = 'Shared domain slug: lowercase letters, digits, hyphens, underscores. No spaces.';
+      status.className = 'status error';
+      status.classList.remove('hidden');
+      return;
+    }
+
+    next.disabled = true;
+    next.textContent = 'Generating…';
+    try {
+      const r = await fetch('/api/sharedbrain/generate-invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          repo, name, shared_domain: sharedDomain, branch,
+          data_handling_terms: dht, storage_type: 'github',
+        }),
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || 'generate-invite failed');
+
+      // Stash everything the admin will need as a contributor later
+      sbWizard.state.inviteMetadata = {
+        v: 1,
+        repo, name,
+        shared_domain: sharedDomain,
+        branch,
+        data_handling_terms: dht,
+        storage_type: 'github',
+      };
+      sbWizard.state.generatedInviteToken = j.token;
+
+      // Populate the share screen
+      document.getElementById('sb-admin-invite-token').textContent = j.token;
+      const collabLink = document.getElementById('sb-admin-collab-link');
+      if (collabLink) collabLink.href = `https://github.com/${repo}/settings/access`;
+
+      sbWizardGoToStep(2);
+    } catch (err) {
+      status.textContent = `Could not generate invite token: ${err.message}`;
+      status.className = 'status error';
+      status.classList.remove('hidden');
+    } finally {
+      next.disabled = false;
+      next.textContent = 'Continue →';
+    }
+  });
+}
+
+// ── Admin Step 2: copy invite token + advance to PAT step ──
+
+function bindSharedBrainAdminStep2() {
+  const copyBtn = document.getElementById('sb-admin-copy-invite');
+  if (copyBtn) {
+    copyBtn.addEventListener('click', async () => {
+      const token = sbWizard.state.generatedInviteToken;
+      if (!token) return;
+      try {
+        await navigator.clipboard.writeText(token);
+        const label = copyBtn.querySelector('span');
+        const original = label ? label.textContent : 'Copy';
+        copyBtn.classList.add('copied');
+        if (label) label.textContent = 'Copied ✓';
+        setTimeout(() => {
+          copyBtn.classList.remove('copied');
+          if (label) label.textContent = original;
+        }, 1800);
+      } catch (err) {
+        alert(`Could not copy automatically — please select and copy manually. (${err.message})`);
+      }
+    });
+  }
+
+  const next = document.getElementById('sb-admin-step2-next');
+  if (next) {
+    next.addEventListener('click', () => {
+      // Prep the PAT-create deep link with the brain's name
+      const meta = sbWizard.state.inviteMetadata;
+      if (meta) {
+        const patLink = document.getElementById('sb-pat-create-link');
+        if (patLink) {
+          const name = `Curator Shared Brain - ${meta.name}`.slice(0, 60);
+          patLink.href = `https://github.com/settings/personal-access-tokens/new?name=${encodeURIComponent(name)}`;
+        }
+      }
+      sbWizardGoToStep(3);
+    });
+  }
+}
+
+// ── Adapt consent text based on data_handling_terms (Decision 6c) ──────────
+
+function refreshConsentTextForMode() {
+  const meta = sbWizard.state.inviteMetadata;
+  if (!meta) return;
+  const consentBox = document.querySelector('.sb-consent-box');
+  if (!consentBox) return;
+
+  const ul = consentBox.querySelector('ul');
+  if (!ul) return;
+
+  const ipLineText = meta.data_handling_terms === 'organisational'
+    ? 'By contributing, you assign copyright in contributed pages to the organisation per your employment agreement.'
+    : 'You retain copyright in your original content. The cohort owns the synthesised collective output.';
+
+  // Find or create the IP-mode bullet — second one in the list
+  const items = ul.querySelectorAll('li');
+  if (items[1]) items[1].textContent = ipLineText;
+}
+
+bindSharedBrainOptin();
+bindSharedBrainCtas();
+bindSharedBrainWizardChrome();
+bindSharedBrainWizardStep1();
+bindSharedBrainWizardStep2();
+bindSharedBrainWizardStep3();
+bindSharedBrainWizardStep4();
+bindSharedBrainWizardStep5();
+bindSharedBrainAdminStep1();
+bindSharedBrainAdminStep2();
 
 // ── Configured panel ──────────────────────────────────────────────────────────
 function renderSyncConfigured(status) {

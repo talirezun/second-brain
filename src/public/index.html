@@ -404,6 +404,66 @@
         </div>
       </div><!-- /#sync-configured -->
 
+      <!-- ── SHARED BRAINS (v3.0.0-beta+) ─────────────────────────────────────
+           Independent of Personal Sync. Visible only when sharedBrainEnabled
+           is true. Opt-in CTA shown when the flag is off; full section when on. -->
+
+      <div id="sharedbrain-checking" class="sharedbrain-checking hidden">
+        <div class="spinner-sm"></div>
+        <span>Loading Shared Brain status…</span>
+      </div>
+
+      <!-- Opt-in banner shown when sharedBrainEnabled is false (default v2.8.0+) -->
+      <div id="sharedbrain-optin" class="sharedbrain-optin hidden">
+        <div class="sharedbrain-divider"></div>
+        <h3 class="sync-block-title">Shared Brains <span class="sharedbrain-beta-pill">beta</span></h3>
+        <p class="sync-block-hint">
+          Contribute to a collective wiki shared with your cohort, team, or research group.
+          Each contributor keeps their personal brain private; only opted-in domains are pushed.
+          This feature is in beta — opt in to try it.
+        </p>
+        <button id="sharedbrain-enable-btn" class="btn primary">Enable Shared Brain (beta)</button>
+      </div>
+
+      <!-- Full section shown when sharedBrainEnabled is true -->
+      <div id="sharedbrain-section" class="hidden">
+        <div class="sharedbrain-divider"></div>
+        <h3 class="sync-block-title">Shared Brains <span class="sharedbrain-beta-pill">beta</span></h3>
+        <p class="sync-block-hint">
+          Contribute to a collective wiki shared with your cohort, team, or research group.
+          Each contributor keeps their personal brain private; only opted-in domains are pushed
+          to the shared brain.
+        </p>
+
+        <!-- Empty state — no connections configured yet -->
+        <div id="sharedbrain-empty" class="sharedbrain-empty hidden">
+          <div class="sharedbrain-cta-card">
+            <div class="sharedbrain-cta-content">
+              <h4 class="sharedbrain-cta-title">📨 I have an invite token</h4>
+              <p class="sharedbrain-cta-desc">From my cohort, team, or research group.</p>
+            </div>
+            <button id="sharedbrain-join-btn" class="btn primary">Join →</button>
+          </div>
+
+          <div class="sharedbrain-cta-card">
+            <div class="sharedbrain-cta-content">
+              <h4 class="sharedbrain-cta-title">⚙️ I'm starting a new Shared Brain</h4>
+              <p class="sharedbrain-cta-desc">Set one up for my cohort or team.</p>
+            </div>
+            <button id="sharedbrain-create-btn" class="btn">Set up →</button>
+          </div>
+        </div>
+
+        <!-- Connection list — rendered dynamically by renderSharedBrainList() -->
+        <div id="sharedbrain-list" class="sharedbrain-list hidden"></div>
+
+        <!-- Add-more row shown when at least one connection exists -->
+        <div id="sharedbrain-add-more" class="sharedbrain-add-more hidden">
+          <button id="sharedbrain-join-btn-2" class="btn">+ Join another</button>
+          <button id="sharedbrain-create-btn-2" class="btn">+ Set up another</button>
+        </div>
+      </div>
+
     </section>
 
     <!-- HEALTH TAB -->
@@ -1062,6 +1122,282 @@
           </div>
           <div class="ob-actions ob-actions-secondary">
             <button id="ob-step4-done" class="btn-link">Start Using The Curator</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SHARED BRAIN WIZARD (Phase 4D contributor path) ──────────────── -->
+
+    <div id="sharedbrain-wizard" class="onboarding-overlay hidden">
+      <div class="onboarding-card sb-wizard-card">
+        <button id="sb-wizard-close" class="sb-wizard-close" aria-label="Close">×</button>
+        <div class="onboarding-header">
+          <span class="logo-icon" style="font-size:28px">🧠</span>
+          <h2 id="sb-wizard-title">Join a Shared Brain</h2>
+          <p class="hint" id="sb-wizard-subtitle">Connect to your cohort's collective wiki.</p>
+        </div>
+
+        <!-- Progress labels are swapped between contributor and admin mode by JS.
+             No whitespace between the two child spans — .ob-step is flex with
+             gap: 6px, so any whitespace becomes an anonymous flex item and
+             doubles the gap (visible as label overlapping the number circle). -->
+        <div class="onboarding-progress sb-progress">
+          <div class="ob-step active" data-step="1"><span>1</span><span data-label="step1">Token</span></div>
+          <div class="ob-step-line"></div>
+          <div class="ob-step" data-step="2"><span>2</span><span data-label="step2">Access</span></div>
+          <div class="ob-step-line"></div>
+          <div class="ob-step" data-step="3"><span>3</span><span data-label="step3">PAT</span></div>
+          <div class="ob-step-line"></div>
+          <div class="ob-step" data-step="4"><span>4</span><span data-label="step4">Domains</span></div>
+          <div class="ob-step-line"></div>
+          <div class="ob-step" data-step="5"><span>5</span><span data-label="step5">Save</span></div>
+        </div>
+
+        <!-- Step 1 — Paste invite token -->
+        <div id="sb-step-1" class="ob-panel">
+          <h3>Paste your invite token</h3>
+          <p class="hint">Your cohort admin should have shared a token starting with <code>sbi_</code>. It carries the repo name and metadata — no credentials.</p>
+          <div class="form-group">
+            <label for="sb-invite-token">Invite token</label>
+            <input type="text" id="sb-invite-token" placeholder="sbi_..." autocomplete="off" spellcheck="false" />
+          </div>
+          <div id="sb-invite-preview" class="sb-invite-preview hidden">
+            <h4>Token verified ✓</h4>
+            <dl>
+              <dt>Brain name</dt><dd data-field="name"></dd>
+              <dt>GitHub repo</dt><dd data-field="repo"></dd>
+              <dt>Branch</dt><dd data-field="branch"></dd>
+              <dt>Shared domain slug</dt><dd data-field="shared_domain"></dd>
+            </dl>
+          </div>
+          <div id="sb-step1-status" class="status hidden"></div>
+          <div class="ob-actions">
+            <button class="btn sb-cancel-btn" data-action="close">Cancel</button>
+            <button id="sb-step1-next" class="btn primary pill" disabled>Continue →</button>
+          </div>
+        </div>
+
+        <!-- Step 2 — Confirm GitHub access -->
+        <div id="sb-step-2" class="ob-panel hidden">
+          <h3>Confirm GitHub access</h3>
+          <p class="hint">Before we can connect, your admin needs to have invited you as a collaborator on the repo. GitHub sent you an email — accept it now if you haven't.</p>
+
+          <div class="sb-access-card">
+            <div class="sb-access-icon">📨</div>
+            <div class="sb-access-text">
+              <strong>Check your email</strong>
+              <span>Look for "<em><span data-field="admin-name">your admin</span> invited you</em>" — the subject typically starts with "[GitHub]". Click <strong>View invitation</strong> → <strong>Accept invitation</strong>.</span>
+            </div>
+          </div>
+
+          <a id="sb-repo-link" href="" target="_blank" rel="noopener" class="btn pill sb-secondary-link">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+            Open the repo on GitHub
+          </a>
+
+          <p class="hint sb-access-tip">
+            ⓘ Don't see the invitation in your inbox? Check your spam folder, or ask the admin to resend it from the repo's <strong>Settings → Collaborators</strong> page.
+          </p>
+
+          <div class="ob-actions">
+            <button class="btn" data-action="back">← Back</button>
+            <button id="sb-step2-next" class="btn primary pill">I've accepted — continue →</button>
+          </div>
+        </div>
+
+        <!-- ── ADMIN PATH panels (replace contributor steps 1 + 2 when mode is 'create') ── -->
+
+        <!-- Admin Step 1 — Brain setup form -->
+        <div id="sb-admin-step-1" class="ob-panel hidden">
+          <h3>Set up a new Shared Brain</h3>
+          <p class="hint">First create a <strong>private</strong> GitHub repository for your cohort (any name works). You'll paste its full name below. Then invite each cohort member as a collaborator on that repo — that's how GitHub grants them write access.</p>
+
+          <a href="https://github.com/new" target="_blank" rel="noopener" class="btn pill sb-secondary-link">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px"><path d="M12 5v14M5 12h14"/></svg>
+            Open GitHub → create a new private repo
+          </a>
+
+          <div class="form-group">
+            <label for="sb-admin-repo">Repository <span style="color:var(--text-faint)">(owner/name)</span></label>
+            <input type="text" id="sb-admin-repo" placeholder="your-org/cohort-brain" autocomplete="off" spellcheck="false" />
+          </div>
+
+          <div class="form-group">
+            <label for="sb-admin-name">Brain name <span class="hint">(a friendly label, not a URL)</span></label>
+            <input type="text" id="sb-admin-name" placeholder="Spring 2026 ML Cohort" />
+            <span class="help-text">Examples: <em>"Spring 2026 ML Cohort"</em>, <em>"Marketing Research Team"</em>, <em>"PhD Reading Group"</em>. Contributors see this in their Curator app's Sync tab.</span>
+          </div>
+
+          <div class="form-group sb-admin-row">
+            <div style="flex:1">
+              <label for="sb-admin-shared-domain">Folder inside the repo <span class="hint">(auto-filled)</span></label>
+              <input type="text" id="sb-admin-shared-domain" placeholder="(auto from brain name)" autocomplete="off" spellcheck="false" />
+              <span class="help-text">Where wiki pages live: <code>collective/&lt;this&gt;/wiki/</code>. Each contributor will see this as <code>shared-&lt;this&gt;</code> in their local domain list. Auto-fills from the brain name — edit if you have a reason to.</span>
+            </div>
+            <div style="flex:1">
+              <label for="sb-admin-branch">Branch</label>
+              <input type="text" id="sb-admin-branch" value="main" autocomplete="off" spellcheck="false" />
+              <span class="help-text">Almost always <code>main</code>. Override only if your repo uses a different default branch.</span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Data handling terms <span class="hint">(can't be changed after invites go out)</span></label>
+            <div class="sb-dht-options">
+              <label class="sb-dht-card">
+                <input type="radio" name="sb-admin-dht" value="contributor_retains" checked />
+                <div class="sb-dht-text">
+                  <strong>Contributor retains copyright</strong>
+                  <span>For educational cohorts and research groups. Contributors keep copyright in their original wiki pages; the organisation owns the synthesised collective output.</span>
+                </div>
+              </label>
+              <label class="sb-dht-card">
+                <input type="radio" name="sb-admin-dht" value="organisational" />
+                <div class="sb-dht-text">
+                  <strong>Organisational (IP transfer)</strong>
+                  <span>For enterprise deployments where employee contracts cover IP. Contributors assign copyright in contributed pages to the organisation at contribution time.</span>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <div id="sb-admin-step1-status" class="status hidden"></div>
+
+          <div class="ob-actions">
+            <button class="btn sb-cancel-btn" data-action="close">Cancel</button>
+            <button id="sb-admin-step1-next" class="btn primary pill">Continue →</button>
+          </div>
+        </div>
+
+        <!-- Admin Step 2 — Generated invite token + copy/share -->
+        <div id="sb-admin-step-2" class="ob-panel hidden">
+          <h3>Share this invite token with your cohort</h3>
+          <p class="hint">Send the token below to each contributor by email or chat. They paste it in their own Curator wizard — it's metadata only and contains no credentials.</p>
+
+          <div class="sb-invite-token-box">
+            <code id="sb-admin-invite-token" class="sb-invite-token-display">sbi_…</code>
+            <button id="sb-admin-copy-invite" class="btn pill sb-copy-btn">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              <span>Copy</span>
+            </button>
+          </div>
+
+          <div class="sb-share-checklist">
+            <h4>Now invite your contributors as collaborators</h4>
+            <ol>
+              <li>Open <a id="sb-admin-collab-link" href="" target="_blank" rel="noopener">Settings → Collaborators</a> on your new repo.</li>
+              <li>Click <strong>Add people</strong>, type each contributor's GitHub username or email, send.</li>
+              <li>Send them the invite token above. They run the Shared Brain wizard with the <strong>"I have an invite token"</strong> option.</li>
+            </ol>
+            <p class="hint sb-share-note">Now we'll set up <strong>your own</strong> contribution to this brain — your PAT, your domains, your consent. Same as any other contributor.</p>
+          </div>
+
+          <div class="ob-actions">
+            <button class="btn" data-action="back">← Back</button>
+            <button id="sb-admin-step2-next" class="btn primary pill">Set up my contribution →</button>
+          </div>
+        </div>
+
+        <!-- Step 3 — Create + paste PAT (with live validation) -->
+        <div id="sb-step-3" class="ob-panel hidden">
+          <h3>Create your access token</h3>
+          <p class="hint">This token is <strong>yours</strong> — it identifies your contributions. The admin never sees it. Other contributors never see it.</p>
+
+          <ol class="sb-pat-steps">
+            <li>Click the button below to open GitHub's token creation page. The name will be prefilled.</li>
+            <li>Under <strong>Repository access</strong>, choose <strong>Only select repositories</strong> → pick the cohort repo.</li>
+            <li>Under <strong>Permissions</strong>, click <strong>+ Add permissions</strong> → add <strong>Contents</strong> → set to <strong>Read and write</strong>.</li>
+            <li>Scroll down → click <strong>Generate token</strong>.</li>
+            <li>Copy the token (starts with <code>github_pat_</code>) and paste it here.</li>
+          </ol>
+
+          <a id="sb-pat-create-link" href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener" class="btn primary pill sb-pat-create-btn">
+            Open GitHub to create my token →
+          </a>
+
+          <div class="form-group" style="margin-top:18px">
+            <label for="sb-pat-input">Paste your token here</label>
+            <div class="input-with-toggle">
+              <input type="password" id="sb-pat-input" placeholder="github_pat_..." autocomplete="off" spellcheck="false" />
+              <button type="button" class="toggle-vis" data-target="sb-pat-input" title="Show/hide">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
+            <div id="sb-pat-validation" class="sb-pat-validation hidden"></div>
+          </div>
+
+          <div class="ob-actions">
+            <button class="btn" data-action="back">← Back</button>
+            <button id="sb-step3-next" class="btn primary pill" disabled>Continue →</button>
+          </div>
+        </div>
+
+        <!-- Step 4 — Domains + display name + attribution -->
+        <div id="sb-step-4" class="ob-panel hidden">
+          <h3>What to contribute</h3>
+          <p class="hint">Pick which of your personal domains contribute pages to this Shared Brain. Only their content gets pushed — everything else stays on this computer.</p>
+
+          <div class="form-group">
+            <label>Contributing domains</label>
+            <div id="sb-domain-checkboxes" class="sb-domain-checkboxes">
+              <p class="hint">Loading domains…</p>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="sb-display-name">Your display name</label>
+            <input type="text" id="sb-display-name" placeholder="Your name" />
+            <span class="help-text">Stored locally on your machine. Only shared as a UUID by default — see attribution below.</span>
+          </div>
+
+          <div class="form-group">
+            <label class="sb-checkbox-label">
+              <input type="checkbox" id="sb-attribute-name" />
+              <span>Show my name in Provenance sections (default: anonymous UUID)</span>
+            </label>
+            <span class="help-text">Per Decision 6a, name attribution requires BOTH this flag and an admin-enabled cohort setting. If either is off, you appear as a short UUID.</span>
+          </div>
+
+          <div class="ob-actions">
+            <button class="btn" data-action="back">← Back</button>
+            <button id="sb-step4-next" class="btn primary pill">Continue →</button>
+          </div>
+        </div>
+
+        <!-- Step 5 — Review, consent, save -->
+        <div id="sb-step-5" class="ob-panel hidden">
+          <h3>Review and consent</h3>
+
+          <div class="sb-review-box">
+            <dl>
+              <dt>Connecting to</dt><dd data-field="name"></dd>
+              <dt>Repo</dt><dd data-field="repo"></dd>
+              <dt>Contributing domains</dt><dd data-field="domains"></dd>
+              <dt>Display name</dt><dd data-field="display-name"></dd>
+              <dt>Name attribution</dt><dd data-field="attribution"></dd>
+            </dl>
+          </div>
+
+          <div class="sb-consent-box">
+            <p>By clicking <strong>Save &amp; Connect</strong> you agree:</p>
+            <ul>
+              <li>Only pages from the domains you selected above will be pushed to the Shared Brain.</li>
+              <li>You retain copyright in your original content. The cohort owns the synthesised collective output.</li>
+              <li>You can disconnect anytime from the Sync tab — your local wiki is unaffected.</li>
+              <li>Your access token is stored locally on this computer only. We never transmit it except to GitHub on your behalf.</li>
+            </ul>
+            <label class="sb-checkbox-label">
+              <input type="checkbox" id="sb-consent" />
+              <span>I understand and consent to the above.</span>
+            </label>
+          </div>
+
+          <div id="sb-step5-status" class="status hidden"></div>
+
+          <div class="ob-actions">
+            <button class="btn" data-action="back">← Back</button>
+            <button id="sb-step5-save" class="btn primary pill" disabled>Save &amp; Connect</button>
           </div>
         </div>
       </div>

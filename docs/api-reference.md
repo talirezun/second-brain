@@ -755,6 +755,51 @@ The existing `/fix` endpoint accepts a new pseudo-type `semanticDupe` in v2.4.5.
 
 ---
 
+## Shared Brain endpoints (`v3.0.0-beta+`)
+
+Mounted at `/api/sharedbrain/`. All routes except `/feature-flag` and `/enable-flag` require `sharedBrainEnabled: true` in `.curator-config.json`; otherwise they return **404** with `error: "Shared Brain is not enabled..."`. The flag is `false` by default for v2.x-installed users; flipping it requires an explicit POST to `/enable-flag` or clicking the "Enable Shared Brain (beta)" button in the Sync tab.
+
+Endpoints marked **SSE** stream `text/event-stream` progress events (`{type, message, ...meta}`) ending in `{type: "done", result: {...}}` or `{type: "error", message}`.
+
+### Feature flag
+
+| Path | Description |
+|---|---|
+| `GET /api/sharedbrain/feature-flag` | `{enabled: boolean}`. Unauthenticated, ungated. |
+| `POST /api/sharedbrain/enable-flag` | Flips the flag to `true`. Idempotent. |
+
+### Connection management
+
+| Path | Description |
+|---|---|
+| `GET /api/sharedbrain/list` | `{connections: [...]}` with tokens masked. |
+| `POST /api/sharedbrain/save` | Body: `{connection: {...}}`. Validated server-side. UUIDs assigned if missing. Rejects with 400 if `github_pat` looks like a masked display value (defense against round-trip overwrites). |
+| `DELETE /api/sharedbrain/:id` | Removes the connection from this machine. The remote shared repo is unaffected. |
+
+### Push, pull, synthesize, revoke (SSE)
+
+| Path | Description |
+|---|---|
+| `POST /api/sharedbrain/:id/push` | Body: `{local_domain?: string}` (defaults to `connection.local_domains[0]`). Walks the local domain, finds pages changed since `last_push_at`, runs local-LLM Delta synthesis, uploads contribution payloads. SSE. |
+| `POST /api/sharedbrain/:id/pull` | Pulls the synthesised collective wiki into the local `domains/shared-<slug>/` mirror via the existing `writePage` pipeline. SSE. |
+| `POST /api/sharedbrain/:id/synthesize` | Runs the synthesis pipeline locally (admin operation). Aggregates contributions since the last synthesis, applies merge rules 1-5 from the design doc, writes synthesised pages back to shared storage. SSE. |
+| `POST /api/sharedbrain/:id/revoke` | Admin-only — GDPR Article 17. Body: `{admin_token, fellow_id, confirmation: "REVOKE-<fellow_id>"}`. Deletes the fellow's contributions + digest, scrubs Provenance-tainted collective pages, re-runs synthesis from scratch, appends to `state/revocations.jsonl`. SSE. |
+
+### Invite-token utilities (no credentials)
+
+| Path | Description |
+|---|---|
+| `POST /api/sharedbrain/parse-invite` | Body: `{token: "sbi_..."}`. Decodes and validates the invite token (no network calls). |
+| `POST /api/sharedbrain/generate-invite` | Body: `{repo, name, shared_domain, branch?, storage_type?, data_handling_terms?}`. Encodes metadata into an `sbi_...` token. |
+
+### Live PAT validator (server-proxy)
+
+| Path | Description |
+|---|---|
+| `POST /api/sharedbrain/validate-pat` | Body: `{repo: "owner/name", pat: "github_pat_..."}`. Curator backend makes one GitHub API call with the supplied PAT, returns `{valid, hasWriteAccess, repoFullName, isPrivate, defaultBranch, message}`. The PAT never leaves the user's machine via the browser. PAT length capped at 400 chars (DoS defense). |
+
+---
+
 ## Static files
 
 The server also serves the web UI from `src/public/` at the root path.

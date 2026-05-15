@@ -331,6 +331,16 @@ If you want **intentional** cross-domain linking — a person in `articles` expl
 | Will Obsidian show accidental cross-domain edges? | **Yes**, if your vault root covers multiple domains AND slugs match. |
 | Will Health flag those as broken in the source domain? | **Yes** — Health is per-domain. |
 
+### Shared Brain mirror domains (`v3.0.0-beta+`)
+
+When you join a Shared Brain (see [`docs/shared-brain.md`](shared-brain.md)), the collective wiki appears on your machine as an additional domain named `shared-<slug>`. These mirror domains behave like any other domain for **reading** (chat, MCP, Obsidian) but are **read-only for writes**:
+
+- The CLAUDE.md frontmatter declares `readonly: true`.
+- MCP write tools (`compile_to_wiki`, `fix_wiki_issue`, `dismiss_wiki_issue`, `undismiss_wiki_issue`) refuse with a clear steer to use your personal opted-in domain instead.
+- The Curator's app UI keeps Ingest and Compile disabled for these domains.
+
+To contribute to a Shared Brain, write to your **personal opted-in domain** (e.g. `work-ai/`), then click **Push contributions** from the Sync tab. The synthesised collective wiki comes back to `shared-<slug>/` on the next Pull.
+
 ---
 
 ## 5. Customising templates for specialised topics

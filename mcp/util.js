@@ -74,3 +74,43 @@ export async function resolveDomainArg(args, storage, getDefaultDomain) {
   }
   return { value: domain };
 }
+
+/**
+ * Refuse to write to a Shared Brain mirror domain.
+ *
+ * Per Decision 7 in docs/shared-brain-design.md, every Shared Brain mirror
+ * (a `domains/shared-<slug>/` directory created by Phase 2C's
+ * `ensureSharedDomainExists`) has `readonly: true` in its CLAUDE.md
+ * frontmatter. Direct writes via MCP are silently lost: they don't
+ * propagate to other contributors (no push path from a mirror) and they
+ * get overwritten on the next pull. The contribution model requires
+ * writes to originate from the user's PERSONAL opted-in domain.
+ *
+ * This helper is the chokepoint enforcing that contract for all MCP
+ * write tools. It loads `isDomainReadonly` lazily so the import doesn't
+ * fire when the MCP server runs without any Shared Brain configured.
+ *
+ * Returns null when the write is allowed. Returns a structured error
+ * object — same shape as resolveDomainArg's error — when the write must
+ * be refused. Callers spread it into the tool response.
+ *
+ * @param {string} domain  Already-validated domain slug from resolveDomainArg.
+ * @returns {Promise<null | { ok: false, error: string }>}
+ */
+export async function refuseIfReadonly(domain) {
+  // Lazy import — avoids loading src/brain/files.js until the first MCP
+  // write tool actually fires. Keeps the MCP startup path lean.
+  const { isDomainReadonly } = await import('../src/brain/files.js');
+  if (await isDomainReadonly(domain)) {
+    return {
+      ok: false,
+      error:
+        `Domain '${domain}' is a read-only Shared Brain mirror. ` +
+        `Direct writes here would not propagate to other contributors ` +
+        `and would be overwritten on the next pull. To contribute, ` +
+        `call this tool on your personal opted-in domain (e.g. 'work-ai'), ` +
+        `then run "Push contributions" from the Sync tab.`,
+    };
+  }
+  return null;
+}

@@ -30,7 +30,7 @@ import {
 } from '../../src/brain/files.js';
 import { generateText } from '../../src/brain/llm.js';
 import { getDefaultDomain } from '../../src/brain/config.js';
-import { resolveDomainArg } from '../util.js';
+import { resolveDomainArg, refuseIfReadonly } from '../util.js';
 
 // Hard caps — defense against runaway LLM output. Generous enough to never
 // bite a real compile; small enough that a confused or malicious model can't
@@ -415,6 +415,12 @@ export async function compileToWikiHandler(args, storage) {
   const resolved = await resolveDomainArg(args, storage, getDefaultDomain);
   if (resolved.error) return { ok: false, error: resolved.error };
   const domain = resolved.value;
+
+  // Decision 7 — refuse writes to Shared Brain mirror domains. The
+  // contribution model requires writes to originate from the user's
+  // personal opted-in domain, not the read-only collective mirror.
+  const readonlyRefusal = await refuseIfReadonly(domain);
+  if (readonlyRefusal) return readonlyRefusal;
 
   if (typeof title !== 'string' || !title.trim()) {
     return { ok: false, error: 'title is required and must be a non-empty string' };

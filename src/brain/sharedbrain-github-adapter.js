@@ -640,6 +640,88 @@ export class GitHubStorageAdapter extends SharedBrainStorageAdapter {
     try { return JSON.parse(result.content); }
     catch { return null; }
   }
+
+  // ── Phase 4F: revoke support (Decision 6b) ─────────────────────────────────
+  //
+  // Each delete first GETs the file to learn its SHA (required by the
+  // Contents DELETE API). 404 on GET → return false (idempotent). Any other
+  // error propagates so the orchestration layer sees real problems.
+
+  async _deleteIfExists(repoPath, message) {
+    const existing = await this._apiGetContents(repoPath).catch(err => {
+      if (err && err.code === 'SHARED_BRAIN_NOT_FOUND') return null;
+      throw err;
+    });
+    if (!existing) return false;
+    await this._apiDelete(repoPath, message, existing.sha);
+    return true;
+  }
+
+  async deletePage(domain, relPath) {
+    const repoPath = this._wikiRepoPath(domain, relPath);
+    if (!repoPath) {
+      throw new GitHubAdapterError(
+        'SHARED_BRAIN_UNSAFE_PATH',
+        `deletePage: unsafe domain or path (${domain}, ${relPath})`,
+      );
+    }
+    return this._deleteIfExists(repoPath, `Shared Brain: revoke — delete ${repoPath}`);
+  }
+
+  async deleteContribution(fellowId, submissionId) {
+    const repoPath = this._contribRepoPath(fellowId, submissionId);
+    if (!repoPath) {
+      throw new GitHubAdapterError(
+        'SHARED_BRAIN_UNSAFE_PATH',
+        `deleteContribution: unsafe ids (${fellowId}, ${submissionId})`,
+      );
+    }
+    return this._deleteIfExists(repoPath, `Shared Brain: revoke — delete contribution ${fellowId}/${submissionId}`);
+  }
+
+  async deleteDigest(fellowId) {
+    const repoPath = this._digestRepoPath(fellowId);
+    if (!repoPath) {
+      throw new GitHubAdapterError(
+        'SHARED_BRAIN_UNSAFE_PATH',
+        `deleteDigest: unsafe fellowId "${fellowId}"`,
+      );
+    }
+    return this._deleteIfExists(repoPath, `Shared Brain: revoke — delete digest ${fellowId}`);
+  }
+
+  async listFellowSubmissions(fellowId) {
+    if (!isSafeId(fellowId)) return [];
+    const { entries } = await this._apiTree();
+    const prefix = `contributions/${fellowId}/`;
+    return entries
+      .filter(e => e.path.startsWith(prefix) && e.path.endsWith('.json'))
+      .map(e => e.path.slice(prefix.length, -5))
+      .filter(isSafeId);
+  }
+
+  async appendAudit(relPath, record) {
+    if (typeof relPath !== 'string' || !relPath) {
+      throw new Error('appendAudit: relPath is required');
+    }
+    if (!relPath.startsWith('state/') || !relPath.endsWith('.jsonl')) {
+      throw new Error(`appendAudit: relPath must be under state/ and end with .jsonl (got "${relPath}")`);
+    }
+    const safe = safeRelPath(relPath);
+    if (!safe) {
+      throw new GitHubAdapterError('SHARED_BRAIN_UNSAFE_PATH', `appendAudit: unsafe path "${relPath}"`);
+    }
+
+    // Read existing content (404 → empty), append the new JSONL line, write back.
+    // SHA-based concurrency via _writeWithRetry handles concurrent admin actions.
+    const line = JSON.stringify(record) + '\n';
+    const existing = await this._apiGetContents(safe).catch(err => {
+      if (err && err.code === 'SHARED_BRAIN_NOT_FOUND') return null;
+      throw err;
+    });
+    const newContent = (existing ? existing.content : '') + line;
+    await this._writeWithRetry(safe, newContent, `Shared Brain: audit log entry`);
+  }
 }
 
 // ── Path encoding for the GitHub Contents API ────────────────────────────

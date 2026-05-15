@@ -58,4 +58,26 @@ export class SharedBrainStorageAdapter {
 
   /** Load the latest digest for a fellow. Returns parsed JSON or null if not found. */
   async loadDigest(_fellowId) { throw new Error('SharedBrainStorageAdapter.loadDigest: not implemented'); }
+
+  // ── Phase 4F additions — revoke support (Decision 6b) ──────────────────────
+  //
+  // These methods exist so the revoke endpoint can implement GDPR Article 17
+  // ("right to erasure") without leaking adapter-specific implementation
+  // details into the orchestration layer. All four are idempotent: deleting
+  // something that doesn't exist must not throw.
+
+  /** Delete a single wiki page. Returns true if a file was removed, false if not found. */
+  async deletePage(_domain, _path) { throw new Error('SharedBrainStorageAdapter.deletePage: not implemented'); }
+
+  /** Delete a single contribution payload. Returns true if removed, false if not found. */
+  async deleteContribution(_fellowId, _submissionId) { throw new Error('SharedBrainStorageAdapter.deleteContribution: not implemented'); }
+
+  /** Delete a fellow's digest. Returns true if removed, false if not found. */
+  async deleteDigest(_fellowId) { throw new Error('SharedBrainStorageAdapter.deleteDigest: not implemented'); }
+
+  /** List all submission ids for a fellow. Returns array of strings. */
+  async listFellowSubmissions(_fellowId) { throw new Error('SharedBrainStorageAdapter.listFellowSubmissions: not implemented'); }
+
+  /** Append one JSONL audit record. Creates the file if absent. Used by revoke. */
+  async appendAudit(_relPath, _record) { throw new Error('SharedBrainStorageAdapter.appendAudit: not implemented'); }
 }

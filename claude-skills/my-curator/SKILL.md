@@ -52,6 +52,22 @@ Before you do anything, know which domain you're working in.
 3. **The user may have set a default domain** in the Curator app's Settings. If they did, MCP tools fall back to that automatically when you omit `domain`. But still confirm with the user when ambiguous.
 4. **Domains are siloed.** Don't try to write a link from one domain to a page in another. If the user wants cross-domain synthesis, that's a `search_cross_domain` reading task — not a writing task.
 
+### §3.1 — Shared Brain mirror domains (read-only)
+
+Some domains in `list_domains` may be **Shared Brain mirrors** — named like `shared-<slug>` (e.g. `shared-cohort`, `shared-team`). These are local read-only copies of a collective wiki the user contributes to as part of a cohort or team.
+
+**MCP write tools will refuse direct writes to a `shared-<slug>` domain with this error:**
+
+> *"Domain 'shared-cohort' is a read-only Shared Brain mirror. Direct writes here would not propagate to other contributors and would be overwritten on the next pull. To contribute, call this tool on your personal opted-in domain (e.g. 'work-ai'), then run 'Push contributions' from the Sync tab."*
+
+If the user asks you to "save this to the shared brain" or "add this to the cohort wiki":
+
+1. **Identify their personal opted-in domain** — the one whose pages get pushed into the shared brain. Ask if unclear; typical names: `work-ai`, `work`, `cohort-contributions`. Never write to the `shared-<slug>` mirror directly.
+2. **Compile to that personal domain instead**, with a brief explanation to the user: *"I'll add this to your `work-ai` domain — it'll appear in the cohort brain after the next push from the Sync tab."*
+3. **Reading is unrestricted.** You can `get_node`, `get_index`, `search_wiki`, `search_cross_domain`, etc., on the `shared-<slug>` mirror freely — those are all read-only operations.
+
+This contract exists because the contribution model is one-way: personal → shared (via the local LLM-pre-processing push pipeline). There is no "push back" path from a mirror.
+
 ## §4 — Reading workflow (deep research)
 
 When the user asks a question of their wiki, your job is to traverse the graph efficiently and synthesise — not just keyword-search.

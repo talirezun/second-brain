@@ -19,10 +19,12 @@ Browser (http://localhost:3333)
 │           Express server            │
 │           src/server.js             │
 │                                     │
-│  /api/domains  /api/ingest          │
-│  /api/chat     /api/wiki/:domain    │
-│  /api/sync     /api/config          │
-│  /api/restart                       │
+│  /api/domains      /api/ingest      │
+│  /api/chat         /api/wiki/:domain│
+│  /api/sync         /api/config      │
+│  /api/health       /api/mcp         │
+│  /api/compile      /api/sharedbrain │ ← v3.0.0-beta+ (gated by flag)
+│  /api/restart      /api/version     │
 └───────────────┬─────────────────────┘
                 │
         ┌───────┴──────────┐
@@ -66,6 +68,39 @@ Browser (http://localhost:3333)
 ```
 
 Obsidian (a separate desktop app) reads the same `domains/` folder directly — no sync or export required.
+
+### Shared Brain layer (v3.0.0-beta+, opt-in)
+
+When the `sharedBrainEnabled` feature flag is on, an additional layer becomes active. Routes under `/api/sharedbrain/*` orchestrate push/pull/synthesize/revoke against a pluggable storage backend:
+
+```
+┌─────────────────────────────────────────┐
+│         brain/sharedbrain.js             │
+│   pushDomain  pullCollective             │
+│   ensureSharedDomainExists               │
+└───────┬─────────────────────────────────┘
+        │
+        │   SharedBrainStorageAdapter (abstract)
+        │   src/brain/sharedbrain-storage.js
+        ▼
+┌─────────────────────────────────────────┐
+│  createStorageAdapter(connection)        │
+│  src/brain/sharedbrain-storage-factory   │
+└───────┬─────────────────────────────────┘
+        │ dispatched by connection.storage_type
+        ├──────────────────┬───────────────────┐
+        ▼                  ▼                   ▼
+ ┌────────────┐    ┌─────────────────┐  ┌──────────────────┐
+ │ Local      │    │ GitHub          │  │ Cloudflare R2    │
+ │ Folder     │    │ Storage         │  │ (Phase v3.1 ⏳)  │
+ │ Adapter    │    │ Adapter (v3.0)  │  │                  │
+ │            │    │ REST + PAT      │  │ Worker + R2      │
+ │ (battle    │    │ + SHA           │  │ (jurisdiction:eu)│
+ │ testing)   │    │ concurrency     │  │                  │
+ └────────────┘    └─────────────────┘  └──────────────────┘
+```
+
+Synthesis (`brain/sharedbrain-synthesis.js`) and revoke (`brain/sharedbrain-revoke.js`) operate against the same adapter interface — backend-agnostic. See [`docs/shared-brain-design.md`](shared-brain-design.md) for engineering decisions and [`docs/shared-brain.md`](shared-brain.md) for the user-facing model.
 
 ---
 

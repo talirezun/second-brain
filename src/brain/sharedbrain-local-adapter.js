@@ -17,7 +17,7 @@
  *     so there's nothing to mask in error messages.
  */
 
-import { readFile, writeFile, mkdir, readdir, stat } from 'fs/promises';
+import { readFile, writeFile, mkdir, readdir, stat, unlink, appendFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import path from 'path';
 import { SharedBrainStorageAdapter } from './sharedbrain-storage.js';
@@ -250,6 +250,58 @@ export class LocalFolderStorageAdapter extends SharedBrainStorageAdapter {
     if (raw === null) return null;
     try { return JSON.parse(raw); }
     catch { return null; }
+  }
+
+  // ── Phase 4F: revoke support (Decision 6b) ─────────────────────────────────
+
+  async deletePage(domain, relPath) {
+    const abs = this._wikiPath(domain, relPath);
+    if (!abs) throw new Error(`LocalFolderStorageAdapter.deletePage: unsafe domain or path (${domain}, ${relPath})`);
+    if (!existsSync(abs)) return false;
+    await unlink(abs);
+    return true;
+  }
+
+  async deleteContribution(fellowId, submissionId) {
+    const abs = this._contribPath(fellowId, submissionId);
+    if (!abs) throw new Error(`LocalFolderStorageAdapter.deleteContribution: unsafe ids (${fellowId}, ${submissionId})`);
+    if (!existsSync(abs)) return false;
+    await unlink(abs);
+    return true;
+  }
+
+  async deleteDigest(fellowId) {
+    const abs = this._digestPath(fellowId);
+    if (!abs) throw new Error(`LocalFolderStorageAdapter.deleteDigest: unsafe fellowId "${fellowId}"`);
+    if (!existsSync(abs)) return false;
+    await unlink(abs);
+    return true;
+  }
+
+  async listFellowSubmissions(fellowId) {
+    if (!isSafeId(fellowId)) return [];
+    const fellowDir = path.join(this.root, 'contributions', fellowId);
+    if (!existsSync(fellowDir)) return [];
+    const files = await readdir(fellowDir, { withFileTypes: true });
+    return files
+      .filter(f => f.isFile() && f.name.endsWith('.json'))
+      .map(f => f.name.slice(0, -5))
+      .filter(isSafeId);
+  }
+
+  async appendAudit(relPath, record) {
+    if (typeof relPath !== 'string' || !relPath) {
+      throw new Error('appendAudit: relPath is required');
+    }
+    // Validate the audit log path: must be inside `state/` and end in `.jsonl`.
+    if (!relPath.startsWith('state/') || !relPath.endsWith('.jsonl')) {
+      throw new Error(`appendAudit: relPath must be under state/ and end with .jsonl (got "${relPath}")`);
+    }
+    const abs = resolveInsideBase(this.root, relPath);
+    if (!abs) throw new Error(`appendAudit: unsafe path "${relPath}"`);
+    await mkdir(path.dirname(abs), { recursive: true });
+    const line = JSON.stringify(record) + '\n';
+    await appendFile(abs, line, 'utf8');
   }
 }
 

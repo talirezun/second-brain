@@ -59,6 +59,14 @@ My Curator exposes **seventeen tools** to Claude Desktop — ten read tools that
 
 The key idea: a frontier model doesn't just *read* your wiki — it can *traverse* it AND *grow* it. Hubs, clusters, tags, and bidirectional links are exposed as first-class structured data, so the model can reason about your knowledge as a graph; and the write tools mean a research session in Claude Desktop can end with the conclusions saved permanently — no need to switch to The Curator app to commit them.
 
+### Write tools on Shared Brain mirrors (`v3.0.0-beta+`)
+
+When you join a Shared Brain (see [`docs/shared-brain.md`](shared-brain.md)), the collective wiki appears on your machine as a `shared-<slug>` domain. **MCP write tools refuse to write to these mirrors** with a clear steer:
+
+> *"Domain 'shared-cohort' is a read-only Shared Brain mirror. Direct writes here would not propagate to other contributors and would be overwritten on the next pull. To contribute, call this tool on your personal opted-in domain (e.g. 'work-ai'), then run 'Push contributions' from the Sync tab."*
+
+Read tools (`get_node`, `search_wiki`, `get_index`, etc.) work normally on mirror domains — Claude can freely research across them. The MCP skill at `claude-skills/my-curator/SKILL.md` documents this in §3.1.
+
 ## How it scales
 
 MCP tool responses feed into the model's context window as tokens — so the practical limit isn't just the 1 MB MCP cap, it's also the model's context. My Curator caps every tool response at **~400 KB (≈100 000 tokens)** so multi-turn conversations can sustain several tool calls without exhausting Opus's 200 000-token window.

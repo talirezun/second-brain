@@ -884,6 +884,612 @@ input::placeholder, textarea::placeholder { color: var(--text-muted); }
 .sync-disconnect-btn:hover { background: var(--error-dim); border-color: var(--error); }
 .sync-disconnect-note { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
 
+/* ── SHARED BRAINS (v3.0.0-beta+) ─────────────────────────────────────── */
+
+.sharedbrain-divider {
+  margin: 32px 0 24px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.sharedbrain-beta-pill {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  margin-left: 8px;
+  border-radius: 100px;
+  background: var(--accent-dim, rgba(180, 142, 173, 0.12));
+  color: var(--accent-2, #b48ead);
+  vertical-align: 2px;
+}
+
+.sharedbrain-checking {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 18px; margin-top: 24px;
+  font-size: 13px; color: var(--text-muted);
+}
+
+.sharedbrain-optin {
+  margin-top: 0; /* divider provides spacing */
+  padding-bottom: 4px;
+}
+
+/* Empty-state CTA cards — two of them side-stacked for picking a path */
+.sharedbrain-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.sharedbrain-cta-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.sharedbrain-cta-card:hover {
+  border-color: var(--accent-2, var(--text-muted));
+  background: var(--bg-alt);
+}
+
+.sharedbrain-cta-content { flex: 1; min-width: 0; }
+
+.sharedbrain-cta-title {
+  font-size: 14px; font-weight: 600; color: var(--text);
+  margin: 0 0 4px; letter-spacing: -0.2px;
+}
+
+.sharedbrain-cta-desc {
+  font-size: 12px; color: var(--text-muted); line-height: 1.55;
+  margin: 0;
+}
+
+.sharedbrain-cta-card .btn { flex-shrink: 0; }
+
+/* Connection list — rendered when there's at least one connection */
+.sharedbrain-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 4px;
+}
+
+.sharedbrain-card {
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+}
+
+.sharedbrain-card-header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.sharedbrain-card-title {
+  font-size: 15px; font-weight: 600; color: var(--text);
+  margin: 0; letter-spacing: -0.2px;
+}
+
+.sharedbrain-card-repo {
+  font-size: 12px;
+  font-family: var(--mono);
+  color: var(--accent-2);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.sharedbrain-card-repo:hover { text-decoration: underline; text-underline-offset: 2px; }
+
+.sharedbrain-card-stats {
+  display: flex;
+  gap: 18px;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.sharedbrain-card-stat-label { color: var(--text-faint, var(--text-muted)); margin-right: 4px; }
+
+.sharedbrain-card-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.sharedbrain-card-actions .btn {
+  font-size: 13px;
+  padding: 8px 16px;
+}
+
+.sharedbrain-card-status {
+  display: none;
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: var(--bg-alt);
+  border-radius: var(--radius);
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.55;
+  font-family: var(--mono);
+  white-space: pre-wrap;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.sharedbrain-card-status.active { display: block; }
+
+.sharedbrain-card-status.error { color: var(--error); }
+
+.sharedbrain-card-advanced {
+  margin-top: 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  background: var(--bg-alt);
+}
+
+.sharedbrain-card-advanced[open] { background: var(--bg); }
+
+.sharedbrain-card-advanced summary {
+  cursor: pointer;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  list-style: none;
+  user-select: none;
+}
+
+.sharedbrain-card-advanced summary::-webkit-details-marker { display: none; }
+.sharedbrain-card-advanced summary::before {
+  content: '▸';
+  font-size: 10px;
+  color: var(--text-faint);
+  margin-right: 6px;
+  transition: transform 0.15s;
+  display: inline-block;
+}
+.sharedbrain-card-advanced[open] summary::before { transform: rotate(90deg); }
+
+.sharedbrain-card-advanced-body {
+  padding: 0 12px 12px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.sharedbrain-card-meta-pill {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--mono);
+  padding: 3px 8px;
+  border-radius: 100px;
+  background: var(--bg);
+  border: 1px solid var(--border-subtle);
+}
+
+.sharedbrain-add-more {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.sharedbrain-add-more .btn { font-size: 12px; padding: 6px 14px; }
+
+/* ── SHARED BRAIN WIZARD (Phase 4D — contributor path) ────────────────── */
+
+.sb-wizard-card {
+  max-width: 600px;
+  position: relative;
+  max-height: 92vh;
+  overflow-y: auto;
+}
+
+.sb-wizard-close {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 22px;
+  line-height: 1;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.sb-wizard-close:hover {
+  background: var(--bg-alt);
+  color: var(--text);
+}
+
+.sb-progress {
+  /* slightly tighter on mobile */
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.sb-progress .ob-step-line { width: 24px; margin: 0 4px; }
+
+/* The shared onboarding CSS styles ALL `.ob-step span` as 22px round bubbles
+   (designed when each ob-step had a single child span). The Shared Brain
+   wizard adds a second label span — without this reset, that label span
+   inherits the bubble styling and renders as a clipped circle overlapping
+   the number. Cancel the bubble styling for label-bearing spans only. */
+.sb-progress .ob-step span[data-label] {
+  width: auto;
+  height: auto;
+  border: none;
+  background: transparent;
+  border-radius: 0;
+  font-size: 12px;
+  font-weight: 400;
+  color: inherit;
+  display: inline;
+  padding: 0;
+}
+
+.sb-cancel-btn {
+  color: var(--text-muted);
+  border-color: var(--border-subtle);
+}
+
+.ob-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 18px; }
+
+/* — Step 1: invite token preview — */
+.sb-invite-preview {
+  background: var(--bg-alt);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-top: 12px;
+}
+
+.sb-invite-preview h4 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--success);
+  margin: 0 0 8px;
+}
+
+.sb-invite-preview dl {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  gap: 6px 14px;
+  margin: 0;
+  font-size: 12px;
+}
+
+.sb-invite-preview dt {
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.sb-invite-preview dd {
+  margin: 0;
+  font-family: var(--mono);
+  color: var(--text);
+  word-break: break-word;
+}
+
+/* — Step 2: confirm GitHub access — */
+.sb-access-card {
+  display: flex;
+  gap: 12px;
+  background: var(--bg-alt);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+
+.sb-access-icon { font-size: 22px; line-height: 1; flex-shrink: 0; }
+
+.sb-access-text { font-size: 13px; line-height: 1.55; color: var(--text-2); }
+
+.sb-access-text strong {
+  display: block;
+  color: var(--text);
+  margin-bottom: 4px;
+  font-size: 14px;
+}
+
+.sb-secondary-link {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.sb-access-tip {
+  background: var(--bg-alt);
+  border-left: 2px solid var(--accent-2, var(--text-muted));
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+/* — Step 3: PAT — */
+.sb-pat-steps {
+  margin: 0 0 14px;
+  padding-left: 20px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-2);
+}
+
+.sb-pat-steps li { margin-bottom: 6px; }
+
+.sb-pat-create-btn {
+  display: inline-block;
+  margin-bottom: 4px;
+}
+
+.sb-pat-validation {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.sb-pat-validation.ok {
+  background: rgba(166,227,161,0.10);
+  border: 1px solid rgba(166,227,161,0.30);
+  color: var(--success);
+}
+
+.sb-pat-validation.warn {
+  background: rgba(249,226,175,0.10);
+  border: 1px solid rgba(249,226,175,0.30);
+  color: var(--warning, #f9e2af);
+}
+
+.sb-pat-validation.err {
+  background: var(--error-dim);
+  border: 1px solid rgba(243,139,168,0.30);
+  color: var(--error);
+}
+
+.sb-pat-validation .checking { color: var(--text-muted); }
+
+/* — Step 4: domains + display name — */
+.sb-domain-checkboxes {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 14px;
+  background: var(--bg-alt);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.sb-checkbox-label {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+  line-height: 1.5;
+}
+
+.sb-checkbox-label input[type=checkbox] {
+  margin: 2px 0 0;
+  flex-shrink: 0;
+}
+
+.sb-checkbox-label span { flex: 1; }
+
+/* — Step 5: review + consent — */
+.sb-review-box {
+  background: var(--bg-alt);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+
+.sb-review-box dl {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: 8px 14px;
+  margin: 0;
+  font-size: 13px;
+}
+
+.sb-review-box dt {
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.sb-review-box dd {
+  margin: 0;
+  color: var(--text);
+  word-break: break-word;
+}
+
+.sb-consent-box {
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-2);
+}
+
+.sb-consent-box ul {
+  margin: 8px 0 12px;
+  padding-left: 20px;
+}
+
+.sb-consent-box li { margin-bottom: 4px; }
+
+.sb-consent-box .sb-checkbox-label { margin-top: 8px; }
+
+/* — Admin path: brain setup form — */
+.sb-admin-row {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.sb-admin-row > div { min-width: 0; }
+
+/* Radio-card group for data_handling_terms picker */
+.sb-dht-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.sb-dht-card {
+  display: flex;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--bg-alt);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.sb-dht-card:hover {
+  border-color: var(--accent-2, var(--text-muted));
+}
+
+.sb-dht-card input[type=radio] {
+  margin: 4px 0 0;
+  flex-shrink: 0;
+  accent-color: var(--accent);
+}
+
+.sb-dht-card input[type=radio]:checked + .sb-dht-text strong {
+  color: var(--accent);
+}
+
+.sb-dht-card:has(input[type=radio]:checked) {
+  border-color: var(--accent);
+  background: var(--accent-dim, rgba(180,142,173,0.08));
+}
+
+.sb-dht-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.sb-dht-text strong {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.sb-dht-text span {
+  color: var(--text-muted);
+}
+
+/* — Admin path: invite token display — */
+.sb-invite-token-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--bg-alt);
+  border: 1px solid var(--accent-2, var(--border-subtle));
+  border-radius: var(--radius);
+  margin-bottom: 18px;
+}
+
+.sb-invite-token-display {
+  flex: 1;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--accent-2);
+  background: transparent;
+  word-break: break-all;
+  white-space: pre-wrap;
+  line-height: 1.5;
+  user-select: all;
+  cursor: text;
+}
+
+.sb-copy-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  padding: 6px 12px;
+}
+
+.sb-copy-btn.copied {
+  color: var(--success);
+  border-color: rgba(166,227,161,0.30);
+  background: rgba(166,227,161,0.10);
+}
+
+/* — Admin path: share-with-cohort instructions — */
+.sb-share-checklist {
+  margin-bottom: 12px;
+}
+
+.sb-share-checklist h4 {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0 0 8px;
+}
+
+.sb-share-checklist ol {
+  margin: 0 0 12px;
+  padding-left: 20px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-2);
+}
+
+.sb-share-checklist li { margin-bottom: 4px; }
+
+.sb-share-note {
+  background: var(--bg-alt);
+  border-left: 2px solid var(--accent);
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  margin: 0;
+}
+
 /* ── WIKI BROWSER ── */
 .wiki-browser { display: grid; grid-template-columns: 210px 1fr; gap: 16px; margin-top: 20px; }
 #wiki-sidebar {

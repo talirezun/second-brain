@@ -236,3 +236,11 @@ This defence sits ABOVE the existing v2.4.0 model fallback chain, so a confused 
 | `POST` | `/api/health/:domain/fix` | Existing endpoint. Applies any AI-suggested fix. New types: `orphanLink` (v2.4.4), `semanticDupe` (v2.4.5). |
 
 No existing endpoint was modified. The `orphanLink` and `semanticDupe` fix types are pseudo-types — the scanner never emits them; they exist only as routing keys so AI-applied operations go through the same `fixIssue()` chokepoint as every other write.
+
+## Health on Shared Brain mirror domains (`v3.0.0-beta+`)
+
+If you've joined a Shared Brain (see [`docs/shared-brain.md`](shared-brain.md)), the collective wiki appears on your machine as a `shared-<slug>` domain. Health **scanning** works normally on these mirrors — you can run a scan, see broken links / orphans / duplicates, and review them.
+
+**Health fixing does NOT work on mirror domains.** Direct fixes via `POST /api/health/:domain/fix` would not propagate to other contributors and would be overwritten on the next pull. To resolve a health issue in the collective wiki, fix it upstream in your **personal opted-in domain**, then **Push contributions** from the Sync tab. The fix gets pushed as a Delta and incorporated into the next synthesis.
+
+This is the same read/write contract that the MCP write tools enforce — see [`docs/mcp-user-guide.md`](mcp-user-guide.md).
