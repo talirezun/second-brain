@@ -219,6 +219,75 @@ For each pair the scan returns: call `fix_wiki_issue` with `type='semanticDupe'`
 
 ---
 
+## Example 5 — Contributing to a Shared Brain (Curator v3.0.0-beta.1+)
+
+The user is a contributor in a cohort and wants Claude to save research findings to the cohort's shared wiki.
+
+> **User:** *"This is great. Save what we just discussed about context engineering — and put it in our shared brain, not my personal notes."*
+
+Claude has been chatting about context engineering with the user. There's a clear set of findings worth persisting. The user is asking for a contribution to a Shared Brain (signal: "our shared brain", "not my personal notes").
+
+**Step 1 — Identify the personal opted-in domain.** Per §3.3, Claude needs to know which personal domain feeds the shared brain. Call `list_domains`:
+
+```
+list_domains()
+```
+
+Returns: `['personal', 'work-ai', 'journal', 'shared-cohort']`.
+
+The `shared-cohort` is a mirror (read-only). The others are personal. Claude doesn't know which personal domain is opted in — that mapping lives in the user's `.sharedbrain-config.json`, not exposed via MCP. So Claude asks:
+
+> **Claude:** *"You have three personal domains (`personal`, `work-ai`, `journal`) and one shared mirror (`shared-cohort`). Which personal domain is the one you opted into the cohort brain? Usually it's the one you were asked to contribute when you joined the cohort — for ML cohorts it's typically `work-ai`."*
+>
+> **User:** *"Yeah, `work-ai`."*
+
+**Step 2 — Inventory `work-ai` before composing.** Apply the §5 writing playbook:
+
+```
+get_index(domain="work-ai")
+```
+
+Read the existing slugs. Claude sees `entities/anthropic.md` exists but `entities/context-engineering.md` doesn't, and `concepts/agentic-workflows.md` exists. So Claude will:
+- Use `[[anthropic]]` (existing slug)
+- Use `[[agentic-workflows]]` (existing slug)
+- Create `[[context-engineering]]` as a new entity page via `additional_pages`
+
+**Step 3 — Compile to the PERSONAL domain (NOT the mirror).**
+
+```
+compile_to_wiki(
+  domain="work-ai",                              ← personal opted-in domain
+  title="Context Engineering — March 2026 review",
+  summary_content="...",                          ← grounded links throughout
+  additional_pages=[
+    {path: "entities/context-engineering.md", content: "..."}
+  ],
+  broken_link_policy="keep"                       ← established domain, 'keep' is fine
+)
+```
+
+The response's `links` field shows `broken_count: 0` — all links grounded. ✓
+
+**Step 4 — Tell the user precisely how the contribution reaches the cohort.**
+
+> **Claude:** *"Saved to your `work-ai` domain: one summary + one new entity page (`context-engineering.md`). To make this appear in the cohort's shared brain:*
+>
+> *1. Open the Curator app → Sync tab*
+> *2. In the Shared Brains section, on your cohort's connection card, click **Push contributions***
+> *3. The admin will run synthesis (usually weekly) — your contribution will then show up in everyone's `shared-cohort` mirror on their next Pull*
+>
+> *I can't trigger the Push myself — that step lives in the Curator app, not MCP, in v3.0.0-beta.1. (It's a future roadmap item.) Anything else you want me to add to your `work-ai` domain before you push?"*
+
+The user clicks Push themselves. A week later when the admin synthesises, the contribution lands in every cohort member's `shared-cohort` mirror as a synthesised collective page with Claude attributed in the Provenance section (under the user's UUID or display name, per the cohort's attribution settings).
+
+**Key moves**
+- Never compile to a `shared-*` mirror — those writes are refused at the tool level AND would be overwritten on next Pull.
+- `list_domains` distinguishes personal (no `shared-` prefix) from mirror (`shared-` prefix). Ask the user which personal domain feeds the shared brain when ambiguous.
+- After compiling, be PRECISE in the wrap-up: *"saved to your personal domain"* — not *"saved to the shared brain"*. Mention the manual Sync-tab Push step. Don't promise something MCP can't do.
+- For "what does our cohort brain say about X?" requests (the read direction), all read tools work directly on the `shared-cohort` mirror — no detour through personal domain needed.
+
+---
+
 ## Quick decision tree
 
 When the user makes a request, ask:

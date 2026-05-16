@@ -147,6 +147,29 @@ Claude reads project-knowledge files automatically as context for every conversa
 
 > Alternatively, copy the entire content of `SKILL.md` (minus the frontmatter) into the project's **Custom instructions** field. Same effect, no separate file upload.
 
+### Updating to the latest skill version
+
+The skill is a static markdown file. To get updates (new sections, refined trigger phrases, new tool coverage — e.g. when Shared Brain semantics or new MCP tools change), **re-install over the existing copy**.
+
+**Claude Code users** — just re-run the two `curl` commands from the install section above. They overwrite the existing files in `~/.claude/skills/my-curator/`. No restart, no session interruption — Claude picks up the updated skill on its next read (typically next message).
+
+```bash
+# Same commands as install — they overwrite cleanly
+curl -L https://raw.githubusercontent.com/talirezun/the-curator/main/claude-skills/my-curator/SKILL.md \
+  -o ~/.claude/skills/my-curator/SKILL.md
+curl -L https://raw.githubusercontent.com/talirezun/the-curator/main/claude-skills/my-curator/examples.md \
+  -o ~/.claude/skills/my-curator/examples.md
+```
+
+**Claude Desktop users** — re-upload via Project knowledge:
+
+1. Open the project where you uploaded the skill.
+2. **Project knowledge** → delete the existing `SKILL.md` and `examples.md`.
+3. Download the latest from GitHub: [SKILL.md](https://github.com/talirezun/the-curator/raw/main/claude-skills/my-curator/SKILL.md) · [examples.md](https://github.com/talirezun/the-curator/raw/main/claude-skills/my-curator/examples.md)
+4. Upload the fresh copies.
+
+Check the skill's `§10 Version compatibility` footer to confirm which Curator version your installed copy targets. If the footer doesn't match your installed Curator version, update.
+
 ### Trigger phrases
 
 The skill activates on natural language — you don't need to invoke it explicitly. Phrases that reliably trigger it:

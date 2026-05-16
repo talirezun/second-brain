@@ -1,6 +1,6 @@
 ---
 name: my-curator
-description: Use whenever the user wants to interact with their My Curator second brain — a markdown knowledge graph managed by The Curator app and accessed via the my-curator MCP. Activates for both READ requests ("what does my wiki say about X", "deep research my second brain", "find every source that mentions Y", "show me topology of the AI domain") and WRITE requests ("add to my second brain", "save to my wiki", "update my Curator", "compile our findings", "store these notes", "put this in my projects domain"). Also activates for maintenance ("check my wiki", "find broken links", "clean up orphans", "scan for duplicate pages"). Enforces the second-brain structure (entities, concepts, summaries), grounds every wikilink in an existing slug before writing, refuses speculative links on fresh domains, compounds knowledge into existing pages instead of creating duplicates, and respects the per-domain siloing model (no cross-domain links). Always orients on the wiki via list_domains and get_index BEFORE composing any write.
+description: Use whenever the user wants to interact with their My Curator second brain — a markdown knowledge graph managed by The Curator app and accessed via the my-curator MCP. Activates for READ requests ("what does my wiki say about X", "deep research my second brain", "find every source that mentions Y", "show me topology of the AI domain", "what does our cohort wiki say"), WRITE requests ("add to my second brain", "save to my wiki", "update my Curator", "compile our findings", "store these notes", "put this in my projects domain"), Shared Brain contribution ("save this to our shared brain", "contribute to the cohort wiki", "add this to our team brain"), and maintenance ("check my wiki", "find broken links", "clean up orphans", "scan for duplicate pages"). Enforces the second-brain structure (entities, concepts, summaries), grounds every wikilink in an existing slug before writing, refuses speculative links on fresh domains, compounds knowledge into existing pages instead of creating duplicates, respects the per-domain siloing model (no cross-domain links), and handles Shared Brain mirror domains correctly (read-only locally; contributions flow through the user's personal opted-in domain plus a Sync-tab Push). Always orients on the wiki via list_domains and get_index BEFORE composing any write.
 allowed-tools: mcp__my-curator__list_domains mcp__my-curator__get_index mcp__my-curator__get_graph_overview mcp__my-curator__get_tags mcp__my-curator__search_wiki mcp__my-curator__search_cross_domain mcp__my-curator__get_node mcp__my-curator__get_connected_nodes mcp__my-curator__get_backlinks mcp__my-curator__get_summary mcp__my-curator__compile_to_wiki mcp__my-curator__scan_wiki_health mcp__my-curator__fix_wiki_issue mcp__my-curator__scan_semantic_duplicates mcp__my-curator__get_health_dismissed mcp__my-curator__dismiss_wiki_issue mcp__my-curator__undismiss_wiki_issue
 ---
 
@@ -52,21 +52,93 @@ Before you do anything, know which domain you're working in.
 3. **The user may have set a default domain** in the Curator app's Settings. If they did, MCP tools fall back to that automatically when you omit `domain`. But still confirm with the user when ambiguous.
 4. **Domains are siloed.** Don't try to write a link from one domain to a page in another. If the user wants cross-domain synthesis, that's a `search_cross_domain` reading task — not a writing task.
 
-### §3.1 — Shared Brain mirror domains (read-only)
+### §3.1 — Shared Brain mirror domains (the read/write contract)
 
-Some domains in `list_domains` may be **Shared Brain mirrors** — named like `shared-<slug>` (e.g. `shared-cohort`, `shared-team`). These are local read-only copies of a collective wiki the user contributes to as part of a cohort or team.
+Some domains in `list_domains` may be **Shared Brain mirrors** — named like `shared-<slug>` (e.g. `shared-cohort`, `shared-team`). These are local read-only copies of a collective wiki the user contributes to as part of a cohort, team, or research group (see [`docs/shared-brain-user-guide.md`](../../docs/shared-brain-user-guide.md) for the user-facing model).
 
-**MCP write tools will refuse direct writes to a `shared-<slug>` domain with this error:**
+**Reading a mirror is unrestricted.** All ten read tools work normally on `shared-*` domains — `get_node`, `get_index`, `search_wiki`, `search_cross_domain`, `get_graph_overview`, `get_connected_nodes`, `get_backlinks`, `get_tags`, `get_summary`, `list_domains`. This is where the cohort use cases get powerful: you can be asked *"across our shared brain, which papers contradict each other on X?"* and you answer by traversing the collective wiki.
+
+**Writing to a mirror is refused.** All seven write tools (`compile_to_wiki`, `fix_wiki_issue`, `scan_semantic_duplicates` merge path, `dismiss_wiki_issue`, `undismiss_wiki_issue`) check the target domain's `CLAUDE.md` frontmatter for `readonly: true`. If true, they refuse with this exact error:
 
 > *"Domain 'shared-cohort' is a read-only Shared Brain mirror. Direct writes here would not propagate to other contributors and would be overwritten on the next pull. To contribute, call this tool on your personal opted-in domain (e.g. 'work-ai'), then run 'Push contributions' from the Sync tab."*
 
-If the user asks you to "save this to the shared brain" or "add this to the cohort wiki":
+### §3.2 — How to actually contribute to a Shared Brain via MCP
 
-1. **Identify their personal opted-in domain** — the one whose pages get pushed into the shared brain. Ask if unclear; typical names: `work-ai`, `work`, `cohort-contributions`. Never write to the `shared-<slug>` mirror directly.
-2. **Compile to that personal domain instead**, with a brief explanation to the user: *"I'll add this to your `work-ai` domain — it'll appear in the cohort brain after the next push from the Sync tab."*
-3. **Reading is unrestricted.** You can `get_node`, `get_index`, `search_wiki`, `search_cross_domain`, etc., on the `shared-<slug>` mirror freely — those are all read-only operations.
+The user CAN add to a shared brain through this skill — just **indirectly**. Here's the full flow and where MCP fits in:
 
-This contract exists because the contribution model is one-way: personal → shared (via the local LLM-pre-processing push pipeline). There is no "push back" path from a mirror.
+```
+What you (Claude via MCP) do        Where it happens     What it does
+─────────────────────────────       ──────────────       ────────────────────
+1. compile_to_wiki                  MCP                  Saves pages to the
+   target = PERSONAL                                     user's PERSONAL
+   opted-in domain                                       opted-in domain (e.g.
+   (NEVER shared-*)                                      'work-ai/'), not the
+                                                         mirror.
+
+2. Tell the user clearly:           Conversation         User now needs to
+   "Pages are in <domain>.                               complete the loop in
+   To push them to the                                   the Curator app.
+   cohort wiki, click
+   'Push contributions' in
+   your Sync tab."
+
+──────────────────────── steps below are NOT MCP-driven ────────────────────────
+
+3. (User) opens Curator             Curator app          The local LLM
+   Sync tab → clicks                                     pre-processes the
+   "Push contributions"                                  changed pages into
+                                                         DeltaSummaries and
+                                                         uploads them to
+                                                         shared storage.
+
+4. (Admin) periodically runs        Curator app          Merge rules 1-5,
+   "Run synthesis"                                       contradiction
+                                                         resolution, Provenance
+                                                         section, etc.
+                                                         Rewrites the
+                                                         collective wiki.
+
+5. (Everyone) clicks                Curator app          The shared-<slug>/
+   "Pull updates"                                        mirror domain on each
+                                                         machine refreshes with
+                                                         the new synthesised
+                                                         pages.
+```
+
+**The MCP tools push/pull/synthesize are not exposed in v3.0.0-beta.1.** Steps 3-5 only happen via the Curator app's Sync tab. This is intentional: those operations consume LLM tokens (paid) and credentials (PAT); they should fire on explicit user action, not as a side-effect of "save this".
+
+### §3.3 — Dialogue scripts for common user requests
+
+When the user says one of these phrases, follow the matching script.
+
+#### "Save this to our shared brain" / "Add to the cohort wiki"
+
+1. **Identify the personal opted-in domain.** Call `list_domains` if you don't already know. Look for personal domains (NOT starting with `shared-`) — the user opted ONE of them into the shared brain. Typical names: `work-ai`, `work`, `cohort-contributions`, `research`. If multiple personal domains exist and it's unclear which feeds the shared brain, **ask the user**: *"You have personal domains `work-ai` and `research`. Which one feeds the shared brain you want me to contribute to?"*
+2. **Compile to that personal domain** using the full §5 writing playbook (get_index → ground links → compile_to_wiki).
+3. **Tell the user how the contribution reaches the cohort**: *"I've saved this to your `work-ai` domain. To make it appear in the shared brain for your cohort, open the Curator Sync tab and click **Push contributions**. The admin will then run synthesis (usually weekly) and everyone will see it on their next Pull."*
+
+#### "What does our cohort wiki / shared brain say about X?"
+
+This is a read on the mirror. Treat it like any other deep-research query on `shared-<slug>`:
+- `get_graph_overview(domain="shared-cohort")` for orientation
+- `search_wiki(domain="shared-cohort", query="X")` for retrieval
+- `get_node(domain="shared-cohort", slug="...")` for full content
+- All work normally. Cite specific slugs in your synthesis.
+
+If the user wants to compare what the SHARED brain says vs what their PERSONAL brain says, use `search_cross_domain` — it'll query both at once.
+
+#### "Check our shared brain for problems" / "Find broken links in the cohort wiki"
+
+This is a Health scan on the mirror. Scanning is allowed:
+- `scan_wiki_health(domain="shared-cohort")` works fine — returns the report.
+
+But **fixing is refused** (Health fix tools would write to the mirror). Tell the user:
+> *"Here's the scan: 12 broken links, 3 orphans. Fixing these directly would not propagate — the shared brain is rebuilt by synthesis from contributors' personal domains. To fix a broken link in the shared brain: ask the contributor whose personal page references that broken slug to update it, then push + synthesise. Or, if it's your own contribution that introduced the broken link, I can fix it in your `work-ai` domain right now — want me to?"*
+
+#### "Push my contributions" / "Run synthesis" / "Pull updates"
+
+These are NOT MCP operations in v3.0.0-beta.1. Tell the user:
+> *"Push, Pull, and Run synthesis live in the Curator app's Sync tab — they're not exposed via MCP yet (planned for v3.x). Open the app → Sync tab → click the appropriate button. I can prepare the contribution by compiling to your personal domain first — want me to do that?"*
 
 ## §4 — Reading workflow (deep research)
 
@@ -100,6 +172,8 @@ You don't need to enumerate everything. The wiki is large; reasoning over hubs a
 This is the rule that produces ZERO broken links and ZERO duplicate pages. **Follow it every single time** the user asks you to save, add, compile, or update.
 
 ### The five-step playbook
+
+**Step 0 — Check the target isn't a Shared Brain mirror.** If the domain starts with `shared-`, STOP. Apply the §3.3 "Save this to our shared brain" script instead — redirect the write to the user's personal opted-in domain. Trying to write directly to a `shared-*` mirror will be refused with a clear error, but earlier rejection saves a round trip.
 
 **Step 1 — Confirm the domain.** Per §3.
 
@@ -179,27 +253,31 @@ Persistent dismissals: `dismiss_wiki_issue` writes to a file synced across the u
 
 `scan_semantic_duplicates` calls the LLM with a small per-scan cost (~$0.005–$0.03). **Only run it when the user explicitly asks** — and use `estimate_only: true` first to show the cost before committing.
 
+### Health on Shared Brain mirror domains
+
+`scan_wiki_health` works fine on `shared-*` mirrors — you can show the user the report. But `fix_wiki_issue` is **refused** on mirrors: fixes wouldn't propagate to other contributors and would be overwritten on the next Pull. To resolve a Health issue in the shared brain, the contributor who introduced it must fix it in their personal opted-in domain, then Push + run synthesis. Tell the user this explicitly when their scan request targets a `shared-*` domain.
+
 ## §7 — Tool reference
 
-| Tool | Purpose | When |
-|---|---|---|
-| `list_domains` | List domains | Always when domain is unclear |
-| `get_index` | Master page catalog | Always before any write |
-| `get_graph_overview` | Topology snapshot | First move on a research task |
-| `get_tags` | Tag inventory | Tag-driven cluster work |
-| `search_wiki` | Ranked search in one domain | Specific topic lookup |
-| `search_cross_domain` | Search across all domains | Cross-domain synthesis only (read) |
-| `get_node` | Full page with frontmatter | Detail pull on a known slug |
-| `get_connected_nodes` | Neighborhood traversal | "How is X connected" |
-| `get_backlinks` | Incoming-link list | "Every source that mentions X" |
-| `get_summary` | Pull a summary page | When user references a specific source |
-| `compile_to_wiki` | Save findings as wiki pages | THE write tool — follow §5 |
-| `scan_wiki_health` | Find structural issues | "Check my wiki" |
-| `fix_wiki_issue` | Apply ONE Health fix | After scan, per issue |
-| `scan_semantic_duplicates` | AI duplicate detection | Opt-in, paid, user-initiated only |
-| `get_health_dismissed` | List previously dismissed | "What have I skipped?" |
-| `dismiss_wiki_issue` | Permanently skip an issue | When user says "leave alone" |
-| `undismiss_wiki_issue` | Restore a dismissal | When user changes their mind |
+| Tool | Purpose | When | Works on `shared-*` mirror? |
+|---|---|---|---|
+| `list_domains` | List domains | Always when domain is unclear | Yes (lists mirrors too) |
+| `get_index` | Master page catalog | Always before any write | Yes |
+| `get_graph_overview` | Topology snapshot | First move on a research task | Yes |
+| `get_tags` | Tag inventory | Tag-driven cluster work | Yes |
+| `search_wiki` | Ranked search in one domain | Specific topic lookup | Yes |
+| `search_cross_domain` | Search across all domains | Cross-domain synthesis only (read) | Yes (treats mirrors as just another domain) |
+| `get_node` | Full page with frontmatter | Detail pull on a known slug | Yes |
+| `get_connected_nodes` | Neighborhood traversal | "How is X connected" | Yes |
+| `get_backlinks` | Incoming-link list | "Every source that mentions X" | Yes |
+| `get_summary` | Pull a summary page | When user references a specific source | Yes |
+| `compile_to_wiki` | Save findings as wiki pages | THE write tool — follow §5 | **No — refused.** Redirect to personal opted-in domain per §3.3 |
+| `scan_wiki_health` | Find structural issues | "Check my wiki" | Yes (read-only scan) |
+| `fix_wiki_issue` | Apply ONE Health fix | After scan, per issue | **No — refused.** Fixes don't propagate from mirrors |
+| `scan_semantic_duplicates` | AI duplicate detection | Opt-in, paid, user-initiated only | Yes (scan) but the merge path that would delete files is refused on mirrors |
+| `get_health_dismissed` | List previously dismissed | "What have I skipped?" | Yes (read-only) |
+| `dismiss_wiki_issue` | Permanently skip an issue | When user says "leave alone" | **No — refused** on mirrors |
+| `undismiss_wiki_issue` | Restore a dismissal | When user changes their mind | **No — refused** on mirrors |
 
 ## §8 — Quality rules (the don'ts)
 
@@ -215,6 +293,10 @@ A compact reminder of what NOT to do:
 8. **Don't fix `semanticDupe` issues without `preview: true` first.** Destructive — deletes files.
 9. **Don't skip `get_index` on writes.** That's the #1 cause of broken links.
 10. **Don't compose first and check links after.** Ground links during composition by referring to the index.
+11. **Don't compile to a `shared-*` mirror.** Always redirect to the user's personal opted-in domain (§3.3). The mirror's writes don't propagate and would be overwritten on the next Pull.
+12. **Don't promise the user "I've added this to the shared brain"** when you've actually compiled to their personal domain. Be precise: *"Saved to your `work-ai` domain — it'll appear in the shared brain after you click **Push contributions** in the Sync tab and the admin runs synthesis."* The Push and synthesise steps aren't yours to do.
+13. **Don't try to call a "push" or "synthesize" MCP tool.** They don't exist in v3.0.0-beta.1. Those operations live in the Curator app's Sync tab. If the user asks you to push, tell them how to do it themselves.
+14. **Don't suggest fixing Health issues on a `shared-*` mirror.** Suggest the upstream fix (in the contributor's personal domain) and a Push + synthesise cycle.
 
 ## §9 — Quick reference
 
@@ -235,3 +317,18 @@ Is the user MAINTAINING the wiki?
 ```
 
 For sample dialogues that show end-to-end flows for each scenario, see [examples.md](examples.md).
+
+---
+
+## §10 — Version compatibility
+
+**This skill targets Curator v3.0.0-beta.1 and later.** If you're working with The Curator, the following features are covered by this version of the skill:
+
+- The 17 MCP tools (10 read + 7 write, list in §7)
+- Shared Brain mirror domains (`shared-*`) — §3.1 read/write contract, §3.2 indirect-write model, §3.3 dialogue scripts
+- Health on mirrors — scan allowed, fix refused (§6)
+- Two-primitives model — invite token (metadata) vs PAT (per-contributor identity)
+
+**Earlier Curator versions** (pre-v3.0.0-beta.1) didn't have Shared Brain at all. The mirror-domain logic still works — there simply won't be any `shared-*` domains to dispatch on. The skill is backward-compatible.
+
+**Updating to a newer skill version**: just re-run the install commands in `docs/mcp-user-guide.md` — they overwrite the existing files in `~/.claude/skills/my-curator/` (Claude Code) or replace the project knowledge upload (Claude Desktop). Re-installation doesn't restart any conversation — edits take effect mid-session.
