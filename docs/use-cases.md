@@ -240,3 +240,52 @@ All cohort & team cases share these properties:
 5. **LLM-mediated quality** — synthesis isn't just file merge; it resolves contradictions, unifies formulations, attributes provenance, rebuilds the collective index
 
 If you're a solo user, Personal Sync handles your single-machine-to-single-machine sync. If you're a group, Shared Brain handles many-to-collective. The two features compose: many users can each run Personal Sync (for their own personal brain backup) AND contribute one opted-in domain to a Shared Brain.
+
+---
+
+# Monetizing a Shared Brain — sell access to your expertise
+
+The cohort/team patterns above assume contributors share the brain freely. But Shared Brain's architecture also supports **paid access** — domain experts can charge for access to a brain they curate. This works **today**, with zero code changes, using payment platforms you already know.
+
+## N. Independent Experts Selling Recurring Brain Access
+
+An AI safety researcher has built a personal `ai-safety-reading` domain with 4 years of paper reading — 300+ entities, 800+ concepts, 200+ summaries with synthesis. They turn it into a Shared Brain and offer access at **€15/month** via Gumroad. Buyers pay; the researcher manually adds each as a GitHub collaborator and sends the invite token by email. Each week the researcher continues reading, ingests papers into their personal opted-in domain, runs Push + synthesize → buyers Pull at their leisure.
+
+Buyers get to: read the synthesised wiki locally in Obsidian; chat with it in the Curator's chat tab; query it via Claude Desktop with the My Curator MCP for deep research like *"across this brain, which papers contradict each other on mechanistic interpretability?"* The brain compounds — buyers who joined month 1 see the brain grow with every weekly synthesis.
+
+**Comparable pricing reference**: Substack newsletters (€5-15/mo), Stratechery-style premium analyst subscriptions (€15/mo), Patreon tiers (€3-50/mo). A compounding queryable brain sits at the higher end of this range because the value keeps growing.
+
+**Why Shared Brain wins here**: the brain compounds. Unlike a Notion template (bought once, frozen) or a newsletter (single read, then archived), the brain gets richer every synthesis run and remains searchable via Claude forever.
+
+## O. Artists, Educators, Writers Selling Curated Knowledge
+
+A graphic designer's `visual-references` domain with 10 years of curated inspiration + commentary. A university professor's `cognitive-science` domain with 15 years of paper reading + lecture notes. A novelist's `worldbuilding-research` with historical sources, character archetypes, geographic detail. All these are valuable IP that audiences will pay to access.
+
+**Pattern**: one-time purchase (€20-50) for "lifetime access to the brain in its current state" OR monthly subscription (€8-15/mo) for "ongoing access as it grows".
+
+**Why Shared Brain wins here**: artists and writers spend years building reference libraries. The Curator turns that library into an *interrogable* asset, not just a folder of bookmarks. Buyers can ask Claude *"what visual references did this designer save about brutalism?"* and get a real answer with sources.
+
+## P. Consulting Firms Selling Sanitised Insights to Clients
+
+A boutique strategy firm packages 5 years of pattern recognition across past engagements (anonymised, no client names) as a `firm-patterns` Shared Brain offered to current clients for €2000/month, bundled into engagement fees. Clients get access to the firm's accumulated insight, queryable via Claude.
+
+**Why Shared Brain wins here**: the firm's competitive moat is patterns across engagements that any individual consultant might forget. The brain remembers. Selling access is selling the moat.
+
+## Q. SaaS Companies Selling Domain Expertise to Enterprise Customers
+
+A cybersecurity SaaS has deep internal knowledge about threat actors and CVEs. They package the `threat-intelligence` Shared Brain as a paid add-on for enterprise customers at €10000/year. Customers get queryable access to expertise that informs their security posture — knowledge that no individual analyst could carry.
+
+**Why Shared Brain wins here**: enterprise customers pay for the company's deep expertise as a recurring asset, not just for the software product. This is "expertise as a service".
+
+## Pattern across monetization use cases
+
+All four shapes share these architectural properties (the "gates" — see the [Monetization Guide](shared-brain-monetization.md#2--the-architecture-knowing-the-gates) for the diagram):
+
+1. **GitHub collaborator status** is the actual gate — pay → admin adds → access granted; cancel → admin removes → access revoked
+2. **PAT scope** (Read-only vs Read AND Write) lets you offer two tiers without code changes
+3. **Invite token** is metadata-only and safe to share via any channel
+4. **The Curator app** is free, open source, installs in 5 minutes — buyers self-onboard from your sales-page link
+
+The result: **a no-code or low-code monetization path** that domain experts can launch in a week, using tools they already know (Gumroad, Lemon Squeezy, Stripe).
+
+> 📚 **Full step-by-step**: [`docs/shared-brain-monetization.md`](shared-brain-monetization.md) — pricing models, platform comparison (Gumroad vs Lemon Squeezy vs Stripe), legal/compliance, onboarding email templates, tiered access pattern, and answers to common questions like "can buyers share their access?" and "how do refunds work?"

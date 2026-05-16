@@ -51,6 +51,7 @@ For students, researchers, entrepreneurs, and lifelong learners: this is the dif
 | [shared-brain.md](shared-brain.md) | Shared Brain — concept, architecture, engineering decisions, v3.x+ roadmap |
 | [shared-brain-admin.md](shared-brain-admin.md) | Shared Brain — advanced admin operations (synthesis cadence, revocation, contributor management) |
 | [shared-brain-compliance.md](shared-brain-compliance.md) | Shared Brain — GDPR / IP / data residency reference for orgs evaluating deployment |
+| [shared-brain-monetization.md](shared-brain-monetization.md) | Shared Brain — monetizing access (paid subscriptions, knowledge products, tiered access for independent experts and organisations) |
 | [domains.md](domains.md) | Domains end-to-end — managing them, the CLAUDE.md schema, siloing model, custom templates |
 | [mac-app.md](mac-app.md) | How to create a double-click Dock app on macOS so you never need the terminal |
 

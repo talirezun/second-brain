@@ -205,6 +205,47 @@ A product team (PM + designers + engineers + researcher) contributes 4 role-spec
 
 ---
 
+## Monetize Your Knowledge: paid Shared Brain access
+
+Shared Brain's architecture supports **paid access** — domain experts, educators, researchers, artists, and consultants can charge audiences for access to a brain they curate. This works **today** on v3.0.0-beta.1 with **zero code changes**, using no-code payment platforms you already know (Gumroad, Lemon Squeezy, Stripe).
+
+### Who can monetize
+
+- **Independent researchers** — sell a recurring subscription to your curated reading domain (€10-30/mo). Example: an AI safety researcher with 4 years of paper reading + weekly synthesis.
+- **Educators & professors** — package your cognitive-science / philosophy / history domain as a paid student companion or public knowledge product.
+- **Artists & designers** — turn your 10-year visual-reference library with commentary into a paid resource.
+- **Industry experts** — VC analysts, biotech researchers, longevity scientists with deep niche expertise.
+- **Consulting firms** — sell sanitised pattern recognition (anonymised) to current clients as a recurring add-on.
+- **SaaS companies** — sell domain expertise as a recurring asset bundled with their software product.
+
+### Why this is a real opportunity
+
+Unlike a Notion template (bought once, frozen) or a newsletter (single read, archived), **a Shared Brain compounds**. Buyers who pay in month 1 see the brain grow richer every synthesis run, and they can query it via Claude Desktop for deep research like *"across this brain, which papers contradict each other on X?"* The value keeps growing, which is exactly why subscription pricing works.
+
+Pricing comparables:
+
+| Product | Typical price | Why Shared Brain compares |
+|---|---|---|
+| Substack newsletter | €5-15/mo | Single-read content |
+| Stratechery (Ben Thompson) | €15/mo | One expert's recurring analysis |
+| Patreon tiers | €3-50/mo | Audience access |
+| **Shared Brain subscription** | **€10-30/mo** | **Compounding queryable knowledge graph + recurring synthesis + Claude integration** |
+
+### The "gates" — where access is controlled
+
+Shared Brain has four serial gates from buyer → brain access. The first is the only one you (the admin) control 100%:
+
+1. 🚪 **GitHub collaborator status** — pay → you add → access granted; cancel → you remove → access revoked. **This is THE money gate.**
+2. 🚪 **PAT scope** — you instruct buyers to create a Read-only PAT (read-only tier) or Read AND Write PAT (contributor tier). Two tiers with no code.
+3. 🚪 **Invite token** — metadata-only, safe to email or even publish publicly. Not a gate, just a UX touchpoint.
+4. 🚪 **The Curator app** — buyer installs the free open-source app on their machine.
+
+→ **[Full step-by-step monetization guide with diagrams, pricing models, platform comparisons, onboarding templates, compliance notes](docs/shared-brain-monetization.md)**
+
+→ More example use cases (independent experts, artists, consulting firms, SaaS companies) in [docs/use-cases.md](docs/use-cases.md#monetizing-a-shared-brain--sell-access-to-your-expertise).
+
+---
+
 ## Quick start
 
 ### Option A — One-command installer (Mac, recommended)
@@ -551,6 +592,7 @@ the-curator/
 | [Shared Brain — Architecture](docs/shared-brain.md) | What Shared Brain is, how it works internally, engineering decisions, v3.x+ roadmap |
 | [Shared Brain — Admin Operations](docs/shared-brain-admin.md) | Advanced admin reference: synthesis cadence, revocation, contributor management |
 | [Shared Brain — Compliance](docs/shared-brain-compliance.md) | GDPR / IP / data residency reference for organisations evaluating deployment |
+| [Shared Brain — Monetization](docs/shared-brain-monetization.md) | Paid Shared Brain access: how independent experts, artists, professors, consulting firms, and SaaS companies can charge for brain access today using no-code payment platforms |
 | [Use Cases](docs/use-cases.md) | Detailed workflows for every user profile, including cohort & team Shared Brain scenarios |
 | [Mac App Setup](docs/mac-app.md) | Double-click Dock launcher for Mac |
 
